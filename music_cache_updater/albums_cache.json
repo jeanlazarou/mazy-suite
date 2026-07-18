@@ -1,0 +1,2192 @@
+{
+  "/music/files/Alternative Dives/01-Any Future Hope (1).mp3": {
+    "id": "/music/files/Alternative Dives/01-Any Future Hope (1).mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:54:52 +0000",
+    "duration": 205.10666666666665
+  },
+  "/music/files/Alternative Dives/02-Building Days.mp3": {
+    "id": "/music/files/Alternative Dives/02-Building Days.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:54:54 +0000",
+    "duration": 121.98666666666666
+  },
+  "/music/files/Alternative Dives/03-September 1 ('92).mp3": {
+    "id": "/music/files/Alternative Dives/03-September 1 ('92).mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:54:56 +0000",
+    "duration": 50
+  },
+  "/music/files/Alternative Dives/04-I.mp3": {
+    "id": "/music/files/Alternative Dives/04-I.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:00 +0000",
+    "duration": 124.02666666666667
+  },
+  "/music/files/Alternative Dives/05-September 22 ('92).mp3": {
+    "id": "/music/files/Alternative Dives/05-September 22 ('92).mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:02 +0000",
+    "duration": 139.96
+  },
+  "/music/files/Alternative Dives/06-Gimme My Mind.mp3": {
+    "id": "/music/files/Alternative Dives/06-Gimme My Mind.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:04 +0000",
+    "duration": 209.90666666666667
+  },
+  "/music/files/Alternative Dives/07-Locking Doors.mp3": {
+    "id": "/music/files/Alternative Dives/07-Locking Doors.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:06 +0000",
+    "duration": 78.08
+  },
+  "/music/files/Alternative Dives/08-Dancing All Around the Night.mp3": {
+    "id": "/music/files/Alternative Dives/08-Dancing All Around the Night.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:08 +0000",
+    "duration": 155.98666666666668
+  },
+  "/music/files/Alternative Dives/09-September 13 ('92).mp3": {
+    "id": "/music/files/Alternative Dives/09-September 13 ('92).mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:10 +0000",
+    "duration": 143.97333333333333
+  },
+  "/music/files/Alternative Dives/10-Hee Yo.mp3": {
+    "id": "/music/files/Alternative Dives/10-Hee Yo.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:12 +0000",
+    "duration": 115.93333333333334
+  },
+  "/music/files/Alternative Dives/11-Take Tonight.mp3": {
+    "id": "/music/files/Alternative Dives/11-Take Tonight.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:14 +0000",
+    "duration": 123.90666666666667
+  },
+  "/music/files/Alternative Dives/12-Artificial Girl.mp3": {
+    "id": "/music/files/Alternative Dives/12-Artificial Girl.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:18 +0000",
+    "duration": 155.82666666666665
+  },
+  "/music/files/Alternative Dives/13-September 18 ('92).mp3": {
+    "id": "/music/files/Alternative Dives/13-September 18 ('92).mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:18 +0000",
+    "duration": 124.22666666666667
+  },
+  "/music/files/Alternative Dives/14-No One to Save Us.mp3": {
+    "id": "/music/files/Alternative Dives/14-No One to Save Us.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:22 +0000",
+    "duration": 165.89333333333335
+  },
+  "/music/files/Alternative Dives/15-Direct Missing.mp3": {
+    "id": "/music/files/Alternative Dives/15-Direct Missing.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:24 +0000",
+    "duration": 136.10666666666665
+  },
+  "/music/files/Alternative Dives/16-Ocean.mp3": {
+    "id": "/music/files/Alternative Dives/16-Ocean.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:26 +0000",
+    "duration": 121.97333333333333
+  },
+  "/music/files/Alternative Dives/17-Tuesday Girl.mp3": {
+    "id": "/music/files/Alternative Dives/17-Tuesday Girl.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:28 +0000",
+    "duration": 136
+  },
+  "/music/files/Alternative Dives/18-Movin'.mp3": {
+    "id": "/music/files/Alternative Dives/18-Movin'.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:30 +0000",
+    "duration": 173.98666666666668
+  },
+  "/music/files/Alternative Dives/19-Any Future Hope (2).mp3": {
+    "id": "/music/files/Alternative Dives/19-Any Future Hope (2).mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:32 +0000",
+    "duration": 179.13333333333333
+  },
+  "/music/files/Alternative Dives/20-After Dark.mp3": {
+    "id": "/music/files/Alternative Dives/20-After Dark.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:32 +0000",
+    "duration": 69.93333333333334
+  },
+  "/music/files/Anonymous Lives/Funk Thing.mp3": {
+    "id": "/music/files/Anonymous Lives/Funk Thing.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 16 Jun 2021 18:22:12 +0000",
+    "duration": 161.3984375
+  },
+  "/music/files/Anonymous Lives/Funkenstein.mp3": {
+    "id": "/music/files/Anonymous Lives/Funkenstein.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 16 Jun 2021 18:28:02 +0000",
+    "duration": 198.20685416666666
+  },
+  "/music/files/Anonymous Lives/BeaT SeekeR.mp3": {
+    "id": "/music/files/Anonymous Lives/BeaT SeekeR.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 16 Jun 2021 18:13:34 +0000",
+    "duration": 168.17204166666667
+  },
+  "/music/files/Anonymous Lives/Happy Bass.mp3": {
+    "id": "/music/files/Anonymous Lives/Happy Bass.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 23 Jun 2021 17:53:34 +0000",
+    "duration": 211.47485416666666
+  },
+  "/music/files/Anonymous Lives/J-Snap.mp3": {
+    "id": "/music/files/Anonymous Lives/J-Snap.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 16 Jun 2021 18:00:44 +0000",
+    "duration": 163.58245833333334
+  },
+  "/music/files/Anonymous Lives/Smooth Stuff.mp3": {
+    "id": "/music/files/Anonymous Lives/Smooth Stuff.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 16 Jun 2021 18:34:24 +0000",
+    "duration": 248.48275
+  },
+  "/music/files/Anonymous Lives/Funk-estra.mp3": {
+    "id": "/music/files/Anonymous Lives/Funk-estra.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 16 Jun 2021 18:17:46 +0000",
+    "duration": 366.40802083333335
+  },
+  "/music/files/Anonymous Lives/Funky Pumpkin.mp3": {
+    "id": "/music/files/Anonymous Lives/Funky Pumpkin.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 16 Jun 2021 18:08:44 +0000",
+    "duration": 187.5489375
+  },
+  "/music/files/Anonymous Lives/Moving On.mp3": {
+    "id": "/music/files/Anonymous Lives/Moving On.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 16 Jun 2021 17:56:22 +0000",
+    "duration": 293.9226458333333
+  },
+  "/music/files/Anonymous Lives/Melted butter.mp3": {
+    "id": "/music/files/Anonymous Lives/Melted butter.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 01 Jun 2021 17:43:54 +0000",
+    "duration": 148.8
+  },
+  "/music/files/Anonymous Lives/Coffee Break.mp3": {
+    "id": "/music/files/Anonymous Lives/Coffee Break.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 16 Jun 2021 18:39:04 +0000",
+    "duration": 246.64791666666667
+  },
+  "/music/files/Anonymous Lives/Recovering_Daybreak.mp3": {
+    "id": "/music/files/Anonymous Lives/Recovering_Daybreak.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 13 Mar 2024 18:48:24 +0000",
+    "duration": 228.77010416666667
+  },
+  "/music/files/Back to Normal/Big Three.mp3": {
+    "id": "/music/files/Back to Normal/Big Three.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 16 Dec 2017 22:33:01 +0000",
+    "duration": 115.12039583333333
+  },
+  "/music/files/Back to Normal/Running Fire.mp3": {
+    "id": "/music/files/Back to Normal/Running Fire.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 07 Jul 2019 19:12:04 +0000",
+    "duration": 76.25920833333333
+  },
+  "/music/files/Back to Normal/Meaningful.mp3": {
+    "id": "/music/files/Back to Normal/Meaningful.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 27 Dec 2019 20:19:14 +0000",
+    "duration": 182.169375
+  },
+  "/music/files/Back to Normal/Rush Me.mp3": {
+    "id": "/music/files/Back to Normal/Rush Me.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 26 Apr 2018 19:48:20 +0000",
+    "duration": 84.32891666666667
+  },
+  "/music/files/Back to Normal/Born to Die.mp3": {
+    "id": "/music/files/Back to Normal/Born to Die.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 07 Jul 2019 19:14:10 +0000",
+    "duration": 236.50725
+  },
+  "/music/files/Back to Normal/Needless.mp3": {
+    "id": "/music/files/Back to Normal/Needless.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 11 Feb 2018 20:37:56 +0000",
+    "duration": 114.45277083333333
+  },
+  "/music/files/Back to Normal/Second Blur.mp3": {
+    "id": "/music/files/Back to Normal/Second Blur.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 08 Apr 2018 19:36:02 +0000",
+    "duration": 140.50622916666666
+  },
+  "/music/files/Back to Normal/Against Myself.mp3": {
+    "id": "/music/files/Back to Normal/Against Myself.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 04 Nov 2018 19:20:42 +0000",
+    "duration": 114.9944375
+  },
+  "/music/files/Back to Normal/Doses of Emptiness.mp3": {
+    "id": "/music/files/Back to Normal/Doses of Emptiness.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 17 May 2018 19:01:26 +0000",
+    "duration": 124.78822916666667
+  },
+  "/music/files/Back to Normal/Out of Sight.mp3": {
+    "id": "/music/files/Back to Normal/Out of Sight.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 01 May 2021 18:42:52 +0000",
+    "duration": 229.3916875
+  },
+  "/music/files/Back to Normal/Fuzzy Town.mp3": {
+    "id": "/music/files/Back to Normal/Fuzzy Town.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 18 Jul 2018 21:37:54 +0000",
+    "duration": 181.70145833333333
+  },
+  "/music/files/Back to Normal/How Many Time.mp3": {
+    "id": "/music/files/Back to Normal/How Many Time.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 30 May 2018 20:16:38 +0000",
+    "duration": 83.8433125
+  },
+  "/music/files/Bricking My Brain/Thinking of me.mp3": {
+    "id": "/music/files/Bricking My Brain/Thinking of me.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 25 Dec 2020 19:15:52 +0000",
+    "duration": 290.832
+  },
+  "/music/files/Bricking My Brain/Breath Again.mp3": {
+    "id": "/music/files/Bricking My Brain/Breath Again.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 25 Dec 2020 19:16:16 +0000",
+    "duration": 251.232
+  },
+  "/music/files/Bricking My Brain/Why.mp3": {
+    "id": "/music/files/Bricking My Brain/Why.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 08 Feb 2022 18:44:14 +0000",
+    "duration": 319.056
+  },
+  "/music/files/Bricking My Brain/Icarus.mp3": {
+    "id": "/music/files/Bricking My Brain/Icarus.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 17 Sep 2021 17:58:02 +0000",
+    "duration": 219.85552083333334
+  },
+  "/music/files/Bricking My Brain/Control, Alter, Delete.mp3": {
+    "id": "/music/files/Bricking My Brain/Control, Alter, Delete.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 18 Sep 2022 18:37:24 +0000",
+    "duration": 216.11510416666667
+  },
+  "/music/files/Bricking My Brain/Check the Meeting.mp3": {
+    "id": "/music/files/Bricking My Brain/Check the Meeting.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 25 Dec 2020 19:15:42 +0000",
+    "duration": 285.168
+  },
+  "/music/files/Bricking My Brain/Tomorrow.mp3": {
+    "id": "/music/files/Bricking My Brain/Tomorrow.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 15 Apr 2021 17:50:20 +0000",
+    "duration": 303
+  },
+  "/music/files/Bricking My Brain/Paper Heart.mp3": {
+    "id": "/music/files/Bricking My Brain/Paper Heart.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 17 Sep 2021 17:50:52 +0000",
+    "duration": 263.7688125
+  },
+  "/music/files/Bricking My Brain/Cold Evil Coming.mp3": {
+    "id": "/music/files/Bricking My Brain/Cold Evil Coming.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 30 Oct 2021 19:00:52 +0000",
+    "duration": 224
+  },
+  "/music/files/Cheap Passion/01-Seven o'clock movie.mp3": {
+    "id": "/music/files/Cheap Passion/01-Seven o'clock movie.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:36 +0000",
+    "duration": 147.32
+  },
+  "/music/files/Cheap Passion/02-Trip in the sky.mp3": {
+    "id": "/music/files/Cheap Passion/02-Trip in the sky.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:38 +0000",
+    "duration": 174.22666666666666
+  },
+  "/music/files/Cheap Passion/03-Lagrima.mp3": {
+    "id": "/music/files/Cheap Passion/03-Lagrima.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:40 +0000",
+    "duration": 153.65333333333334
+  },
+  "/music/files/Cheap Passion/04-So nice little woman.mp3": {
+    "id": "/music/files/Cheap Passion/04-So nice little woman.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:42 +0000",
+    "duration": 153.82666666666665
+  },
+  "/music/files/Cheap Passion/05-Dim wrist dizzy.mp3": {
+    "id": "/music/files/Cheap Passion/05-Dim wrist dizzy.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:44 +0000",
+    "duration": 228.77333333333334
+  },
+  "/music/files/Cheap Passion/06-Hidden decoy.mp3": {
+    "id": "/music/files/Cheap Passion/06-Hidden decoy.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:46 +0000",
+    "duration": 123.69333333333333
+  },
+  "/music/files/Cheap Passion/07-Two worlds.mp3": {
+    "id": "/music/files/Cheap Passion/07-Two worlds.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:48 +0000",
+    "duration": 132.84
+  },
+  "/music/files/Cheap Passion/08-Girl.mp3": {
+    "id": "/music/files/Cheap Passion/08-Girl.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:50 +0000",
+    "duration": 168.49333333333334
+  },
+  "/music/files/Cheap Passion/09-Virtual boy.mp3": {
+    "id": "/music/files/Cheap Passion/09-Virtual boy.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:52 +0000",
+    "duration": 187.21333333333334
+  },
+  "/music/files/Cheap Passion/10-Marie.mp3": {
+    "id": "/music/files/Cheap Passion/10-Marie.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:54 +0000",
+    "duration": 182.64
+  },
+  "/music/files/Cheap Passion/11-Breaking up.mp3": {
+    "id": "/music/files/Cheap Passion/11-Breaking up.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:55:56 +0000",
+    "duration": 165.73333333333332
+  },
+  "/music/files/Cheap Passion/12-Hold on.mp3": {
+    "id": "/music/files/Cheap Passion/12-Hold on.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:00 +0000",
+    "duration": 224.25333333333333
+  },
+  "/music/files/Cheap Passion/13-Watching.mp3": {
+    "id": "/music/files/Cheap Passion/13-Watching.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:02 +0000",
+    "duration": 179.09333333333333
+  },
+  "/music/files/Cheap Passion/14-Toddler.mp3": {
+    "id": "/music/files/Cheap Passion/14-Toddler.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:06 +0000",
+    "duration": 223.34666666666666
+  },
+  "/music/files/Cheap Passion/15-Lagrima (reprise).mp3": {
+    "id": "/music/files/Cheap Passion/15-Lagrima (reprise).mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:08 +0000",
+    "duration": 123.05333333333333
+  },
+  "/music/files/Cheap Passion/16-Young Lovers.mp3": {
+    "id": "/music/files/Cheap Passion/16-Young Lovers.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:10 +0000",
+    "duration": 114.45333333333333
+  },
+  "/music/files/Bang Before/Deadly Shoe.mp3": {
+    "id": "/music/files/Bang Before/Deadly Shoe.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 07 Feb 2015 18:51:52 +0000",
+    "duration": 96.23352083333333
+  },
+  "/music/files/Bang Before/Deadly Shoe They All Knew.mp3": {
+    "id": "/music/files/Bang Before/Deadly Shoe They All Knew.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 07 Feb 2015 18:52:00 +0000",
+    "duration": 89.17522916666667
+  },
+  "/music/files/Bang Before/Man You Are.mp3": {
+    "id": "/music/files/Bang Before/Man You Are.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 07 Feb 2015 18:52:04 +0000",
+    "duration": 75.8056875
+  },
+  "/music/files/Bang Before/Night Alarm.mp3": {
+    "id": "/music/files/Bang Before/Night Alarm.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 07 Feb 2015 18:52:12 +0000",
+    "duration": 147.69279166666666
+  },
+  "/music/files/Bang Before/One Key Nobody.mp3": {
+    "id": "/music/files/Bang Before/One Key Nobody.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 23 Apr 2013 22:20:10 +0000",
+    "duration": 135.85558333333333
+  },
+  "/music/files/Bang Before/Phone Call at Dawn.mp3": {
+    "id": "/music/files/Bang Before/Phone Call at Dawn.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 23 Apr 2013 22:20:04 +0000",
+    "duration": 149.71866666666668
+  },
+  "/music/files/Bang Before/She's Got.mp3": {
+    "id": "/music/files/Bang Before/She's Got.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 23 Apr 2013 22:20:22 +0000",
+    "duration": 171.49197916666665
+  },
+  "/music/files/Bang Before/Stealing Me.mp3": {
+    "id": "/music/files/Bang Before/Stealing Me.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 07 Feb 2015 18:52:28 +0000",
+    "duration": 73.11766666666666
+  },
+  "/music/files/Bang Before/Techy got Money.mp3": {
+    "id": "/music/files/Bang Before/Techy got Money.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 07 Feb 2015 18:52:36 +0000",
+    "duration": 92.96927083333334
+  },
+  "/music/files/Bang Before/The Boss is Calling.mp3": {
+    "id": "/music/files/Bang Before/The Boss is Calling.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 07 Feb 2015 18:52:46 +0000",
+    "duration": 101.57116666666667
+  },
+  "/music/files/Bang Before/Words for Nothing.mp3": {
+    "id": "/music/files/Bang Before/Words for Nothing.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 07 Feb 2015 18:52:54 +0000",
+    "duration": 67.41029166666667
+  },
+  "/music/files/Skip On Back/01-Famous I.mp3": {
+    "id": "/music/files/Skip On Back/01-Famous I.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:08 +0000",
+    "duration": 130.73333333333332
+  },
+  "/music/files/Skip On Back/02-Famous VIII.mp3": {
+    "id": "/music/files/Skip On Back/02-Famous VIII.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:08 +0000",
+    "duration": 90.13333333333334
+  },
+  "/music/files/Skip On Back/03-Old Shoes.mp3": {
+    "id": "/music/files/Skip On Back/03-Old Shoes.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:10 +0000",
+    "duration": 118.22666666666667
+  },
+  "/music/files/Skip On Back/04-Famous VI.mp3": {
+    "id": "/music/files/Skip On Back/04-Famous VI.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:14 +0000",
+    "duration": 175.41333333333333
+  },
+  "/music/files/Skip On Back/05-Sister Goodbye.mp3": {
+    "id": "/music/files/Skip On Back/05-Sister Goodbye.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:16 +0000",
+    "duration": 125.54666666666667
+  },
+  "/music/files/Skip On Back/06-Famous III.mp3": {
+    "id": "/music/files/Skip On Back/06-Famous III.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:18 +0000",
+    "duration": 136.81333333333333
+  },
+  "/music/files/Skip On Back/07-Passing Kids.mp3": {
+    "id": "/music/files/Skip On Back/07-Passing Kids.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:20 +0000",
+    "duration": 178.01333333333332
+  },
+  "/music/files/Skip On Back/08-Famous IV.mp3": {
+    "id": "/music/files/Skip On Back/08-Famous IV.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:22 +0000",
+    "duration": 107.49333333333334
+  },
+  "/music/files/Skip On Back/09-Wry Smile.mp3": {
+    "id": "/music/files/Skip On Back/09-Wry Smile.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:24 +0000",
+    "duration": 160.94666666666666
+  },
+  "/music/files/Skip On Back/10-Famous II.mp3": {
+    "id": "/music/files/Skip On Back/10-Famous II.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:26 +0000",
+    "duration": 145.78666666666666
+  },
+  "/music/files/Skip On Back/11-Killing Child.mp3": {
+    "id": "/music/files/Skip On Back/11-Killing Child.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:28 +0000",
+    "duration": 191.29333333333332
+  },
+  "/music/files/Skip On Back/12-Famous IX.mp3": {
+    "id": "/music/files/Skip On Back/12-Famous IX.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:30 +0000",
+    "duration": 137.81333333333333
+  },
+  "/music/files/Skip On Back/13-Growing Dusk.mp3": {
+    "id": "/music/files/Skip On Back/13-Growing Dusk.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:32 +0000",
+    "duration": 239.77333333333334
+  },
+  "/music/files/Skip On Back/14-The Gift.mp3": {
+    "id": "/music/files/Skip On Back/14-The Gift.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:34 +0000",
+    "duration": 143.66666666666666
+  },
+  "/music/files/Skip On Back/15-Famous V.mp3": {
+    "id": "/music/files/Skip On Back/15-Famous V.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:36 +0000",
+    "duration": 131.34666666666666
+  },
+  "/music/files/Skip On Back/16-Outlines.mp3": {
+    "id": "/music/files/Skip On Back/16-Outlines.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:38 +0000",
+    "duration": 192.73333333333332
+  },
+  "/music/files/Skip On Back/17-Tocome Today.mp3": {
+    "id": "/music/files/Skip On Back/17-Tocome Today.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:42 +0000",
+    "duration": 181.29333333333332
+  },
+  "/music/files/Skip On Back/18-Famous VII.mp3": {
+    "id": "/music/files/Skip On Back/18-Famous VII.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:44 +0000",
+    "duration": 110.10666666666667
+  },
+  "/music/files/Crystal Sword/01-Dust of Tears.mp3": {
+    "id": "/music/files/Crystal Sword/01-Dust of Tears.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:12 +0000",
+    "duration": 191.10666666666665
+  },
+  "/music/files/Crystal Sword/02-Freedom.mp3": {
+    "id": "/music/files/Crystal Sword/02-Freedom.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:14 +0000",
+    "duration": 139.29333333333332
+  },
+  "/music/files/Crystal Sword/03-Uncomfortable.mp3": {
+    "id": "/music/files/Crystal Sword/03-Uncomfortable.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:18 +0000",
+    "duration": 175.6
+  },
+  "/music/files/Crystal Sword/04-Crush the Edge.mp3": {
+    "id": "/music/files/Crystal Sword/04-Crush the Edge.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:20 +0000",
+    "duration": 195.18666666666667
+  },
+  "/music/files/Crystal Sword/05-Underground Town.mp3": {
+    "id": "/music/files/Crystal Sword/05-Underground Town.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:22 +0000",
+    "duration": 147.88
+  },
+  "/music/files/Crystal Sword/06-Train Back.mp3": {
+    "id": "/music/files/Crystal Sword/06-Train Back.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:24 +0000",
+    "duration": 158.16
+  },
+  "/music/files/Crystal Sword/07-Twentieth Knight.mp3": {
+    "id": "/music/files/Crystal Sword/07-Twentieth Knight.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:26 +0000",
+    "duration": 194
+  },
+  "/music/files/Crystal Sword/08-Do It Right.mp3": {
+    "id": "/music/files/Crystal Sword/08-Do It Right.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:28 +0000",
+    "duration": 151.49333333333334
+  },
+  "/music/files/Crystal Sword/09-Roving Ghosts.mp3": {
+    "id": "/music/files/Crystal Sword/09-Roving Ghosts.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:30 +0000",
+    "duration": 152.77333333333334
+  },
+  "/music/files/Crystal Sword/10-Always On My Mind.mp3": {
+    "id": "/music/files/Crystal Sword/10-Always On My Mind.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:32 +0000",
+    "duration": 192.70666666666668
+  },
+  "/music/files/Crystal Sword/11-Sharper.mp3": {
+    "id": "/music/files/Crystal Sword/11-Sharper.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:34 +0000",
+    "duration": 167.4
+  },
+  "/music/files/Crystal Sword/12-Perfect Stranger.mp3": {
+    "id": "/music/files/Crystal Sword/12-Perfect Stranger.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:36 +0000",
+    "duration": 196.32
+  },
+  "/music/files/Crystal Sword/13-Conclude.mp3": {
+    "id": "/music/files/Crystal Sword/13-Conclude.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:38 +0000",
+    "duration": 93.25333333333333
+  },
+  "/music/files/Dust Time Place/01-Hold On.mp3": {
+    "id": "/music/files/Dust Time Place/01-Hold On.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:42 +0000",
+    "duration": 227.53333333333333
+  },
+  "/music/files/Dust Time Place/02-Again.mp3": {
+    "id": "/music/files/Dust Time Place/02-Again.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:44 +0000",
+    "duration": 248.74666666666667
+  },
+  "/music/files/Dust Time Place/03-New Games.mp3": {
+    "id": "/music/files/Dust Time Place/03-New Games.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:46 +0000",
+    "duration": 212.25333333333333
+  },
+  "/music/files/Dust Time Place/04-Nightmare.mp3": {
+    "id": "/music/files/Dust Time Place/04-Nightmare.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:48 +0000",
+    "duration": 316.1333333333333
+  },
+  "/music/files/Dust Time Place/05-Passing Kids.mp3": {
+    "id": "/music/files/Dust Time Place/05-Passing Kids.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:52 +0000",
+    "duration": 323.61333333333334
+  },
+  "/music/files/Dust Time Place/06-Outlines.mp3": {
+    "id": "/music/files/Dust Time Place/06-Outlines.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:54 +0000",
+    "duration": 287.2
+  },
+  "/music/files/Dust Time Place/07-Marie.mp3": {
+    "id": "/music/files/Dust Time Place/07-Marie.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:56 +0000",
+    "duration": 178.73333333333332
+  },
+  "/music/files/Dust Time Place/08-Dim Wrist Dizzy.mp3": {
+    "id": "/music/files/Dust Time Place/08-Dim Wrist Dizzy.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:56:58 +0000",
+    "duration": 227.30666666666667
+  },
+  "/music/files/Dust Time Place/09-Trip in the Sky.mp3": {
+    "id": "/music/files/Dust Time Place/09-Trip in the Sky.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:02 +0000",
+    "duration": 174.46666666666667
+  },
+  "/music/files/Dust Time Place/10-Toddler.mp3": {
+    "id": "/music/files/Dust Time Place/10-Toddler.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:04 +0000",
+    "duration": 219.8
+  },
+  "/music/files/Friday Fears/Grey and Black.mp3": {
+    "id": "/music/files/Friday Fears/Grey and Black.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 12 Dec 2022 07:40:08 +0000",
+    "duration": 242.46041666666667
+  },
+  "/music/files/Friday Fears/Global Progression.mp3": {
+    "id": "/music/files/Friday Fears/Global Progression.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 30 Dec 2022 19:45:26 +0000",
+    "duration": 180.40433333333334
+  },
+  "/music/files/Friday Fears/Do You Want to Play With Me.mp3": {
+    "id": "/music/files/Friday Fears/Do You Want to Play With Me.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 14 Aug 2024 18:41:44 +0000",
+    "duration": 182.63607709750568
+  },
+  "/music/files/Friday Fears/Something Funky.mp3": {
+    "id": "/music/files/Friday Fears/Something Funky.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Jan 2023 18:29:46 +0000",
+    "duration": 156.1828125
+  },
+  "/music/files/Friday Fears/Sunday Rock.mp3": {
+    "id": "/music/files/Friday Fears/Sunday Rock.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Jan 2023 18:40:32 +0000",
+    "duration": 160.81160416666665
+  },
+  "/music/files/Friday Fears/funk 100 E.mp3": {
+    "id": "/music/files/Friday Fears/funk 100 E.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Jan 2023 18:47:08 +0000",
+    "duration": 225.30841666666666
+  },
+  "/music/files/Friday Fears/The Dead Living.mp3": {
+    "id": "/music/files/Friday Fears/The Dead Living.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 12 Dec 2022 13:09:32 +0000",
+    "duration": 202.4560625
+  },
+  "/music/files/Friday Fears/Mosaic Rhythm.mp3": {
+    "id": "/music/files/Friday Fears/Mosaic Rhythm.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 30 Dec 2022 20:09:20 +0000",
+    "duration": 193.12633333333332
+  },
+  "/music/files/Friday Fears/Spiral.mp3": {
+    "id": "/music/files/Friday Fears/Spiral.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 12 Dec 2022 07:56:42 +0000",
+    "duration": 214.33491666666666
+  },
+  "/music/files/Friday Fears/Dawn After Dawn.mp3": {
+    "id": "/music/files/Friday Fears/Dawn After Dawn.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 12 Dec 2022 08:13:40 +0000",
+    "duration": 203.93025
+  },
+  "/music/files/Friday Fears/Continuation.mp3": {
+    "id": "/music/files/Friday Fears/Continuation.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Jan 2023 17:55:00 +0000",
+    "duration": 81.01302083333333
+  },
+  "/music/files/Friday Fears/Thin Ice.mp3": {
+    "id": "/music/files/Friday Fears/Thin Ice.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 14 Dec 2022 13:22:28 +0000",
+    "duration": 347.75522916666665
+  },
+  "/music/files/Friday Fears/Fused.mp3": {
+    "id": "/music/files/Friday Fears/Fused.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 13 Aug 2024 18:35:44 +0000",
+    "duration": 201.99902494331064
+  },
+  "/music/files/Friday Fears/Electro Jazz.mp3": {
+    "id": "/music/files/Friday Fears/Electro Jazz.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 12 Dec 2022 12:07:04 +0000",
+    "duration": 217.49520833333332
+  },
+  "/music/files/Friday Fears/Stay Out.mp3": {
+    "id": "/music/files/Friday Fears/Stay Out.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 12 Dec 2022 18:23:24 +0000",
+    "duration": 176.27085416666668
+  },
+  "/music/files/Just a minute/Arrival.mp3": {
+    "id": "/music/files/Just a minute/Arrival.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:46:46 +0000",
+    "duration": 59.610104166666666
+  },
+  "/music/files/Just a minute/Big Advantage.mp3": {
+    "id": "/music/files/Just a minute/Big Advantage.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:47:46 +0000",
+    "duration": 57.17797916666667
+  },
+  "/music/files/Just a minute/Bye Bye.mp3": {
+    "id": "/music/files/Just a minute/Bye Bye.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:51:02 +0000",
+    "duration": 124.70652083333333
+  },
+  "/music/files/Just a minute/City of Dawn.mp3": {
+    "id": "/music/files/Just a minute/City of Dawn.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:50:48 +0000",
+    "duration": 80.48114583333333
+  },
+  "/music/files/Just a minute/Dream Up.mp3": {
+    "id": "/music/files/Just a minute/Dream Up.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:46:12 +0000",
+    "duration": 94.6663125
+  },
+  "/music/files/Just a minute/I clocked it again.mp3": {
+    "id": "/music/files/Just a minute/I clocked it again.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:48:00 +0000",
+    "duration": 137.48064583333334
+  },
+  "/music/files/Just a minute/Imitation.mp3": {
+    "id": "/music/files/Just a minute/Imitation.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:46:34 +0000",
+    "duration": 148.68191666666667
+  },
+  "/music/files/Just a minute/Jane.mp3": {
+    "id": "/music/files/Just a minute/Jane.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:51:40 +0000",
+    "duration": 83.73354166666667
+  },
+  "/music/files/Just a minute/Light of the Desert.mp3": {
+    "id": "/music/files/Just a minute/Light of the Desert.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:50:26 +0000",
+    "duration": 148.97
+  },
+  "/music/files/Just a minute/New Fuss.mp3": {
+    "id": "/music/files/Just a minute/New Fuss.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:47:00 +0000",
+    "duration": 61.318020833333335
+  },
+  "/music/files/Just a minute/Prostituted Brains.mp3": {
+    "id": "/music/files/Just a minute/Prostituted Brains.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:50:08 +0000",
+    "duration": 109.1916875
+  },
+  "/music/files/Just a minute/Rise of Tenderness.mp3": {
+    "id": "/music/files/Just a minute/Rise of Tenderness.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:48:16 +0000",
+    "duration": 95.95572916666667
+  },
+  "/music/files/Just a minute/Sand in Blue.mp3": {
+    "id": "/music/files/Just a minute/Sand in Blue.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:49:20 +0000",
+    "duration": 77.38079166666667
+  },
+  "/music/files/Just a minute/Separate Walks.mp3": {
+    "id": "/music/files/Just a minute/Separate Walks.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:49:48 +0000",
+    "duration": 78.817875
+  },
+  "/music/files/Just a minute/Spending My Time.mp3": {
+    "id": "/music/files/Just a minute/Spending My Time.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:48:46 +0000",
+    "duration": 60.702020833333336
+  },
+  "/music/files/Just a minute/Spending My Time II.mp3": {
+    "id": "/music/files/Just a minute/Spending My Time II.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:52:30 +0000",
+    "duration": 53.85120833333333
+  },
+  "/music/files/Just a minute/Storm for the Rich.mp3": {
+    "id": "/music/files/Just a minute/Storm for the Rich.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:47:28 +0000",
+    "duration": 95.92852083333334
+  },
+  "/music/files/Just a minute/Summer Comes.mp3": {
+    "id": "/music/files/Just a minute/Summer Comes.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:51:52 +0000",
+    "duration": 66.578125
+  },
+  "/music/files/Just a minute/We're in Town.mp3": {
+    "id": "/music/files/Just a minute/We're in Town.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:51:26 +0000",
+    "duration": 122.81264583333333
+  },
+  "/music/files/Just a minute/We're in Town - I Whish.mp3": {
+    "id": "/music/files/Just a minute/We're in Town - I Whish.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Nov 2015 07:49:02 +0000",
+    "duration": 122.81264583333333
+  },
+  "/music/files/Let It Blow/Jail 4 All.mp3": {
+    "id": "/music/files/Let It Blow/Jail 4 All.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 02 Aug 2024 20:09:16 +0000",
+    "duration": 272.0916875
+  },
+  "/music/files/Let It Blow/Smash The System.mp3": {
+    "id": "/music/files/Let It Blow/Smash The System.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 22 Mar 2019 23:45:20 +0000",
+    "duration": 201.66510416666668
+  },
+  "/music/files/Let It Blow/Monkey Money.mp3": {
+    "id": "/music/files/Let It Blow/Monkey Money.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 22 Mar 2019 23:45:37 +0000",
+    "duration": 140.14985416666667
+  },
+  "/music/files/Let It Blow/Mirror Set.mp3": {
+    "id": "/music/files/Let It Blow/Mirror Set.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 06 May 2024 19:36:22 +0000",
+    "duration": 241.59785416666668
+  },
+  "/music/files/Let It Blow/Social Networks.mp3": {
+    "id": "/music/files/Let It Blow/Social Networks.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 06 May 2024 19:34:46 +0000",
+    "duration": 95.64991666666667
+  },
+  "/music/files/Let It Blow/Sidekick.mp3": {
+    "id": "/music/files/Let It Blow/Sidekick.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 06 May 2024 19:34:24 +0000",
+    "duration": 136.04572916666666
+  },
+  "/music/files/Letter 45/Lost Vowels.mp3": {
+    "id": "/music/files/Letter 45/Lost Vowels.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 16 Mar 2021 18:59:04 +0000",
+    "duration": 240.09329166666666
+  },
+  "/music/files/Letter 45/The Love Heist.mp3": {
+    "id": "/music/files/Letter 45/The Love Heist.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 09 May 2020 18:18:32 +0000",
+    "duration": 33.647416666666665
+  },
+  "/music/files/Letter 45/The Vagabond.mp3": {
+    "id": "/music/files/Letter 45/The Vagabond.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 28 Dec 2020 19:17:42 +0000",
+    "duration": 117.62397916666667
+  },
+  "/music/files/Letter 45/Do You Think About Me.mp3": {
+    "id": "/music/files/Letter 45/Do You Think About Me.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 11 Oct 2020 18:08:08 +0000",
+    "duration": 233.28
+  },
+  "/music/files/Letter 45/Nothing.mp3": {
+    "id": "/music/files/Letter 45/Nothing.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 20 Jul 2020 17:51:14 +0000",
+    "duration": 208.61541666666668
+  },
+  "/music/files/Letter 45/Ashes of a Dream.mp3": {
+    "id": "/music/files/Letter 45/Ashes of a Dream.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 31 Dec 2020 17:10:10 +0000",
+    "duration": 186.46302083333333
+  },
+  "/music/files/Letter 45/Empty Room.mp3": {
+    "id": "/music/files/Letter 45/Empty Room.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 16 Aug 2020 18:08:28 +0000",
+    "duration": 212.56560416666667
+  },
+  "/music/files/Letter 45/Yo Dog.mp3": {
+    "id": "/music/files/Letter 45/Yo Dog.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 08 Jul 2020 18:28:02 +0000",
+    "duration": 225.13804166666668
+  },
+  "/music/files/Letter 45/100 Degrees.mp3": {
+    "id": "/music/files/Letter 45/100 Degrees.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 20 Aug 2020 18:31:00 +0000",
+    "duration": 253.783875
+  },
+  "/music/files/Letter 45/Pictured.mp3": {
+    "id": "/music/files/Letter 45/Pictured.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 11 Oct 2020 18:10:08 +0000",
+    "duration": 252.576
+  },
+  "/music/files/Letter 45/Wall Against My Back.mp3": {
+    "id": "/music/files/Letter 45/Wall Against My Back.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 11 Oct 2020 18:11:40 +0000",
+    "duration": 296.28
+  },
+  "/music/files/Letter 45/MELLD.mp3": {
+    "id": "/music/files/Letter 45/MELLD.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 03 Jul 2021 17:34:50 +0000",
+    "duration": 304.4200833333333
+  },
+  "/music/files/Letter 45/Touch the Line.mp3": {
+    "id": "/music/files/Letter 45/Touch the Line.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 22 Sep 2020 17:44:42 +0000",
+    "duration": 237.576
+  },
+  "/music/files/Loud Till the End/On Stage.mp3": {
+    "id": "/music/files/Loud Till the End/On Stage.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 19 Apr 2023 09:51:34 +0000",
+    "duration": 215.52604166666666
+  },
+  "/music/files/Loud Till the End/Distortion.mp3": {
+    "id": "/music/files/Loud Till the End/Distortion.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 07 Sep 2019 18:57:02 +0000",
+    "duration": 123.44620833333333
+  },
+  "/music/files/Loud Till the End/Pleasure of love.mp3": {
+    "id": "/music/files/Loud Till the End/Pleasure of love.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 26 Nov 2022 18:59:46 +0000",
+    "duration": 203.69760416666668
+  },
+  "/music/files/Loud Till the End/Get Off My Back.mp3": {
+    "id": "/music/files/Loud Till the End/Get Off My Back.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 01 Jan 2023 18:57:48 +0000",
+    "duration": 152.30835416666667
+  },
+  "/music/files/Loud Till the End/Upbeat Tune.mp3": {
+    "id": "/music/files/Loud Till the End/Upbeat Tune.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 10 Feb 2023 19:11:04 +0000",
+    "duration": 259.552625
+  },
+  "/music/files/Loud Till the End/In the darkness.mp3": {
+    "id": "/music/files/Loud Till the End/In the darkness.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 05 Dec 2022 18:52:34 +0000",
+    "duration": 340.0757708333333
+  },
+  "/music/files/Loud Till the End/Afterlight.mp3": {
+    "id": "/music/files/Loud Till the End/Afterlight.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 25 Sep 2019 19:32:00 +0000",
+    "duration": 211.40885416666666
+  },
+  "/music/files/Loud Till the End/Day Dawns, Time To Sleep.mp3": {
+    "id": "/music/files/Loud Till the End/Day Dawns, Time To Sleep.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 10 Feb 2023 19:40:46 +0000",
+    "duration": 210.62166666666667
+  },
+  "/music/files/Loud Till the End/Journey Into Delirium.mp3": {
+    "id": "/music/files/Loud Till the End/Journey Into Delirium.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 23 Dec 2020 20:10:56 +0000",
+    "duration": 375.2434375
+  },
+  "/music/files/On the Other Side/I've Never Been So In Love.mp3": {
+    "id": "/music/files/On the Other Side/I've Never Been So In Love.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 02 Dec 2023 19:39:10 +0000",
+    "duration": 233.640125
+  },
+  "/music/files/On the Other Side/Inuksuk.mp3": {
+    "id": "/music/files/On the Other Side/Inuksuk.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 08 Oct 2019 09:20:30 +0000",
+    "duration": 142.40366666666668
+  },
+  "/music/files/On the Other Side/Funny FUNKY Fusion.mp3": {
+    "id": "/music/files/On the Other Side/Funny FUNKY Fusion.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 25 Dec 2020 19:02:02 +0000",
+    "duration": 146.03652083333333
+  },
+  "/music/files/On the Other Side/Am Funk.mp3": {
+    "id": "/music/files/On the Other Side/Am Funk.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 31 May 2020 19:46:26 +0000",
+    "duration": 179.39491666666666
+  },
+  "/music/files/On the Other Side/Groovy Thang.mp3": {
+    "id": "/music/files/On the Other Side/Groovy Thang.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 10 Dec 2023 19:09:20 +0000",
+    "duration": 233.45054166666668
+  },
+  "/music/files/On the Other Side/My first track.mp3": {
+    "id": "/music/files/On the Other Side/My first track.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 03 Dec 2023 19:37:50 +0000",
+    "duration": 268.726625
+  },
+  "/music/files/On the Other Side/Andore Jr Funk Pop 80s Retro.mp3": {
+    "id": "/music/files/On the Other Side/Andore Jr Funk Pop 80s Retro.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 03 Dec 2019 20:53:16 +0000",
+    "duration": 200.04583333333332
+  },
+  "/music/files/On the Other Side/With steely eyes.mp3": {
+    "id": "/music/files/On the Other Side/With steely eyes.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 25 Dec 2020 19:12:38 +0000",
+    "duration": 196.90014583333334
+  },
+  "/music/files/On the Other Side/Kelp.mp3": {
+    "id": "/music/files/On the Other Side/Kelp.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 19 Sep 2020 18:22:42 +0000",
+    "duration": 251.52
+  },
+  "/music/files/On the Other Side/Circxles.mp3": {
+    "id": "/music/files/On the Other Side/Circxles.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 19 Sep 2020 18:24:08 +0000",
+    "duration": 280
+  },
+  "/music/files/On the Other Side/Marianne.mp3": {
+    "id": "/music/files/On the Other Side/Marianne.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 25 Dec 2020 19:06:46 +0000",
+    "duration": 153.08125
+  },
+  "/music/files/On the Other Side/DrumAndBass.mp3": {
+    "id": "/music/files/On the Other Side/DrumAndBass.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 25 Dec 2020 18:54:04 +0000",
+    "duration": 163.16252083333333
+  },
+  "/music/files/On the Other Side/The Whole Damn.mp3": {
+    "id": "/music/files/On the Other Side/The Whole Damn.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 21 Apr 2020 18:57:22 +0000",
+    "duration": 128.65314583333333
+  },
+  "/music/files/Pop My Jazz/Clockwork.mp3": {
+    "id": "/music/files/Pop My Jazz/Clockwork.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 13 Jul 2022 18:30:20 +0000",
+    "duration": 213.2729375
+  },
+  "/music/files/Pop My Jazz/Happy Groove.mp3": {
+    "id": "/music/files/Pop My Jazz/Happy Groove.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 13 Jul 2022 18:37:02 +0000",
+    "duration": 209.2860625
+  },
+  "/music/files/Pop My Jazz/Live in the City.mp3": {
+    "id": "/music/files/Pop My Jazz/Live in the City.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 13 Jul 2022 18:37:32 +0000",
+    "duration": 208.74060416666666
+  },
+  "/music/files/Pop My Jazz/Mesmerized.mp3": {
+    "id": "/music/files/Pop My Jazz/Mesmerized.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 13 Jul 2022 18:36:30 +0000",
+    "duration": 245.8125
+  },
+  "/music/files/Pop My Jazz/Searching For The Answer.mp3": {
+    "id": "/music/files/Pop My Jazz/Searching For The Answer.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 23 Jul 2022 17:56:32 +0000",
+    "duration": 216.1805
+  },
+  "/music/files/Pop My Jazz/Searching for Your Treasure.mp3": {
+    "id": "/music/files/Pop My Jazz/Searching for Your Treasure.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 15 Jul 2022 17:50:50 +0000",
+    "duration": 213.39035416666667
+  },
+  "/music/files/Pop My Jazz/SensorEye.mp3": {
+    "id": "/music/files/Pop My Jazz/SensorEye.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 23 Jul 2022 17:51:56 +0000",
+    "duration": 230.0388125
+  },
+  "/music/files/Pop My Jazz/The Groover.mp3": {
+    "id": "/music/files/Pop My Jazz/The Groover.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 15 Jul 2022 17:53:48 +0000",
+    "duration": 300.77397916666666
+  },
+  "/music/files/Pop My Jazz/Transposed Love.mp3": {
+    "id": "/music/files/Pop My Jazz/Transposed Love.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 14 Jul 2022 18:11:30 +0000",
+    "duration": 81.12229166666667
+  },
+  "/music/files/Pop My Jazz/Veni, Vidi, Vamoose.mp3": {
+    "id": "/music/files/Pop My Jazz/Veni, Vidi, Vamoose.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 15 Jul 2022 18:00:02 +0000",
+    "duration": 244.7935
+  },
+  "/music/files/Pop My Jazz/WateForLove.mp3": {
+    "id": "/music/files/Pop My Jazz/WateForLove.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 23 Jul 2022 18:04:20 +0000",
+    "duration": 160.52802083333333
+  },
+  "/music/files/Pop My Jazz II/Psycho Funk.mp3": {
+    "id": "/music/files/Pop My Jazz II/Psycho Funk.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 05 May 2016 23:39:18 +0000",
+    "duration": 192.52352083333332
+  },
+  "/music/files/Pop My Jazz II/City to City.mp3": {
+    "id": "/music/files/Pop My Jazz II/City to City.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 05 May 2016 23:38:46 +0000",
+    "duration": 335.80516666666665
+  },
+  "/music/files/Pop My Jazz II/Spinning Around.mp3": {
+    "id": "/music/files/Pop My Jazz II/Spinning Around.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 05 May 2016 23:39:38 +0000",
+    "duration": 130.56108333333333
+  },
+  "/music/files/Pop My Jazz II/Mystery in Town.mp3": {
+    "id": "/music/files/Pop My Jazz II/Mystery in Town.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 05 May 2016 23:38:58 +0000",
+    "duration": 230.74066666666667
+  },
+  "/music/files/Pop My Jazz II/Say you're Living.mp3": {
+    "id": "/music/files/Pop My Jazz II/Say you're Living.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 05 May 2016 23:39:28 +0000",
+    "duration": 301.58475
+  },
+  "/music/files/Pop My Jazz II/Sweet Funk.mp3": {
+    "id": "/music/files/Pop My Jazz II/Sweet Funk.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 05 May 2016 23:40:02 +0000",
+    "duration": 312.11210416666665
+  },
+  "/music/files/Pop My Jazz II/Nothing Happens Today.mp3": {
+    "id": "/music/files/Pop My Jazz II/Nothing Happens Today.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 05 May 2016 23:39:10 +0000",
+    "duration": 217.31372916666666
+  },
+  "/music/files/Pop My Jazz II/Standing in the Rain.mp3": {
+    "id": "/music/files/Pop My Jazz II/Standing in the Rain.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 05 May 2016 23:39:48 +0000",
+    "duration": 173.48025
+  },
+  "/music/files/Pop My Jazz II/Born To Be Funcky.mp3": {
+    "id": "/music/files/Pop My Jazz II/Born To Be Funcky.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 05 May 2016 23:38:32 +0000",
+    "duration": 228.25904166666666
+  },
+  "/music/files/Pop My Jazz II/Thumbin'.mp3": {
+    "id": "/music/files/Pop My Jazz II/Thumbin'.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 05 May 2016 23:40:10 +0000",
+    "duration": 262.89739583333335
+  },
+  "/music/files/RailStories/Biomythos.mp3": {
+    "id": "/music/files/RailStories/Biomythos.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 02 Sep 2012 18:42:58 +0000",
+    "duration": 129.04502083333333
+  },
+  "/music/files/RailStories/Black Keys.mp3": {
+    "id": "/music/files/RailStories/Black Keys.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 12 Dec 2012 21:23:24 +0000",
+    "duration": 315.87241666666665
+  },
+  "/music/files/RailStories/CoffeeBreak.mp3": {
+    "id": "/music/files/RailStories/CoffeeBreak.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 12 Dec 2012 21:40:30 +0000",
+    "duration": 304.509375
+  },
+  "/music/files/RailStories/El color de sus ojos.mp3": {
+    "id": "/music/files/RailStories/El color de sus ojos.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 02 Sep 2012 18:42:58 +0000",
+    "duration": 205.45314583333334
+  },
+  "/music/files/RailStories/Emptiness.mp3": {
+    "id": "/music/files/RailStories/Emptiness.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 17 Apr 2024 20:28:48 +0000",
+    "duration": 240.12716666666665
+  },
+  "/music/files/RailStories/Funky Standup.mp3": {
+    "id": "/music/files/RailStories/Funky Standup.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 02 Sep 2012 18:42:58 +0000",
+    "duration": 188.2385625
+  },
+  "/music/files/RailStories/Good Resolution.mp3": {
+    "id": "/music/files/RailStories/Good Resolution.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 12 Dec 2012 19:36:38 +0000",
+    "duration": 260.31041666666664
+  },
+  "/music/files/RailStories/Invisible Walls.mp3": {
+    "id": "/music/files/RailStories/Invisible Walls.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 12 Dec 2012 19:29:52 +0000",
+    "duration": 420.0229375
+  },
+  "/music/files/RailStories/Key West.mp3": {
+    "id": "/music/files/RailStories/Key West.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 02 Sep 2012 18:42:58 +0000",
+    "duration": 283.9770833333333
+  },
+  "/music/files/RailStories/Poursuite.mp3": {
+    "id": "/music/files/RailStories/Poursuite.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 02 Sep 2012 20:42:58 +0000",
+    "duration": 153.46929166666666
+  },
+  "/music/files/RailStories/Short Story.mp3": {
+    "id": "/music/files/RailStories/Short Story.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 12 Dec 2012 19:13:28 +0000",
+    "duration": 109.97552083333333
+  },
+  "/music/files/That's All/Meloncholy.mp3": {
+    "id": "/music/files/That's All/Meloncholy.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 06 Oct 2021 18:33:34 +0000",
+    "duration": 273.6
+  },
+  "/music/files/That's All/Alone.mp3": {
+    "id": "/music/files/That's All/Alone.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 28 Oct 2021 18:01:46 +0000",
+    "duration": 276.32345833333335
+  },
+  "/music/files/That's All/For me.mp3": {
+    "id": "/music/files/That's All/For me.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 04 Feb 2022 18:13:32 +0000",
+    "duration": 173.63122916666666
+  },
+  "/music/files/That's All/Become Someone.mp3": {
+    "id": "/music/files/That's All/Become Someone.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 18 Dec 2021 19:17:14 +0000",
+    "duration": 206.0795625
+  },
+  "/music/files/That's All/Riffing Em.mp3": {
+    "id": "/music/files/That's All/Riffing Em.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 06 Nov 2021 19:08:50 +0000",
+    "duration": 196.72766666666666
+  },
+  "/music/files/That's All/At Around.mp3": {
+    "id": "/music/files/That's All/At Around.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 02 Oct 2021 18:55:20 +0000",
+    "duration": 193.11302083333334
+  },
+  "/music/files/That's All/Pathways.mp3": {
+    "id": "/music/files/That's All/Pathways.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 17 Sep 2021 17:28:28 +0000",
+    "duration": 283.6666666666667
+  },
+  "/music/files/That's All/Baby.mp3": {
+    "id": "/music/files/That's All/Baby.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 25 Dec 2021 19:02:24 +0000",
+    "duration": 114.65366666666667
+  },
+  "/music/files/That's All/Black Ice.mp3": {
+    "id": "/music/files/That's All/Black Ice.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 25 Nov 2021 18:55:40 +0000",
+    "duration": 121.8010625
+  },
+  "/music/files/That's All/Inside.mp3": {
+    "id": "/music/files/That's All/Inside.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 18 Jan 2022 18:47:22 +0000",
+    "duration": 192.3155625
+  },
+  "/music/files/That's All/Crosstown.mp3": {
+    "id": "/music/files/That's All/Crosstown.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 28 Jan 2022 19:52:02 +0000",
+    "duration": 114.60210416666666
+  },
+  "/music/files/That's All/Goodbye Earth.mp3": {
+    "id": "/music/files/That's All/Goodbye Earth.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 07 Oct 2021 18:06:32 +0000",
+    "duration": 156.07241666666667
+  },
+  "/music/files/That's All/Meloncholy_final.mp3": {
+    "id": "/music/files/That's All/Meloncholy_final.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 15 Oct 2022 18:32:38 +0000",
+    "duration": 293.8
+  },
+  "/music/files/The Message/01-The Message.mp3": {
+    "id": "/music/files/The Message/01-The Message.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:20 +0000",
+    "duration": 284.02939583333335
+  },
+  "/music/files/The Message/02-Two-phase Regards.mp3": {
+    "id": "/music/files/The Message/02-Two-phase Regards.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:24 +0000",
+    "duration": 184.63347916666666
+  },
+  "/music/files/The Message/03-Outside the Land.mp3": {
+    "id": "/music/files/The Message/03-Outside the Land.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:28 +0000",
+    "duration": 207.12491666666668
+  },
+  "/music/files/The Message/04-Y2K.mp3": {
+    "id": "/music/files/The Message/04-Y2K.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 02 Jul 2023 16:21:36 +0000",
+    "duration": 230.4
+  },
+  "/music/files/The Message/05-Inside-the Land.mp3": {
+    "id": "/music/files/The Message/05-Inside-the Land.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:34 +0000",
+    "duration": 186.69714583333334
+  },
+  "/music/files/The Message/06-Walk the Chains.mp3": {
+    "id": "/music/files/The Message/06-Walk the Chains.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:38 +0000",
+    "duration": 176.1436875
+  },
+  "/music/files/The Message/07-Discoland.mp3": {
+    "id": "/music/files/The Message/07-Discoland.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:42 +0000",
+    "duration": 227.89225
+  },
+  "/music/files/The Message/08-Ticket To the Land.mp3": {
+    "id": "/music/files/The Message/08-Ticket To the Land.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:48 +0000",
+    "duration": 215.92816666666667
+  },
+  "/music/files/The Message/09-The Escape.mp3": {
+    "id": "/music/files/The Message/09-The Escape.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:50 +0000",
+    "duration": 241.21470833333333
+  },
+  "/music/files/The Message/10-The Remix.mp3": {
+    "id": "/music/files/The Message/10-The Remix.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:56 +0000",
+    "duration": 149.1330625
+  },
+  "/music/files/What Else/After 8.mp3": {
+    "id": "/music/files/What Else/After 8.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 25 Aug 2020 18:45:14 +0000",
+    "duration": 212.06197916666667
+  },
+  "/music/files/What Else/Back to Back.mp3": {
+    "id": "/music/files/What Else/Back to Back.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 18 Nov 2018 20:08:44 +0000",
+    "duration": 195.50766666666667
+  },
+  "/music/files/What Else/Dona.mp3": {
+    "id": "/music/files/What Else/Dona.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 18 Nov 2018 20:10:38 +0000",
+    "duration": 173.4755625
+  },
+  "/music/files/What Else/Fine Time.mp3": {
+    "id": "/music/files/What Else/Fine Time.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 18 Nov 2018 19:13:30 +0000",
+    "duration": 205.4841875
+  },
+  "/music/files/What Else/Freeway Drifting.mp3": {
+    "id": "/music/files/What Else/Freeway Drifting.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 22 Mar 2019 23:23:29 +0000",
+    "duration": 186.677125
+  },
+  "/music/files/What Else/Rowdy Time.mp3": {
+    "id": "/music/files/What Else/Rowdy Time.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 18 Nov 2018 20:19:26 +0000",
+    "duration": 211.70529166666665
+  },
+  "/music/files/What Else/Speechless.mp3": {
+    "id": "/music/files/What Else/Speechless.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 29 May 2020 18:01:22 +0000",
+    "duration": 199.21354166666666
+  },
+  "/music/files/What Else/Walking Rain.mp3": {
+    "id": "/music/files/What Else/Walking Rain.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 22 Mar 2019 20:56:12 +0000",
+    "duration": 288.64947916666665
+  },
+  "/music/files/What Else/Like No Other.mp3": {
+    "id": "/music/files/What Else/Like No Other.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 31 May 2021 17:45:32 +0000",
+    "duration": 234.10939583333334
+  },
+  "/music/files/What Else/Feel The Groove.mp3": {
+    "id": "/music/files/What Else/Feel The Groove.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 23 Oct 2021 17:42:02 +0000",
+    "duration": 161.75020833333335
+  },
+  "/music/files/What Else/Blues Funk.mp3": {
+    "id": "/music/files/What Else/Blues Funk.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 05 Dec 2021 09:38:02 +0000",
+    "duration": 138.49635416666666
+  },
+  "/music/files/What Else/Aktio Tunnel.mp3": {
+    "id": "/music/files/What Else/Aktio Tunnel.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 22 Feb 2022 19:49:38 +0000",
+    "duration": 235.81633333333335
+  },
+  "/music/files/What Else/Mittenacht_Rough_Mix.mp3": {
+    "id": "/music/files/What Else/Mittenacht_Rough_Mix.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 21 Oct 2022 21:14:48 +0000",
+    "duration": 240.00177083333332
+  },
+  "/music/files/What Else/Michael in Vrindavan.mp3": {
+    "id": "/music/files/What Else/Michael in Vrindavan.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 11 Oct 2023 17:32:36 +0000",
+    "duration": 279.347125
+  },
+  "/music/files/What Else/Broken Light.mp3": {
+    "id": "/music/files/What Else/Broken Light.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 17 Apr 2024 20:13:08 +0000",
+    "duration": 193.22397916666668
+  },
+  "/music/files/Salmon Wages/01-Discovery.mp3": {
+    "id": "/music/files/Salmon Wages/01-Discovery.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:46 +0000",
+    "duration": 260.3066666666667
+  },
+  "/music/files/Salmon Wages/02-Autopsy.mp3": {
+    "id": "/music/files/Salmon Wages/02-Autopsy.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:48 +0000",
+    "duration": 131.32
+  },
+  "/music/files/Salmon Wages/03-Check.mp3": {
+    "id": "/music/files/Salmon Wages/03-Check.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:50 +0000",
+    "duration": 108.81333333333333
+  },
+  "/music/files/Salmon Wages/04-Main TG.mp3": {
+    "id": "/music/files/Salmon Wages/04-Main TG.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:52 +0000",
+    "duration": 156.05333333333334
+  },
+  "/music/files/Salmon Wages/05-My Name.mp3": {
+    "id": "/music/files/Salmon Wages/05-My Name.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:54 +0000",
+    "duration": 179.65333333333334
+  },
+  "/music/files/Salmon Wages/06-Shift TG.mp3": {
+    "id": "/music/files/Salmon Wages/06-Shift TG.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:57:56 +0000",
+    "duration": 189.37333333333333
+  },
+  "/music/files/Salmon Wages/07-Sight TG.mp3": {
+    "id": "/music/files/Salmon Wages/07-Sight TG.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:00 +0000",
+    "duration": 156.36
+  },
+  "/music/files/Salmon Wages/08-Sex TG.mp3": {
+    "id": "/music/files/Salmon Wages/08-Sex TG.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:02 +0000",
+    "duration": 187.25333333333333
+  },
+  "/music/files/Salmon Wages/09-Law Breaker.mp3": {
+    "id": "/music/files/Salmon Wages/09-Law Breaker.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:04 +0000",
+    "duration": 146.13333333333333
+  },
+  "/music/files/Salmon Wages/10-History TG.mp3": {
+    "id": "/music/files/Salmon Wages/10-History TG.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:06 +0000",
+    "duration": 157.22666666666666
+  },
+  "/music/files/Salmon Wages/11-Surviror TG.mp3": {
+    "id": "/music/files/Salmon Wages/11-Surviror TG.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:08 +0000",
+    "duration": 273.41333333333336
+  },
+  "/music/files/Salmon Wages/12-Resolver TG.mp3": {
+    "id": "/music/files/Salmon Wages/12-Resolver TG.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:10 +0000",
+    "duration": 132.73333333333332
+  },
+  "/music/files/Salmon Wages/14-Fight TG.mp3": {
+    "id": "/music/files/Salmon Wages/14-Fight TG.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:16 +0000",
+    "duration": 161.30666666666667
+  },
+  "/music/files/Salmon Wages/15-Radio News.mp3": {
+    "id": "/music/files/Salmon Wages/15-Radio News.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 07 Jul 2010 05:58:18 +0000",
+    "duration": 98.32
+  },
+  "/music/files/And in the Meantime/Choose Lose.mp3": {
+    "id": "/music/files/And in the Meantime/Choose Lose.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 23 Mar 2023 12:22:20 +0000",
+    "duration": 284.7975
+  },
+  "/music/files/And in the Meantime/The Rolf Project.mp3": {
+    "id": "/music/files/And in the Meantime/The Rolf Project.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 23 Mar 2023 18:38:54 +0000",
+    "duration": 258.782625
+  },
+  "/music/files/And in the Meantime/Future Sexuality.mp3": {
+    "id": "/music/files/And in the Meantime/Future Sexuality.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 08 Feb 2023 18:37:38 +0000",
+    "duration": 75.91047916666666
+  },
+  "/music/files/And in the Meantime/Live Work Create.mp3": {
+    "id": "/music/files/And in the Meantime/Live Work Create.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 24 Jul 2023 17:50:58 +0000",
+    "duration": 256.9635416666667
+  },
+  "/music/files/And in the Meantime/Healing Melody.mp3": {
+    "id": "/music/files/And in the Meantime/Healing Melody.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 30 Jan 2023 19:36:10 +0000",
+    "duration": 249.74202083333333
+  },
+  "/music/files/And in the Meantime/Cold outside.mp3": {
+    "id": "/music/files/And in the Meantime/Cold outside.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 15 Feb 2023 19:15:44 +0000",
+    "duration": 209.490125
+  },
+  "/music/files/And in the Meantime/0311.mp3": {
+    "id": "/music/files/And in the Meantime/0311.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 18 Feb 2023 19:32:56 +0000",
+    "duration": 136.26877083333332
+  },
+  "/music/files/And in the Meantime/Black Magic.mp3": {
+    "id": "/music/files/And in the Meantime/Black Magic.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 12 Mar 2023 19:48:08 +0000",
+    "duration": 241.3073125
+  },
+  "/music/files/And in the Meantime/Cool Jazz Song.mp3": {
+    "id": "/music/files/And in the Meantime/Cool Jazz Song.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 27 Aug 2023 19:08:06 +0000",
+    "duration": 248.0136875
+  },
+  "/music/files/And in the Meantime/Friday Night.mp3": {
+    "id": "/music/files/And in the Meantime/Friday Night.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 26 Jan 2023 19:56:36 +0000",
+    "duration": 213.27760416666666
+  },
+  "/music/files/And in the Meantime/Who Knows About_.mp3": {
+    "id": "/music/files/And in the Meantime/Who Knows About_.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 07 Feb 2023 19:11:48 +0000",
+    "duration": 236.50222916666667
+  },
+  "/music/files/And in the Meantime/Mirrors.mp3": {
+    "id": "/music/files/And in the Meantime/Mirrors.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 28 Feb 2023 19:23:22 +0000",
+    "duration": 243.28595833333333
+  },
+  "/music/files/And in the Meantime/Piano.mp3": {
+    "id": "/music/files/And in the Meantime/Piano.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 11 Feb 2023 18:28:48 +0000",
+    "duration": 208.95
+  },
+  "/music/files/Revival/She Moves.mp3": {
+    "id": "/music/files/Revival/She Moves.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 21 Apr 2022 18:05:46 +0000",
+    "duration": 289.2807291666667
+  },
+  "/music/files/Revival/Pandora.mp3": {
+    "id": "/music/files/Revival/Pandora.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 29 Aug 2022 19:05:02 +0000",
+    "duration": 160.29202083333334
+  },
+  "/music/files/Revival/Glide.mp3": {
+    "id": "/music/files/Revival/Glide.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 24 Mar 2022 18:28:24 +0000",
+    "duration": 192.49322916666668
+  },
+  "/music/files/Revival/Pop 90bpm.mp3": {
+    "id": "/music/files/Revival/Pop 90bpm.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 23 Feb 2022 18:10:10 +0000",
+    "duration": 122.15370833333333
+  },
+  "/music/files/Revival/Stuck.mp3": {
+    "id": "/music/files/Revival/Stuck.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 24 Feb 2022 19:58:04 +0000",
+    "duration": 225.2733125
+  },
+  "/music/files/Revival/Information.mp3": {
+    "id": "/music/files/Revival/Information.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 01 Apr 2022 17:24:08 +0000",
+    "duration": 298.81458333333336
+  },
+  "/music/files/Revival/Sphnx.mp3": {
+    "id": "/music/files/Revival/Sphnx.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 07 Apr 2022 18:40:50 +0000",
+    "duration": 175.22270833333334
+  },
+  "/music/files/Revival/Neo Soul.mp3": {
+    "id": "/music/files/Revival/Neo Soul.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 24 May 2022 17:18:26 +0000",
+    "duration": 163.20966666666666
+  },
+  "/music/files/Revival/Love Will Come Around.mp3": {
+    "id": "/music/files/Revival/Love Will Come Around.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 11 May 2022 19:57:28 +0000",
+    "duration": 191.75835416666666
+  },
+  "/music/files/Revival/Seclusion.mp3": {
+    "id": "/music/files/Revival/Seclusion.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 31 May 2022 18:56:16 +0000",
+    "duration": 315.24583333333334
+  },
+  "/music/files/Revival/Same Screen.mp3": {
+    "id": "/music/files/Revival/Same Screen.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 14 Dec 2022 15:05:26 +0000",
+    "duration": 237.6698125
+  },
+  "/music/files/Revival/Need Some Wine.mp3": {
+    "id": "/music/files/Revival/Need Some Wine.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 16 May 2022 18:20:24 +0000",
+    "duration": 161.499625
+  },
+  "/music/files/Revival/NYC.mp3": {
+    "id": "/music/files/Revival/NYC.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 14 Dec 2022 14:29:36 +0000",
+    "duration": 73.0328125
+  },
+  "/music/files/High Reuse/Global Warming.mp3": {
+    "id": "/music/files/High Reuse/Global Warming.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 14 Oct 2023 18:48:36 +0000",
+    "duration": 239.06877083333333
+  },
+  "/music/files/High Reuse/Only Her Eyes.mp3": {
+    "id": "/music/files/High Reuse/Only Her Eyes.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 21 Oct 2022 21:14:58 +0000",
+    "duration": 199.19195833333333
+  },
+  "/music/files/High Reuse/R&B Instrumental.mp3": {
+    "id": "/music/files/High Reuse/R&B Instrumental.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 21 Oct 2022 21:15:21 +0000",
+    "duration": 130.9251875
+  },
+  "/music/files/High Reuse/Remembered.mp3": {
+    "id": "/music/files/High Reuse/Remembered.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 14 Oct 2023 18:54:54 +0000",
+    "duration": 241.7680625
+  },
+  "/music/files/High Reuse/Neon.mp3": {
+    "id": "/music/files/High Reuse/Neon.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 21 Oct 2022 21:14:54 +0000",
+    "duration": 227.82125
+  },
+  "/music/files/High Reuse/Groovy rock-ish tune.mp3": {
+    "id": "/music/files/High Reuse/Groovy rock-ish tune.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 21 Oct 2022 21:14:19 +0000",
+    "duration": 77.50679166666667
+  },
+  "/music/files/High Reuse/Thrillers and Kings.mp3": {
+    "id": "/music/files/High Reuse/Thrillers and Kings.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 21 Oct 2022 21:15:55 +0000",
+    "duration": 246.7510625
+  },
+  "/music/files/High Reuse/Ebron.mp3": {
+    "id": "/music/files/High Reuse/Ebron.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 21 Oct 2022 21:14:01 +0000",
+    "duration": 211.27502083333334
+  },
+  "/music/files/High Reuse/Mittenacht.mp3": {
+    "id": "/music/files/High Reuse/Mittenacht.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 21 Oct 2022 21:14:41 +0000",
+    "duration": 221.8555
+  },
+  "/music/files/High Reuse/Taste.mp3": {
+    "id": "/music/files/High Reuse/Taste.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 03 Nov 2022 12:51:18 +0000",
+    "duration": 171.29635416666667
+  },
+  "/music/files/High Reuse/Clothed in Mystery.mp3": {
+    "id": "/music/files/High Reuse/Clothed in Mystery.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 31 Oct 2022 19:43:52 +0000",
+    "duration": 199.711125
+  },
+  "/music/files/High Reuse/What Would Jaco Do.mp3": {
+    "id": "/music/files/High Reuse/What Would Jaco Do.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 13 Jan 2023 06:26:38 +0000",
+    "duration": 146.2328125
+  },
+  "/music/files/High Reuse/2310.mp3": {
+    "id": "/music/files/High Reuse/2310.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 24 Nov 2022 19:24:04 +0000",
+    "duration": 220.96625
+  },
+  "/music/files/Office Cleaner/Cloudy.mp3": {
+    "id": "/music/files/Office Cleaner/Cloudy.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 07 Jul 2023 19:13:04 +0000",
+    "duration": 194.92170833333333
+  },
+  "/music/files/Office Cleaner/Fun House Mirrors.mp3": {
+    "id": "/music/files/Office Cleaner/Fun House Mirrors.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 07 Jul 2023 19:13:05 +0000",
+    "duration": 148.36354166666666
+  },
+  "/music/files/Office Cleaner/Hemlock v2.mp3": {
+    "id": "/music/files/Office Cleaner/Hemlock v2.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 01 Jan 2024 18:34:02 +0000",
+    "duration": 289.5245
+  },
+  "/music/files/Office Cleaner/Brass Tacks.mp3": {
+    "id": "/music/files/Office Cleaner/Brass Tacks.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 07 Jul 2023 19:13:04 +0000",
+    "duration": 150.66302083333332
+  },
+  "/music/files/Office Cleaner/Home.mp3": {
+    "id": "/music/files/Office Cleaner/Home.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 30 Jul 2023 18:07:24 +0000",
+    "duration": 133.01041666666666
+  },
+  "/music/files/Office Cleaner/I like it.mp3": {
+    "id": "/music/files/Office Cleaner/I like it.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 26 Jul 2023 17:33:36 +0000",
+    "duration": 228.8276875
+  },
+  "/music/files/Office Cleaner/The Sea Separates Us.mp3": {
+    "id": "/music/files/Office Cleaner/The Sea Separates Us.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 07 Jul 2023 19:13:07 +0000",
+    "duration": 108.98752083333333
+  },
+  "/music/files/Office Cleaner/Songs.mp3": {
+    "id": "/music/files/Office Cleaner/Songs.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 30 Jul 2023 17:56:54 +0000",
+    "duration": 253.46354166666666
+  },
+  "/music/files/Office Cleaner/First Year.mp3": {
+    "id": "/music/files/Office Cleaner/First Year.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 07 Jul 2023 19:13:05 +0000",
+    "duration": 206.33125
+  },
+  "/music/files/Office Cleaner/Hemlock.mp3": {
+    "id": "/music/files/Office Cleaner/Hemlock.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 07 Jul 2023 19:13:05 +0000",
+    "duration": 289.81614583333334
+  },
+  "/music/files/Office Cleaner/Elevate.mp3": {
+    "id": "/music/files/Office Cleaner/Elevate.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 08 Jul 2023 18:29:14 +0000",
+    "duration": 193.46510416666666
+  },
+  "/music/files/Office Cleaner/Mercedes Ride.mp3": {
+    "id": "/music/files/Office Cleaner/Mercedes Ride.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 15 Jul 2023 18:57:22 +0000",
+    "duration": 133.17241666666666
+  },
+  "/music/files/Office Cleaner/Once upon a time.mp3": {
+    "id": "/music/files/Office Cleaner/Once upon a time.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 07 Jul 2023 19:13:06 +0000",
+    "duration": 186.1541875
+  },
+  "/music/files/Confusing Revenge/That's Right.mp3": {
+    "id": "/music/files/Confusing Revenge/That's Right.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 22 Dec 2023 19:09:36 +0000",
+    "duration": 223.41864583333333
+  },
+  "/music/files/Confusing Revenge/Two stereo guitars.mp3": {
+    "id": "/music/files/Confusing Revenge/Two stereo guitars.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 30 Oct 2023 19:25:08 +0000",
+    "duration": 183.5041875
+  },
+  "/music/files/Confusing Revenge/Small Talk.mp3": {
+    "id": "/music/files/Confusing Revenge/Small Talk.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 22 Dec 2023 19:05:02 +0000",
+    "duration": 148.8354375
+  },
+  "/music/files/Confusing Revenge/Extra Innings.mp3": {
+    "id": "/music/files/Confusing Revenge/Extra Innings.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 11 Oct 2023 17:26:44 +0000",
+    "duration": 185.51266666666666
+  },
+  "/music/files/Confusing Revenge/Project for vocals.mp3": {
+    "id": "/music/files/Confusing Revenge/Project for vocals.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 14 Nov 2023 19:10:24 +0000",
+    "duration": 235.53960416666666
+  },
+  "/music/files/Confusing Revenge/Everything Must End.mp3": {
+    "id": "/music/files/Confusing Revenge/Everything Must End.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 22 Dec 2023 19:15:28 +0000",
+    "duration": 206.56510416666666
+  },
+  "/music/files/Confusing Revenge/Stranger.mp3": {
+    "id": "/music/files/Confusing Revenge/Stranger.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 11 Oct 2023 17:27:40 +0000",
+    "duration": 179.2140625
+  },
+  "/music/files/Confusing Revenge/Greek Summer.mp3": {
+    "id": "/music/files/Confusing Revenge/Greek Summer.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 09 Dec 2023 19:13:12 +0000",
+    "duration": 193.33752083333334
+  },
+  "/music/files/Confusing Revenge/iPartyII.mp3": {
+    "id": "/music/files/Confusing Revenge/iPartyII.mp3",
+    "isNew": false,
+    "lastModified": "Fri, 01 Dec 2023 06:13:08 +0000",
+    "duration": 261.9052291666667
+  },
+  "/music/files/Confusing Revenge/Kravitz style fun.mp3": {
+    "id": "/music/files/Confusing Revenge/Kravitz style fun.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 20 Jul 2024 19:57:40 +0000",
+    "duration": 249.236625
+  },
+  "/music/files/Confusing Revenge/Starting Over.mp3": {
+    "id": "/music/files/Confusing Revenge/Starting Over.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 11 Oct 2023 17:27:28 +0000",
+    "duration": 208.24947916666667
+  },
+  "/music/files/Confusing Revenge/Intel.mp3": {
+    "id": "/music/files/Confusing Revenge/Intel.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 11 Oct 2023 17:27:00 +0000",
+    "duration": 218.77760416666666
+  },
+  "/music/files/Confusing Revenge/You'll Never Know.mp3": {
+    "id": "/music/files/Confusing Revenge/You'll Never Know.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 09 Dec 2023 18:53:24 +0000",
+    "duration": 193.48647916666667
+  },
+  "/music/files/Survive/Chapters.mp3": {
+    "id": "/music/files/Survive/Chapters.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 02 Jun 2024 21:13:32 +0000",
+    "duration": 305
+  },
+  "/music/files/Survive/All Eyes On You.mp3": {
+    "id": "/music/files/Survive/All Eyes On You.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 29 May 2024 21:13:12 +0000",
+    "duration": 192.7073125
+  },
+  "/music/files/Survive/Your the One I Want.mp3": {
+    "id": "/music/files/Survive/Your the One I Want.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 29 Jun 2024 20:13:02 +0000",
+    "duration": 176.70210416666666
+  },
+  "/music/files/Survive/Kaleidoscope.mp3": {
+    "id": "/music/files/Survive/Kaleidoscope.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 12 Aug 2024 17:13:06 +0000",
+    "duration": 155.54739229024943
+  },
+  "/music/files/Survive/Time Gone By.mp3": {
+    "id": "/music/files/Survive/Time Gone By.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 15 Jun 2024 21:13:14 +0000",
+    "duration": 193.833875
+  },
+  "/music/files/Survive/You Belong Here.mp3": {
+    "id": "/music/files/Survive/You Belong Here.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 20 Nov 2024 20:13:14 +0000",
+    "duration": 133.45365079365078
+  },
+  "/music/files/Survive/Ghosted.mp3": {
+    "id": "/music/files/Survive/Ghosted.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 23 Jun 2024 20:13:44 +0000",
+    "duration": 271
+  },
+  "/music/files/Survive/Rockin by Myself.mp3": {
+    "id": "/music/files/Survive/Rockin by Myself.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 01 Jan 2025 20:13:14 +0000",
+    "duration": 236.56562358276645
+  },
+  "/music/files/Survive/Come On Up.mp3": {
+    "id": "/music/files/Survive/Come On Up.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 22 Jun 2024 20:13:12 +0000",
+    "duration": 211.01929166666667
+  },
+  "/music/files/Survive/Brother.mp3": {
+    "id": "/music/files/Survive/Brother.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 24 Jun 2024 20:13:04 +0000",
+    "duration": 239.46433333333334
+  },
+  "/music/files/Survive/The Panther Phantom.mp3": {
+    "id": "/music/files/Survive/The Panther Phantom.mp3",
+    "isNew": false,
+    "lastModified": "Wed, 26 Jun 2024 20:13:04 +0000",
+    "duration": 155.09947916666667
+  },
+  "/music/files/Survive/Crazy.mp3": {
+    "id": "/music/files/Survive/Crazy.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 23 May 2024 20:13:10 +0000",
+    "duration": 237.95220833333335
+  },
+  "/music/files/Survive/Violet.mp3": {
+    "id": "/music/files/Survive/Violet.mp3",
+    "isNew": false,
+    "lastModified": "Sun, 09 Jun 2024 19:13:12 +0000",
+    "duration": 219.03085416666667
+  },
+  "/music/files/Invitations/Santander Part II.mp3": {
+    "id": "/music/files/Invitations/Santander Part II.mp3",
+    "isNew": false,
+    "lastModified": "Tue, 08 Feb 2022 18:48:10 +0000",
+    "duration": 184.615625
+  },
+  "/music/files/Invitations/Silent Partners.mp3": {
+    "id": "/music/files/Invitations/Silent Partners.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 25 Feb 2023 18:31:22 +0000",
+    "duration": 349.75
+  },
+  "/music/files/Invitations/All That Beautiful Noise.mp3": {
+    "id": "/music/files/Invitations/All That Beautiful Noise.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 22 Oct 2022 18:07:28 +0000",
+    "duration": 163.40575
+  },
+  "/music/files/Invitations/The Machine In Me.mp3": {
+    "id": "/music/files/Invitations/The Machine In Me.mp3",
+    "isNew": false,
+    "lastModified": "Thu, 22 Dec 2022 20:20:46 +0000",
+    "duration": 280.81835416666667
+  },
+  "/music/files/Invitations/Vanessa.mp3": {
+    "id": "/music/files/Invitations/Vanessa.mp3",
+    "isNew": false,
+    "lastModified": "Sat, 17 Jun 2023 18:29:48 +0000",
+    "duration": 203.10470833333332
+  },
+  "/music/files/Invitations/Godnite Kiss.mp3": {
+    "id": "/music/files/Invitations/Godnite Kiss.mp3",
+    "isNew": false,
+    "lastModified": "Mon, 20 Nov 2023 18:22:32 +0000",
+    "duration": 228.70575
+  }
+}

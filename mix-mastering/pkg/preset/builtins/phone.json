@@ -1,0 +1,42 @@
+{
+  "name": "Phone Speaker",
+  "category": "target",
+  "description": "Phone speaker target preset with heavy mid-range focus to optimize playback on small phone speakers.",
+  "author": "AudioMaster",
+  "tags": [
+    "phone",
+    "target",
+    "mobile",
+    "speaker",
+    "midrange"
+  ],
+  "processors": {
+    "Parametric EQ": {
+      "band.0.freq": 60,
+      "band.0.gain": -4.0,
+      "band.0.q": 0.7,
+      "band.1.freq": 1000,
+      "band.1.gain": 3.0,
+      "band.1.q": 1.0,
+      "band.2.freq": 4000,
+      "band.2.gain": 2.0,
+      "band.2.q": 1.0,
+      "band.3.freq": 12000,
+      "band.3.gain": -2.0,
+      "band.3.q": 0.7,
+      "band.0.enabled": 1,
+      "band.1.enabled": 1,
+      "band.2.enabled": 1,
+      "band.3.enabled": 1
+    },
+    "Compressor": {
+      "threshold": -10,
+      "ratio": 6,
+      "attack": 3,
+      "release": 40
+    },
+    "Limiter": {
+      "ceiling": -0.5
+    }
+  }
+}

@@ -1,0 +1,47 @@
+/* Volume mixer pill floating over the card (volumes mode) */
+.track-volume {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  right: 14px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(5px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  z-index: 5;
+  cursor: default;
+}
+
+body.dark .track-volume {
+  background: rgba(38, 40, 43, 0.92);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+}
+
+.track-volume-icon {
+  font-size: 1.05em !important;
+  color: #667eea;
+  flex-shrink: 0;
+}
+
+.track-volume-value {
+  font-variant-numeric: tabular-nums;
+  min-width: 2.2em;
+  text-align: right;
+  font-weight: 600;
+  font-size: 0.9em;
+  color: #667eea;
+}
+
+/* Mobile adjustments */
+@media only screen and (max-width: 768px) {
+  .track-volume {
+    left: 10px;
+    right: 10px;
+    padding: 6px 12px;
+  }
+}

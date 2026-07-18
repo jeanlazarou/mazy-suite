@@ -1,0 +1,30 @@
+.menu-handle > svg.icon {
+  margin-left: 30px;
+  align-self: center;
+}
+
+.menu-handle {
+  position: fixed;
+  top: calc(50% - 30px);
+  left: -30px;
+  height: 60px;
+  width: 60px;
+
+  border-radius: 50% 50% 50% 50%;
+  background-color: rgb(241, 233, 233);
+  border: thin solid rgb(156, 148, 148);
+
+  text-align: center;
+  vertical-align: middle;
+  display: flex;
+
+  z-index: 10;
+}
+
+.menu-handle {
+  transition: all 0.3s linear;
+}
+
+.menu-handle.hide {
+  left: -60px;
+}

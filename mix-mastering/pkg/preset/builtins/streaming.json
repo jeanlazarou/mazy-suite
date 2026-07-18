@@ -1,0 +1,38 @@
+{
+  "name": "Streaming",
+  "category": "usecase",
+  "description": "Streaming platform preset targeting -14 LUFS with light processing for optimal playback on Spotify, Apple Music, and similar services.",
+  "author": "AudioMaster",
+  "tags": [
+    "streaming",
+    "usecase",
+    "spotify",
+    "apple-music",
+    "lufs",
+    "platform"
+  ],
+  "processors": {
+    "Parametric EQ": {
+      "band.0.freq": 30,
+      "band.0.gain": -6.0,
+      "band.0.q": 0.7,
+      "band.1.freq": 10000,
+      "band.1.gain": 1.0,
+      "band.1.q": 0.7,
+      "band.0.enabled": 1,
+      "band.1.enabled": 1
+    },
+    "Compressor": {
+      "threshold": -14,
+      "ratio": 2.5,
+      "attack": 10,
+      "release": 100
+    },
+    "Limiter": {
+      "ceiling": -1.0
+    },
+    "Loudness Normalizer": {
+      "target_lufs": -14
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "Jazz",
+  "category": "genre",
+  "description": "Jazz genre preset with gentle EQ, light compression, and transparent limiting to preserve dynamics and warmth.",
+  "author": "AudioMaster",
+  "tags": [
+    "jazz",
+    "genre",
+    "warm",
+    "dynamic",
+    "acoustic"
+  ],
+  "processors": {
+    "Parametric EQ": {
+      "band.0.freq": 80,
+      "band.0.gain": 1.0,
+      "band.0.q": 0.7,
+      "band.1.freq": 2000,
+      "band.1.gain": -1.0,
+      "band.1.q": 1.0,
+      "band.2.freq": 15000,
+      "band.2.gain": 1.5,
+      "band.2.q": 0.7,
+      "band.0.enabled": 1,
+      "band.1.enabled": 1,
+      "band.2.enabled": 1
+    },
+    "Compressor": {
+      "threshold": -12,
+      "ratio": 2,
+      "attack": 20,
+      "release": 200,
+      "knee": 10,
+      "makeup": 1
+    },
+    "Limiter": {
+      "ceiling": -0.5
+    }
+  }
+}

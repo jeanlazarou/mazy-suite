@@ -1,0 +1,41 @@
+{
+  "name": "Classical",
+  "category": "genre",
+  "description": "Classical genre preset with minimal EQ, very light compression, and conservative limiting to preserve the full dynamic range.",
+  "author": "AudioMaster",
+  "tags": [
+    "classical",
+    "genre",
+    "orchestral",
+    "dynamic",
+    "transparent",
+    "acoustic"
+  ],
+  "processors": {
+    "Parametric EQ": {
+      "band.0.freq": 60,
+      "band.0.gain": -1.0,
+      "band.0.q": 0.7,
+      "band.1.freq": 3000,
+      "band.1.gain": 0.5,
+      "band.1.q": 1.0,
+      "band.2.freq": 16000,
+      "band.2.gain": 1.0,
+      "band.2.q": 0.7,
+      "band.0.enabled": 1,
+      "band.1.enabled": 1,
+      "band.2.enabled": 1
+    },
+    "Compressor": {
+      "threshold": -8,
+      "ratio": 1.5,
+      "attack": 30,
+      "release": 300,
+      "knee": 12,
+      "makeup": 0.5
+    },
+    "Limiter": {
+      "ceiling": -1.0
+    }
+  }
+}

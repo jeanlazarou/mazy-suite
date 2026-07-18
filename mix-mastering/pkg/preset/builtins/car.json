@@ -1,0 +1,38 @@
+{
+  "name": "Car Audio",
+  "category": "target",
+  "description": "Car audio target preset with boosted bass and presence to cut through road noise in a vehicle environment.",
+  "author": "AudioMaster",
+  "tags": [
+    "car",
+    "target",
+    "automotive",
+    "bass",
+    "loud"
+  ],
+  "processors": {
+    "Parametric EQ": {
+      "band.0.freq": 60,
+      "band.0.gain": 4.0,
+      "band.0.q": 0.7,
+      "band.1.freq": 200,
+      "band.1.gain": -2.0,
+      "band.1.q": 1.0,
+      "band.2.freq": 3000,
+      "band.2.gain": 2.0,
+      "band.2.q": 1.0,
+      "band.0.enabled": 1,
+      "band.1.enabled": 1,
+      "band.2.enabled": 1
+    },
+    "Compressor": {
+      "threshold": -10,
+      "ratio": 5,
+      "attack": 5,
+      "release": 50
+    },
+    "Limiter": {
+      "ceiling": -0.3
+    }
+  }
+}

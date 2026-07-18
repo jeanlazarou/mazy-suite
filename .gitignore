@@ -1,0 +1,41 @@
+# --- dependencies / environments
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# --- build outputs
+dist/
+build/
+coverage/
+*/src-tauri/target/
+mix-mastering/bin/
+
+# --- editor / OS noise
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.claude/
+
+# --- local env
+.env
+.env.*
+
+# --- personal music data: never commit audio, lyrics or the shared data folder.
+# The apps read these from symlinks or local copies you provide yourself.
+data/
+*/public/data/
+*/public/music/
+*/public/colors/music/
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.ogg
+*.aif
+*.aiff
+*.srt
+
+# whitelist deliberate exceptions here, e.g.:
+# !some_project/tests/fixtures/tiny.srt

@@ -1,0 +1,43 @@
+{
+  "name": "Podcast",
+  "category": "usecase",
+  "description": "Podcast preset with voice-focused EQ, de-essing, and firm compression for clear spoken word content.",
+  "author": "AudioMaster",
+  "tags": [
+    "podcast",
+    "usecase",
+    "voice",
+    "speech",
+    "spoken-word",
+    "de-ess"
+  ],
+  "processors": {
+    "Parametric EQ": {
+      "band.0.freq": 80,
+      "band.0.gain": -6.0,
+      "band.0.q": 0.7,
+      "band.1.freq": 200,
+      "band.1.gain": -2.0,
+      "band.1.q": 1.0,
+      "band.2.freq": 2000,
+      "band.2.gain": 2.0,
+      "band.2.q": 1.0,
+      "band.3.freq": 6000,
+      "band.3.gain": -2.0,
+      "band.3.q": 2.0,
+      "band.0.enabled": 1,
+      "band.1.enabled": 1,
+      "band.2.enabled": 1,
+      "band.3.enabled": 1
+    },
+    "Compressor": {
+      "threshold": -18,
+      "ratio": 4,
+      "attack": 5,
+      "release": 80
+    },
+    "Limiter": {
+      "ceiling": -1.0
+    }
+  }
+}

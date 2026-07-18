@@ -1,0 +1,8 @@
+.zoom-input {
+  display: flex;
+}
+
+.zoom-input > input {
+  flex: 1;
+  margin-right: 5px;
+}

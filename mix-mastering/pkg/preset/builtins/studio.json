@@ -1,0 +1,35 @@
+{
+  "name": "Studio Monitors",
+  "category": "target",
+  "description": "Studio monitor target preset with neutral, transparent processing and subtle high-frequency air for accurate monitoring.",
+  "author": "AudioMaster",
+  "tags": [
+    "studio",
+    "target",
+    "monitors",
+    "neutral",
+    "transparent",
+    "reference"
+  ],
+  "processors": {
+    "Parametric EQ": {
+      "band.0.freq": 25,
+      "band.0.gain": -6.0,
+      "band.0.q": 0.7,
+      "band.1.freq": 10000,
+      "band.1.gain": 0.5,
+      "band.1.q": 0.7,
+      "band.0.enabled": 1,
+      "band.1.enabled": 1
+    },
+    "Compressor": {
+      "threshold": -12,
+      "ratio": 2,
+      "attack": 20,
+      "release": 150
+    },
+    "Limiter": {
+      "ceiling": -0.5
+    }
+  }
+}

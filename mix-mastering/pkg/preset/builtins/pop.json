@@ -1,0 +1,40 @@
+{
+  "name": "Pop",
+  "category": "genre",
+  "description": "Pop genre preset with bright EQ, smooth compression, and polished limiting for radio-ready mixes.",
+  "author": "AudioMaster",
+  "tags": [
+    "pop",
+    "genre",
+    "bright",
+    "radio",
+    "vocal"
+  ],
+  "processors": {
+    "Parametric EQ": {
+      "band.0.freq": 100,
+      "band.0.gain": 1.0,
+      "band.0.q": 0.7,
+      "band.1.freq": 3000,
+      "band.1.gain": 3.0,
+      "band.1.q": 1.0,
+      "band.2.freq": 12000,
+      "band.2.gain": 3.0,
+      "band.2.q": 0.7,
+      "band.0.enabled": 1,
+      "band.1.enabled": 1,
+      "band.2.enabled": 1
+    },
+    "Compressor": {
+      "threshold": -14,
+      "ratio": 3,
+      "attack": 5,
+      "release": 80,
+      "knee": 8,
+      "makeup": 2
+    },
+    "Limiter": {
+      "ceiling": -0.5
+    }
+  }
+}

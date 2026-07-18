@@ -1,0 +1,1761 @@
+/* semantic-ui-css set border-box globally; the layout was designed around it */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* semantic-ui-css link styling */
+a {
+  color: #4183c4;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #1e70bf;
+  text-decoration: none;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  height: 100%;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+}
+
+#root>.menu,
+#root>.menu-bar {
+  margin: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: white;
+}
+
+.playlist {
+  overflow-y: auto;
+  height: calc(100% - 60px);
+}
+
+/* desktop: the list scrolls internally, keeping the toolbar in view
+   (percentage heights never resolved — ancestors have auto height) */
+@media (min-width: 769px) {
+  .playlist {
+    height: calc(100vh - 55px);
+  }
+}
+
+.player-modal {
+  top: 0;
+  left: 0;
+  /* above the sticky main toolbar (z-index 100) so the save/cancel bar shows */
+  z-index: 120;
+  width: 100%;
+  height: 100%;
+  position: fixed;
+}
+
+.rangeslider-horizontal .rangeslider__fill {
+  background-color: #649cbd;
+}
+
+.waveform-box {
+  background: white;
+  width: 100%;
+  /* top: 21px; */
+  position: relative;
+}
+
+.filter-panel {
+  display: grid;
+  height: calc(100% - 10px);
+  grid-template-columns: auto 140px;
+}
+
+/* Add padding to filter panel content when toolbar is present */
+.player-modal-with-toolbar .filter-panel {
+  padding-top: 10px;
+  box-sizing: border-box;
+}
+
+.filter-panel>div>.accordion {
+  height: 100%;
+}
+
+.filter-panel>div {
+  margin: 10px;
+}
+
+.filter-panel>div:nth-child(1) {
+  display: grid;
+  grid-template-rows: 20px auto;
+  gap: 0.7rem;
+}
+
+
+.filter-panel>div:nth-child(1)>div:nth-child(2) {
+  display: flex;
+  flex-flow: wrap;
+  align-content: flex-start;
+}
+
+.filter-panel>div:nth-child(2) {
+  padding-top: 30px;
+}
+
+.filter-panel>div:nth-child(2)>form {
+  display: flex;
+  gap: 10px;
+  flex-direction: column;
+}
+
+.filter-duration {
+  text-align: center;
+}
+
+.mobile-filter-panel {
+  top: 40px;
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 40px;
+}
+
+/* Add padding to mobile filter panel content when toolbar is present */
+.player-modal-with-toolbar .mobile-filter-panel {
+  padding-top: 10px;
+  box-sizing: border-box;
+}
+
+
+.mobile-filter-panel>div:first-child>div:nth-child(2) {
+  margin: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  justify-content: space-evenly;
+}
+
+.small-card {
+  width: 150px;
+  height: 60px;
+  border-radius: 12px;
+  border: 2px solid #4e758b;
+  padding: 8px;
+  margin-right: 6px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(250,250,252,0.95) 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  flex-shrink: 0;
+  box-sizing: border-box;
+  will-change: box-shadow, border-color;
+}
+
+.small-card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  border-color: #667eea;
+}
+
+.small-card.selected {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  font-weight: 600;
+}
+
+.small-card.selected:hover {
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
+}
+
+.small-card.unselected {
+  border: 2px dotted rgba(78, 117, 139, 0.4);
+  color: gray;
+  background: rgba(250, 250, 252, 0.5);
+  opacity: 0.7;
+}
+
+/* Dark mode unselected cards */
+.player-modal-dark .small-card.unselected {
+  border: 2px dotted rgba(168, 218, 220, 0.5);
+  color: rgba(232, 241, 243, 0.8);
+  background: transparent;
+  opacity: 0.65;
+}
+
+.player-modal-dark .small-card.unselected:hover {
+  border-color: rgba(168, 218, 220, 0.7);
+  color: rgba(232, 241, 243, 0.95);
+  opacity: 0.8;
+}
+
+.small-card>div {
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.authors-names {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  width: 200px;
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 0.95em;
+  opacity: 0.85;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.draggable-card,
+.dragged-card {
+  margin: 16px 12px;
+  z-index: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.draggable-card {
+  cursor: grab;
+  border-radius: 16px;
+}
+
+.dragged-card {
+  z-index: 2;
+  cursor: grabbing;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  outline: 2px solid rgba(33, 133, 208, 0.55);
+  outline-offset: 2px;
+  border-radius: 16px;
+  transform: scale(1.03);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.dark .dragged-card {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+  outline-color: rgba(102, 126, 234, 0.7);
+}
+
+.track-title {
+  max-width: 200px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  display: inline-block;
+  font-weight: 600;
+  font-size: 1.05em;
+  letter-spacing: -0.2px;
+}
+
+#tracks {
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 8px 90px;
+}
+
+/* Modern Card Styles */
+#tracks .card {
+  border-radius: 16px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  backdrop-filter: blur(10px);
+}
+
+#tracks .card:hover {
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08) !important;
+  border-color: rgba(33, 133, 208, 0.3) !important;
+}
+
+/* Playing Track with Gradient Border Animation */
+#tracks .card.playing-track {
+  border: 2px solid transparent !important;
+  background: linear-gradient(white, white) padding-box,
+              linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #667eea 100%) border-box;
+  animation: gradient-rotate 3s linear infinite;
+}
+
+@keyframes gradient-rotate {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Card Content Enhancements */
+#tracks .card > .content {
+  padding: 20px !important;
+  background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(250,250,252,0.9) 100%)
+}
+
+#tracks .card > .content:first-child {
+  padding-top: 22px !important;
+}
+
+#tracks .card > .content:last-child {
+  padding-bottom: 22px !important;
+}
+
+/* Enhanced Card Header */
+#tracks .card .header {
+  font-size: 1.1em !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+  margin-bottom: 8px !important;
+  color: #b58f1d !important;
+}
+
+/* Meta section styling */
+#tracks .card .meta {
+  margin-top: 12px !important;
+  padding-top: 12px !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+/* Duration Badge Styling */
+#tracks .card .header span:last-child {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  opacity: 0.75;
+  font-size: 0.9em;
+  background: rgba(102, 126, 234, 0.1);
+  padding: 4px 10px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+#tracks .card:hover .header span:last-child {
+  background: rgba(102, 126, 234, 0.15);
+  opacity: 1;
+}
+
+/* Loading Spinner Enhancement */
+#tracks .card .purple.icon.loading {
+  color: #667eea !important;
+  animation: spin 1s linear infinite, pulse-color 2s ease-in-out infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-color {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Shimmer effect for loading tracks */
+#tracks .card.loading-track {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Enhanced Playing Indicator */
+.label.orange.circular.basic {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 50%, #f06595 100%) !important;
+  border: none !important;
+  color: white !important;
+  font-weight: 600 !important;
+  font-size: 0.95em !important;
+  padding: 12px 18px !important;
+  padding-top: 20px !important;
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4), 0 0 20px rgba(255, 107, 107, 0.2) !important;
+  animation: pulse-glow 2s ease-in-out infinite;
+  z-index: 5 !important;
+  backdrop-filter: blur(8px);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4), 0 0 20px rgba(255, 107, 107, 0.2);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6), 0 0 30px rgba(255, 107, 107, 0.4);
+  }
+}
+
+.label.orange.circular.basic svg.icon {
+  margin-right: 6px !important;
+  animation: sound-wave 1.5s ease-in-out infinite;
+}
+
+@keyframes sound-wave {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+/* Info Icon Modern Style */
+.label-icon {
+  float: right;
+  margin-right: 0.4em;
+  font-size: 0.85em !important;
+  min-width: 2em;
+  min-height: 2em;
+  border-radius: 50% !important;
+  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.label-icon:hover {
+  transform: scale(1.1) rotate(5deg);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+}
+
+.label-icon-new {
+  background: linear-gradient(135deg, #38ef7d 0%, #11998e 100%) !important;
+  box-shadow: 0 2px 8px rgba(56, 239, 125, 0.4) !important;
+  animation: new-badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes new-badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* Checkbox Modern Style (MUI) */
+.track-enable-toggle.Mui-checked {
+  color: #667eea !important;
+}
+
+.track-enable-toggle {
+  transition: all 0.3s ease;
+  padding: 0 !important;
+}
+
+.track-enable-toggle:hover {
+  transform: scale(1.1);
+}
+
+/* Rating Stars Enhancement */
+.MuiRating-root .MuiRating-icon {
+  transition: all 0.2s ease !important;
+}
+
+.MuiRating-root .MuiRating-icon:hover {
+  transform: scale(1.2) rotate(-10deg);
+}
+
+.MuiRating-root .MuiRating-iconFilled {
+  color: #ffd700 !important;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+}
+
+/* Disabled Track Styling */
+#tracks .card .track-title[style*="blur"] {
+  filter: blur(1.5px) !important;
+  opacity: 0.4 !important;
+  transition: all 0.3s ease;
+}
+
+#tracks .card:has(.track-title[style*="blur"]) {
+  opacity: 0.6;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(240, 240, 245, 0.5),
+    rgba(240, 240, 245, 0.5) 10px,
+    rgba(250, 250, 252, 0.5) 10px,
+    rgba(250, 250, 252, 0.5) 20px
+  ) !important;
+}
+
+#tracks .card:has(.track-title[style*="blur"]):hover {
+  opacity: 0.75;
+}
+
+/* Dark mode disabled tracks */
+.card-dark-mode:has(.track-title[style*="blur"]) {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(30, 33, 36, 0.7),
+    rgba(30, 33, 36, 0.7) 10px,
+    rgba(38, 42, 45, 0.7) 10px,
+    rgba(38, 42, 45, 0.7) 20px
+  ) !important;
+}
+
+/* Menu */
+
+/* dialog paper hosting the menu (formerly the semantic modal) */
+.player-menu-paper {
+  background-color: white !important;
+  width: 720px;
+  max-width: 92vw !important;
+  padding: 1.5rem;
+}
+
+body.dark .player-menu-paper {
+  background-color: #1b1c1d !important;
+}
+
+.player-menu-paper:focus,
+.player-menu-paper:focus-visible,
+.MuiDialog-container:focus,
+.MuiDialog-container:focus-visible {
+  outline: none;
+}
+
+.player-menu {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(50px, 1fr));
+  gap: 2rem;
+  justify-content: center;
+  text-align: center;
+}
+
+.player-menu> :not(a.active) {
+  color: rgb(49, 46, 46);
+  cursor: pointer;
+}
+
+body.dark .player-menu> :not(a.active) {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.player-menu>a {
+  cursor: pointer;
+}
+
+.player-menu .item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  padding: 0.8em;
+  border-radius: 6px;
+  font-size: 1.05em;
+}
+
+.player-menu .item svg.icon {
+  font-size: 1.4em;
+  margin-bottom: 0.25em;
+}
+
+.player-menu .item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.player-menu .item.active {
+  background: rgba(33, 133, 208, 0.12);
+}
+
+.player-menu .item.disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+body.dark .player-menu .item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Albums list */
+
+.toc {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  line-height: 1.6;
+  word-wrap: break-word;
+  font-size: 1.2rem;
+  color: rgb(51, 51, 51);
+  background-color: rgb(255, 255, 255);
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100%;
+}
+
+.toc.albums {
+  background-color: #f9fafb;
+  height: 100% !important;
+  padding-top: 10px;
+  width: 100%;
+}
+
+.album {
+  box-sizing: border-box;
+  border-width: thin;
+  border-style: solid;
+  border-color: #e5e7eb;
+  border-radius: 0.75rem;
+  color: rgba(107, 114, 128, 1);
+  background-color: rgba(255, 255, 255, 1);
+}
+
+.albums {
+  display: grid;
+  grid-gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  padding: 1rem;
+  justify-items: center;
+}
+
+.albums>.card {
+  /* details badges anchor to the card, not the page */
+  position: relative;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(34, 36, 38, 0.08);
+  box-shadow: 0 1px 3px 0 rgba(34, 36, 38, 0.12);
+  height: 400px;
+  width: 290px;
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+
+.albums>.card > .content {
+  flex: 1;
+  padding: 0.7em 1em 0.9em;
+}
+
+.albums>.card .header {
+  font-size: 1.1em;
+}
+
+.albums>.card .meta {
+  font-size: 0.95em;
+}
+
+/* songs-count badge (details mode) — small, like the old label */
+.albums>.card .label {
+  font-size: 11px !important;
+  padding: 4px 7px !important;
+  font-weight: 600 !important;
+}
+
+.albums>.card:hover {
+  transition: box-shadow 0.2s ease;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.664);
+  border: 1px solid transparent;
+  transform: scale(1.05);
+}
+
+.album {
+  cursor: pointer;
+  width: 23rem;
+  height: 10rem;
+  position: relative;
+}
+
+.album {
+  background-image: url("play-solid.svg");
+  background-repeat: no-repeat;
+  background-size: 78px;
+  background-position: right;
+}
+
+.album-image {
+  cursor: pointer;
+  border-radius: 0.5rem;
+  height: 8rem;
+  border: thin rgb(243, 240, 240) solid;
+}
+
+.album-title {
+  display: inline-block;
+  inline-size: 150px;
+  overflow-wrap: break-word;
+  margin-left: 10px;
+  vertical-align: top;
+}
+
+.albums-count:hover {
+  background-color: #cbc3c3f7;
+}
+
+.albums-count {
+  position: fixed;
+  top: 2px;
+  right: 20px;
+  font-size: 0.9rem;
+  margin: 0;
+  padding: 2px 13px;
+  z-index: 10;
+  cursor: pointer;
+  border-radius: 0.2rem;
+  color: rgb(49, 47, 47);
+  background-color: #cbc3c387;
+}
+
+.album-titles {
+  display: flex;
+  overflow: auto;
+  padding: 0 30px;
+  height: calc(100% - 2em);
+  justify-content: space-between;
+}
+
+.album-titles>div:first-child {
+  margin-right: 4px;
+}
+
+
+.album-summary {
+  height: 100%;
+  padding: 1em 1.4em;
+}
+
+.album-summary-header {
+  margin: 0 0 0.6em;
+}
+
+.album-titles ol {
+  margin: 0;
+  padding-left: 1.8em;
+}
+
+.album-titles p {
+  margin: 0.15em 0;
+}
+
+.album-summary-container {
+  left: 30%;
+  position: fixed;
+  top: 30%;
+  width: 40%;
+  height: 40%;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.42);
+  z-index: 10;
+}
+
+.album-titles>div>img {
+  border-radius: 0.9rem;
+  border: solid thin rgb(221, 213, 203);
+}
+
+.album-big {
+  width: 500px;
+}
+
+@media (max-width: 1024px) {
+  .album-summary-container {
+    left: 20%;
+    top: 20%;
+    width: 60%;
+    height: 60%;
+  }
+
+  .covers-modal>.close {
+    right: 23px !important;
+    top: 0px !important;
+    position: fixed;
+  }
+}
+
+@media (max-width: 768px) {
+  .album-summary-container {
+    left: 10%;
+    top: 30%;
+    width: 80%;
+    height: 40%;
+  }
+}
+
+@media (max-width: 667px) {
+  .album-summary-container {
+    left: 10%;
+    top: 10%;
+    width: 80%;
+    height: 80%;
+  }
+
+  .covers-modal>.close {
+    right: 17px !important;
+    top: 0px !important;
+    position: fixed;
+  }
+}
+
+@media (max-width: 550px) {
+  .album-titles img {
+    display: none;
+  }
+
+  .album-summary-container {
+    left: 10%;
+    top: 10%;
+    width: 80%;
+    height: 80%;
+  }
+
+  .covers-modal>.close {
+    right: 10px !important;
+    top: 0px !important;
+    position: fixed;
+  }
+}
+
+.player-modal {
+  top: 0;
+  left: 0;
+  z-index: 120;
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  box-shadow: none;
+  background-color: rgba(0, 0, 0, 0);
+}
+
+/* Hide main toolbar when modal with its own toolbar is active */
+#root:has(.player-modal-with-toolbar[style*="display: block"]) > .menu,
+#root:has(.player-modal-with-toolbar[style*="display: block"]) > .menu-bar {
+  display: none !important;
+}
+
+#root:has(.player-modal-transparent[style*="display: block"]) .playlist {
+  padding-top: 60px;
+}
+
+.player-modal .modal-content {
+  z-index: 1;
+  position: relative;
+}
+
+/* Stabilize scroll position in modals with toolbar */
+.player-modal-with-toolbar .modal-content {
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+/* Ensure toolbar is always visible in modals */
+.player-modal > div:first-child {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Ensure modal cards don't overlap the toolbar */
+.player-modal #tracks .card {
+  z-index: 1 !important;
+}
+
+.player-modal .draggable-card,
+.player-modal .dragged-card {
+  z-index: 1 !important;
+}
+
+.player-modal .label.orange.circular.basic {
+  z-index: 2 !important;
+}
+
+div.inverted.transition.active {
+  overflow: hidden !important;
+  background-color: rgba(0, 0, 0, 0) !important;
+}
+
+.external-link {
+  font-size: 18px !important;
+  display: inline-block !important;
+  margin-left: 10px !important;
+  vertical-align: top !important;
+}
+
+.visible.transition.covers-modal {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center;
+}
+
+.covers-cube-container {
+  width: 95%;
+  height: 95%;
+  text-align: center;
+  background-color: White;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.cube-side {
+  width: 500px;
+  height: 500px;
+}
+
+.big-cover-image {
+  width: 500px;
+  height: 500px;
+  background-color: White;
+}
+
+.covers-modal>.close {
+  right: 10px !important;
+  top: 2px !important;
+  position: fixed;
+}
+
+@media (max-width: 414px),
+(max-height: 414px) {
+  .cube-side {
+    width: 250px;
+    height: 250px;
+  }
+
+  .big-cover-image {
+    width: 250px;
+    height: 250px;
+    background-color: White;
+  }
+}
+
+.label.floating {
+  z-index: 10;
+}
+
+.timings-tools {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+
+.timings-buttons {
+  flex-basis: 10%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.playback-timer {
+  margin: 0.6em;
+  padding: 1.4rem 1.6rem;
+
+  background: #500918;
+  background: radial-gradient(ellipse at center, #41090d 0%, #000000 70%);
+
+  border-radius: 6px;
+  box-shadow: #f80303 0px 0px 0px 3px;
+
+  height: 60px;
+
+  text-align: center;
+}
+
+.playback-timer>span,
+.snooze-timer>span {
+  font-family: "Share Tech Mono", monospace;
+  font-size: 3.2em;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: #f80303;
+  text-shadow: 0 0 7px #f80303, 0 0 10px #f80303, 0 0 21px #f80303,
+    0 0 42px #e60a0a, 0 0 82px #e60a0a, 0 0 92px #e60a0a, 0 0 102px #e60a0a,
+    0 0 151px #e60a0a;
+}
+
+.lyrics {
+  opacity: 0.9;
+  position: fixed !important;
+  left: 30px;
+  bottom: 40px;
+  width: calc(100% - 60px);
+  padding: 0 !important;
+  background-color: rgb(34, 33, 33) !important;
+}
+
+
+.snooze-timer {
+  margin: 0.6em;
+
+  background: #500918;
+  background: radial-gradient(ellipse at center, #41090d 0%, #000000 70%);
+
+  border-radius: 6px;
+  border: solid thin #2e2a2a;
+
+  width: 285px;
+  height: 87px;
+
+  transform: scale(2);
+  position: absolute;
+
+  top: 120px;
+  left: 180px;
+
+  overflow: clip;
+
+  /* center the digits regardless of inherited line metrics */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.snooze {
+  z-index: 20;
+  background-color: rgba(0, 0, 0, 0.8);
+  width: 100%;
+  height: 100%;
+  position: fixed;
+}
+
+
+.snooze-commands {
+  position: fixed;
+  top: 280px;
+  left: 220px;
+  display: flex;
+  gap: 12px;
+}
+
+.snooze-ui-timer {
+  position: fixed;
+  top: 280px;
+  left: 480px;
+  width: 100px;
+  background-color: rgba(0, 0, 0);
+  border-radius: 10px;
+}
+
+.snooze-ui-timer:hover {
+  width: 300px;
+}
+
+@media only screen and (min-width: 321px) and (orientation: portrait) {
+  .snooze-timer {
+    top: 28px;
+    left: 30px;
+    transform: scale(0.9);
+  }
+
+  .snooze-commands {
+    top: 140px;
+    left: 75px;
+  }
+
+  .snooze-ui-timer {
+    top: 240px;
+    left: 64px;
+    width: 240px;
+  }
+}
+
+@media only screen and (max-width: 640px) and (orientation: landscape) {
+  .snooze-timer {
+    top: 28px;
+    left: 30px;
+    transform: scale(0.9);
+  }
+
+  .snooze-commands {
+    top: 140px;
+    left: 75px;
+  }
+
+  .snooze-ui-timer {
+    top: 40px;
+    left: 360px;
+    width: 240px;
+  }
+}
+
+.snooze-black {
+  z-index: 20;
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  visibility: hidden;
+  background-color: black;
+}
+
+.snooze-black:focus {
+  background-color: Aqua;
+}
+
+.snooze-black-enabled {
+  cursor: none;
+  visibility: visible;
+  animation: 1s fadeIn;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+/* custom label/icon */
+.label-icon {
+  float: right;
+  margin-right: 0.4em;
+  font-size: 0.7em !important;
+  min-width: 1.8em;
+  min-height: 1.7em;
+  border-radius: 18%;
+  color: white;
+  background-color: #5791ca;
+}
+
+.label-icon-new {
+  color: #1e5605;
+  background-color: #80d41a;
+}
+
+/*-------*/
+.covers-modal.modal {
+  margin: unset !important;
+}
+
+#album-summary.modal,
+.covers-modal.modal {
+  top: 0;
+  left: 0;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  position: fixed;
+}
+
+#album-summary {
+  box-shadow: none;
+  background-color: rgba(0, 0, 0, 0);
+}
+
+#timestamps.modal {
+  display: grid !important;
+  justify-items: center;
+  box-shadow: unset;
+  background-color: rgba(0, 0, 0, 0);
+}
+
+#timestamps>.card {
+  box-shadow: 1px 3px 3px 0 rgba(0, 0, 0, 0.2),
+    1px 3px 15px 2px rgba(0, 0, 0, 0.2);
+}
+
+#dark-mode-toggle {
+  position: fixed;
+  bottom: 8px;
+  right: 10px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(120, 120, 128, 0.18);
+  backdrop-filter: blur(6px);
+  color: rgba(0, 0, 0, 0.65);
+}
+
+body.dark #dark-mode-toggle {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+#playlist-description {
+  background-color: white;
+  height: 100%;
+  /* semantic's base font size; the description was written for it */
+  font-size: 14px;
+}
+
+#mobile-transport {
+  background-color: white;
+}
+
+.player-modal-dark #mobile-transport,
+.player-modal-dark #playlist-description {
+  color: #77abb7;
+  background-color: #1b1c1d !important;
+}
+
+.modal-content {
+  background-color: white
+}
+
+.player-modal-dark .modal-content {
+  background-color: #1b1c1d
+}
+
+.card-header-dark-mode {
+  color: #a8dadc !important;
+}
+
+.card-dark-mode {
+  background: linear-gradient(135deg, rgba(38, 42, 45, 0.95) 0%, rgba(30, 33, 36, 0.98) 100%) !important;
+  color: #e8f1f3;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(119, 171, 183, 0.15) !important;
+}
+
+.card-dark-mode:hover {
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(119, 171, 183, 0.2) !important;
+  border-color: rgba(119, 171, 183, 0.3) !important;
+}
+
+.card-dark-mode.playing-track {
+  border: 2px solid transparent !important;
+  background: linear-gradient(135deg, rgba(38, 42, 45, 0.95) 0%, rgba(30, 33, 36, 0.98) 100%) padding-box,
+              linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #667eea 100%) border-box !important;
+}
+
+.card-dark-mode > .content {
+  background: linear-gradient(135deg, rgba(38, 42, 45, 0.9) 0%, rgba(30, 33, 36, 0.95) 100%) !important;
+}
+
+.card-dark-mode .meta {
+  border-top-color: rgba(119, 171, 183, 0.15) !important;
+}
+
+.card-dark-mode .header {
+  color: #a8dadc !important;
+}
+
+.modal-dark-mode,
+.lyrics-dark-mode {
+  color: aliceblue;
+  background-color: #2c3333 !important;
+}
+
+.lyrics:hover {
+  opacity: 0.1;
+}
+
+/* Dark mode support for sticky toolbar */
+body.dark #root>.menu-bar {
+  background-color: #1b1c1d !important;
+}
+
+/* ========================================
+   MOBILE OPTIMIZATIONS
+   ======================================== */
+
+@media only screen and (max-width: 768px) {
+  /* Mobile Card Adjustments */
+  #tracks .card {
+    border-radius: 14px !important;
+    margin: 10px 8px !important;
+    overflow: visible !important;
+  }
+
+  #tracks .card > .content {
+    padding: 16px !important;
+  }
+
+  #tracks .card > .content:first-child {
+    padding-top: 18px !important;
+  }
+
+  #tracks .card > .content:last-child {
+    padding-bottom: 18px !important;
+  }
+
+  /* Reduce hover effects on mobile (touch devices) */
+  #tracks .card:hover {
+    transform: none;
+  }
+
+  .draggable-card:hover {
+    transform: none;
+  }
+
+  /* Optimize playing label for mobile */
+  .label.orange.circular.basic {
+    padding: 10px 14px !important;
+    font-size: 0.85em !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+  }
+
+  /* Make track title responsive */
+  .track-title {
+    max-width: 160px;
+    font-size: 1em;
+  }
+
+  /* Adjust authors names for mobile */
+  .authors-names {
+    width: 140px;
+    font-size: 0.9em;
+  }
+
+  /* Stack elements better on mobile */
+  #tracks .card .meta {
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+}
+
+@media only screen and (max-width: 480px) {
+  /* Extra small mobile devices */
+  #tracks {
+    padding: 4px;
+  }
+
+  #tracks .card {
+    border-radius: 12px !important;
+    margin: 8px 6px !important;
+    overflow: visible !important;
+  }
+
+  #tracks .card > .content {
+    padding: 14px !important;
+  }
+
+  .track-title {
+    max-width: 130px;
+    font-size: 0.95em;
+  }
+
+  .authors-names {
+    width: 120px;
+    font-size: 0.85em;
+  }
+
+  /* Smaller playing indicator */
+  .label.orange.circular.basic {
+    padding: 8px 12px !important;
+    font-size: 0.8em !important;
+  }
+
+  /* Reduce animations on smaller devices for performance */
+  .card-dark-mode.playing-track,
+  #tracks .card.playing-track {
+    animation: none;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+  }
+}
+
+/* Landscape mobile optimization */
+@media only screen and (max-height: 600px) and (orientation: landscape) {
+  #tracks .card {
+    margin: 8px 6px !important;
+    overflow: visible !important;
+  }
+
+  #tracks .card > .content {
+    padding: 12px !important;
+  }
+
+  .label.orange.circular.basic {
+    padding: 6px 10px !important;
+    font-size: 0.75em !important;
+  }
+}
+
+/* High DPI displays (retina) */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  #tracks .card {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.06) !important;
+  }
+
+  .label.orange.circular.basic {
+    box-shadow: 0 4px 14px rgba(255, 107, 107, 0.5), 0 0 24px rgba(255, 107, 107, 0.25) !important;
+  }
+}
+
+/* Tablet optimizations */
+@media only screen and (min-width: 769px) and (max-width: 1024px) {
+  #tracks {
+    padding: 12px;
+  }
+
+  #tracks .card {
+    margin: 14px 10px !important;
+  }
+
+  .track-title {
+    max-width: 180px;
+  }
+
+  .authors-names {
+    width: 180px;
+  }
+}
+/* ── SetSelector ─────────────────────────────────────────────────────────── */
+
+.set-selector-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.set-selector-backdrop--modal {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.set-selector-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+
+.set-selector-close:hover {
+  color: white;
+}
+
+.set-selector-image-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: min(500px, 90vw);
+  max-height: 70vh;
+  user-select: none;
+}
+
+.set-cover {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* ── halves (horizontal split — desktop) ── */
+
+.set-half {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.set-half--left  { left: 0; }
+.set-half--right { right: 0; }
+
+/* ── halves (vertical split — mobile) ── */
+
+.set-selector-image-wrap--vertical .set-half {
+  width: 100%;
+  height: 50%;
+  left: 0;
+  right: 0;
+}
+
+.set-selector-image-wrap--vertical .set-half--top    { top: 0; bottom: 50%; }
+.set-selector-image-wrap--vertical .set-half--bottom { top: 50%; bottom: 0; }
+
+/* ── overlay ── */
+
+.set-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
+.set-half--left  .set-overlay { background: linear-gradient(to right, rgba(0,0,0,0.75), rgba(0,0,0,0.05)); }
+.set-half--right .set-overlay { background: linear-gradient(to left,  rgba(0,0,0,0.75), rgba(0,0,0,0.05)); }
+
+.set-selector-image-wrap--vertical .set-half--top    .set-overlay { background: linear-gradient(to bottom, rgba(0,0,0,0.75), rgba(0,0,0,0.05)); }
+.set-selector-image-wrap--vertical .set-half--bottom .set-overlay { background: linear-gradient(to top,    rgba(0,0,0,0.75), rgba(0,0,0,0.05)); }
+
+.set-half:hover .set-overlay   { opacity: 1; }
+.set-overlay--active            { opacity: 0.7; }
+.set-overlay--visible           { opacity: 0.75; } /* mobile: always show */
+
+.set-label {
+  font-size: 1.3rem;
+  font-weight: bold;
+  letter-spacing: 0.03em;
+}
+
+.set-count {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  margin-top: 4px;
+}
+
+/* ── footer ── */
+
+.set-selector-footer {
+  margin-top: 18px;
+}
+
+.set-full-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 4px;
+  padding: 8px 20px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.set-full-btn:hover {
+  border-color: white;
+  color: white;
+}
+
+.set-full-btn--active {
+  border-color: white;
+  color: white;
+}
+
+/* ── Sets button (toolbar + mobile tab bar) ─────────────────────────────── */
+
+@keyframes sets-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.15; }
+}
+
+.sets-btn--blink {
+  animation: sets-blink 700ms ease-in-out 4;
+}
+
+/* Ported from react-animation/dist/keyframes.css (package removed) */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10em);
+    visibility: hidden;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    visibility: visible;
+  }
+}
+
+/* ========================================
+   BASE STYLES (formerly from semantic-ui-css)
+   ======================================== */
+
+/* Toolbar menu bar */
+.menu-bar {
+  display: flex;
+  align-items: stretch;
+  background: white;
+  border-bottom: 1px solid rgba(34, 36, 38, 0.15);
+  box-shadow: 0 1px 2px 0 rgba(34, 36, 38, 0.15);
+  min-height: 40px;
+  font-size: 1rem;
+}
+
+.menu-bar .item {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6em 0.95em;
+  min-width: 2em;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.87);
+  user-select: none;
+  position: relative;
+}
+
+.menu-bar .item svg.icon {
+  font-size: 1.25em;
+}
+
+/* empty items act as thin separators, like semantic's spacer items */
+.menu-bar .item:empty {
+  min-width: 0.6em;
+  padding: 0.6em 0.3em;
+  cursor: default;
+}
+
+.menu-bar .item:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.menu-bar .item.active {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.menu-bar .item.disabled {
+  cursor: default;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.menu-bar .item.right-item {
+  margin-left: auto;
+}
+
+body.dark .menu-bar {
+  background: #1b1c1d;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark .menu-bar .item {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+body.dark .menu-bar .item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+body.dark .menu-bar .item.active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Track cards container (formerly .ui.cards) */
+#tracks {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+/* Card element (formerly .ui.card) */
+.card {
+  background: white;
+  width: 290px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px 0 #d4d4d5;
+  font-size: 1em;
+  margin: 0.5em;
+}
+
+.card .header {
+  font-weight: 700;
+  font-size: 1.15em;
+}
+
+.card .meta {
+  color: rgba(0, 0, 0, 0.4);
+  font-size: 0.95em;
+}
+
+
+/* Dark mode for cards + content */
+body.dark #tracks .card {
+  background: #1b1c1d;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark #tracks .card > .content {
+  background: linear-gradient(135deg, rgba(40, 42, 45, 0.7) 0%, rgba(27, 28, 29, 0.95) 100%);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+body.dark #tracks .card .meta {
+  color: rgba(255, 255, 255, 0.55);
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark #tracks .card.playing-track {
+  background: linear-gradient(#1b1c1d, #1b1c1d) padding-box,
+              linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #667eea 100%) border-box;
+}
+
+body.dark .albums-count {
+  color: #ddd;
+  background-color: #3a3b3ce0;
+}
+
+body.dark .albums-count:hover {
+  background-color: #4a4b4c;
+}
+
+/* Loading spinner rotation (SIcon loading) */
+svg.icon.loading {
+  animation: spin 1s linear infinite;
+}
+
+/* Lyrics subtitle text (formerly Message black; .lyrics box styled above) */
+.lyrics > .message {
+  color: aliceblue;
+  border-radius: 0.3rem;
+  padding: 1em 1.5em;
+  font-size: 1.6em;
+}
+
+.lyrics > .message p {
+  margin: 0;
+}
+
+/* Feed (timestamps card) */
+.timestamps-card {
+  margin: 0;
+  padding: 1em 1.3em;
+  color: rgba(0, 0, 0, 0.87);
+  font-size: 0.9rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+}
+
+.feed .feed-event {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 0.45em 0;
+  font-size: 1.05em;
+  font-weight: 500;
+}
+
+.feed .feed-event svg.icon {
+  margin-top: 0.15em;
+}
+
+.feed .feed-summary {
+  font-size: 0.8em;
+  font-weight: 400;
+  color: rgba(0, 0, 0, 0.5);
+  margin-top: 0.15em;
+}

@@ -1,0 +1,27 @@
+.lyric-display {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.animated-element {
+    position: absolute;
+}
+
+.animated-element-image {
+  max-width: 200px;
+  max-height: 200px;
+}
+
+.animated-element-highlighted {
+    font-size: 2rem;
+    font-weight: bold;
+    z-index: 10;
+}
+
+.animated-element-normal {
+    font-size: 1rem;
+    font-weight: normal;
+    z-index: 1;
+}

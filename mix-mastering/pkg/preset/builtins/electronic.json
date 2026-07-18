@@ -1,0 +1,45 @@
+{
+  "name": "Electronic",
+  "category": "genre",
+  "description": "Electronic genre preset with heavy EQ shaping, aggressive compression, and loud limiting for club-ready mixes.",
+  "author": "AudioMaster",
+  "tags": [
+    "electronic",
+    "genre",
+    "edm",
+    "bass",
+    "club",
+    "dance"
+  ],
+  "processors": {
+    "Parametric EQ": {
+      "band.0.freq": 40,
+      "band.0.gain": 3.0,
+      "band.0.q": 1.0,
+      "band.1.freq": 100,
+      "band.1.gain": 2.0,
+      "band.1.q": 0.7,
+      "band.2.freq": 400,
+      "band.2.gain": -2.0,
+      "band.2.q": 1.0,
+      "band.3.freq": 8000,
+      "band.3.gain": 3.0,
+      "band.3.q": 0.7,
+      "band.0.enabled": 1,
+      "band.1.enabled": 1,
+      "band.2.enabled": 1,
+      "band.3.enabled": 1
+    },
+    "Compressor": {
+      "threshold": -12,
+      "ratio": 6,
+      "attack": 1,
+      "release": 50,
+      "knee": 4,
+      "makeup": 4
+    },
+    "Limiter": {
+      "ceiling": -0.3
+    }
+  }
+}

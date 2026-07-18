@@ -1,0 +1,9 @@
+bin/
+web/node_modules/
+web/dist/
+web/public/engine.wasm
+web/public/wasm_exec.js
+*.wasm
+.DS_Store
+web/node_modules
+web/dist

@@ -1,0 +1,35 @@
+{
+  "name": "Vinyl",
+  "category": "usecase",
+  "description": "Vinyl mastering preset with reduced sub-bass, mono low-end below 100Hz, and moderate compression suited for vinyl cutting.",
+  "author": "AudioMaster",
+  "tags": [
+    "vinyl",
+    "usecase",
+    "mastering",
+    "analog",
+    "mono-bass",
+    "cutting"
+  ],
+  "processors": {
+    "Parametric EQ": {
+      "band.0.freq": 30,
+      "band.0.gain": -3.0,
+      "band.0.q": 0.7,
+      "band.1.freq": 3000,
+      "band.1.gain": 1.0,
+      "band.1.q": 1.0,
+      "band.0.enabled": 1,
+      "band.1.enabled": 1
+    },
+    "Compressor": {
+      "threshold": -12,
+      "ratio": 3,
+      "attack": 15,
+      "release": 120
+    },
+    "Limiter": {
+      "ceiling": -0.5
+    }
+  }
+}
