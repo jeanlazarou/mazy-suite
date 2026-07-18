@@ -1,6 +1,6 @@
 {
   "name": "sequence-builder",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "Track transition tester and sequence builder for playlist curation",
   "private": true,

@@ -15,12 +15,20 @@ class AudioSegmentLoader {
   private currentAudio: HTMLAudioElement | null;
   private currentBlobUrl: string | null;
 
+  /**
+   * Called with the track URL, playback progress (0..1) and which segment
+   * ('start' or 'end') is currently playing, or (null, 0, null) when
+   * playback stops.
+   */
+  onProgress: ((trackUrl: string | null, progress: number, segment: 'start' | 'end' | null) => void) | null;
+
   constructor() {
     this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     this.cache = new Map();
     this.segmentDuration = 10; // seconds
     this.currentAudio = null;
     this.currentBlobUrl = null;
+    this.onProgress = null;
   }
 
   /**
@@ -156,9 +164,11 @@ class AudioSegmentLoader {
   /**
    * Play an AudioBuffer
    * @param buffer - Buffer to play
+   * @param trackUrl - URL of the track this segment belongs to (for progress reporting)
+   * @param segment - Which segment of the track this buffer is ('start' or 'end')
    * @returns Promise resolving when playback finishes
    */
-  play(buffer: AudioBuffer): Promise<void> {
+  play(buffer: AudioBuffer, trackUrl?: string, segment?: 'start' | 'end'): Promise<void> {
     return new Promise((resolve) => {
       // Stop any currently playing audio
       this.stopCurrentSource();
@@ -173,12 +183,21 @@ class AudioSegmentLoader {
       const cleanup = () => {
         if (this.currentAudio === audio) {
           this.currentAudio = null;
+          this.onProgress?.(null, 0, null);
         }
         if (this.currentBlobUrl === blobUrl) {
           URL.revokeObjectURL(blobUrl);
           this.currentBlobUrl = null;
         }
       };
+
+      if (trackUrl && segment) {
+        audio.ontimeupdate = () => {
+          if (this.currentAudio === audio && audio.duration > 0) {
+            this.onProgress?.(trackUrl, audio.currentTime / audio.duration, segment);
+          }
+        };
+      }
 
       audio.onended = () => {
         cleanup();
@@ -192,6 +211,10 @@ class AudioSegmentLoader {
 
       this.currentAudio = audio;
       this.currentBlobUrl = blobUrl;
+
+      if (trackUrl && segment) {
+        this.onProgress?.(trackUrl, 0, segment);
+      }
 
       audio.play().catch(() => {
         cleanup();
@@ -208,6 +231,7 @@ class AudioSegmentLoader {
       this.currentAudio.pause();
       this.currentAudio.currentTime = 0;
       this.currentAudio = null;
+      this.onProgress?.(null, 0, null);
     }
 
     if (this.currentBlobUrl) {

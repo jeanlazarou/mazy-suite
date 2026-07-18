@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Track, Playlist, RawPlaylist } from './types';
 import TrackGrid from './TrackGrid';
+import TrackListPopup from './TrackListPopup';
 import SequencePlayer from './SequencePlayer';
 
 function App() {
@@ -10,8 +11,24 @@ function App() {
   const [hoveredTitle, setHoveredTitle] = useState<string | null>(null);
   const [isReplaying, setIsReplaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [playingUrl, setPlayingUrl] = useState<string | null>(null);
+  const [playProgress, setPlayProgress] = useState(0);
+  const [playingSegment, setPlayingSegment] = useState<'start' | 'end' | null>(null);
+  const [showTrackList, setShowTrackList] = useState(false);
 
   const playerRef = useRef<SequencePlayer>(new SequencePlayer());
+
+  useEffect(() => {
+    const player = playerRef.current;
+    player.onProgress = (trackUrl, progress, segment) => {
+      setPlayingUrl(trackUrl);
+      setPlayProgress(progress);
+      setPlayingSegment(segment);
+    };
+    return () => {
+      player.onProgress = null;
+    };
+  }, []);
 
   /**
    * Handle playlist file selection
@@ -158,6 +175,14 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  const playingTrack = playingUrl
+    ? playlist?.tracks.find(t => t.url === playingUrl)
+    : null;
+  const playingTitle = playingTrack ? `▶ ${playingTrack.title}` : null;
+
+  // Hovering a track takes precedence over the currently playing one
+  const footerTitle = hoveredTitle ?? playingTitle;
+
   return (
     <div className="app">
       <header className="header">
@@ -175,6 +200,9 @@ function App() {
 
           {playlist && (
             <>
+              <button onClick={() => setShowTrackList(true)}>
+                Tracks
+              </button>
               <button onClick={handleClear} disabled={sequence.length === 0}>
                 Clear
               </button>
@@ -205,6 +233,9 @@ function App() {
             tracks={playlist.tracks}
             sequence={sequence}
             activeIndex={activeIndex}
+            playingUrl={playingUrl}
+            playProgress={playProgress}
+            playingSegment={playingSegment}
             onTrackClick={handleTrackClick}
             onTrackHover={setHoveredTitle}
           />
@@ -217,9 +248,18 @@ function App() {
         )}
       </main>
 
-      {hoveredTitle && (
+      {playlist && showTrackList && (
+        <TrackListPopup
+          tracks={playlist.tracks}
+          sequence={sequence}
+          onTrackClick={handleTrackClick}
+          onClose={() => setShowTrackList(false)}
+        />
+      )}
+
+      {footerTitle && (
         <footer className="footer">
-          {hoveredTitle}
+          {footerTitle}
         </footer>
       )}
     </div>

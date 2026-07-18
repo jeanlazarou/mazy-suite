@@ -6,6 +6,8 @@ interface TrackTileProps {
   color: string;
   sequenceNumber: number | null;
   isActive: boolean;
+  progress: number | null;
+  playingSegment: 'start' | 'end' | null;
   onClick: (track: Track) => void;
   onHover: (title: string | null) => void;
 }
@@ -15,7 +17,7 @@ interface TrackTileProps {
  *
  * Displays a single track as a colored tile
  */
-function TrackTile({ track, color, sequenceNumber, isActive, onClick, onHover }: TrackTileProps) {
+function TrackTile({ track, color, sequenceNumber, isActive, progress, playingSegment, onClick, onHover }: TrackTileProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   const handleMouseEnter = () => {
@@ -51,6 +53,14 @@ function TrackTile({ track, color, sequenceNumber, isActive, onClick, onHover }:
     >
       {sequenceNumber !== null && (
         <div className="sequence-number">{sequenceNumber}</div>
+      )}
+      {progress !== null && (
+        <div className={`progress-track ${playingSegment === 'end' ? 'from-right' : ''}`}>
+          <div
+            className="progress-fill"
+            style={{ width: `${progress * 100}%` }}
+          />
+        </div>
       )}
     </div>
   );

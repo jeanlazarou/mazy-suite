@@ -18,6 +18,16 @@ class SequencePlayer {
   }
 
   /**
+   * Register a listener for playback progress.
+   * Receives the URL of the track whose segment is playing, its progress
+   * (0..1) and which segment ('start' or 'end') is playing, or
+   * (null, 0, null) when playback stops.
+   */
+  set onProgress(callback: ((trackUrl: string | null, progress: number, segment: 'start' | 'end' | null) => void) | null) {
+    this.loader.onProgress = callback;
+  }
+
+  /**
    * Play the ending of a track
    * @param url - Track URL
    */
@@ -28,7 +38,7 @@ class SequencePlayer {
     if (sessionId !== this.currentSessionId) return; // Cancelled
 
     this.isPlayingFlag = true;
-    await this.loader.play(segments.end);
+    await this.loader.play(segments.end, url, 'end');
 
     if (sessionId !== this.currentSessionId) return; // Cancelled
 
@@ -46,7 +56,7 @@ class SequencePlayer {
     if (sessionId !== this.currentSessionId) return; // Cancelled
 
     this.isPlayingFlag = true;
-    await this.loader.play(segments.start);
+    await this.loader.play(segments.start, url, 'start');
 
     if (sessionId !== this.currentSessionId) return; // Cancelled
 
@@ -69,11 +79,11 @@ class SequencePlayer {
     if (sessionId !== this.currentSessionId) return; // Cancelled
 
     this.isPlayingFlag = true;
-    await this.loader.play(segmentsA.end);
+    await this.loader.play(segmentsA.end, urlA, 'end');
 
     if (sessionId !== this.currentSessionId) return; // Cancelled
 
-    await this.loader.play(segmentsB.start);
+    await this.loader.play(segmentsB.start, urlB, 'start');
 
     if (sessionId !== this.currentSessionId) return; // Cancelled
 
@@ -98,7 +108,7 @@ class SequencePlayer {
       onTrackChange(-1);
       return;
     }
-    await this.loader.play(segments0.end);
+    await this.loader.play(segments0.end, urls[0], 'end');
 
     // Play transitions for remaining tracks
     for (let i = 1; i < urls.length; i++) {
@@ -108,12 +118,12 @@ class SequencePlayer {
       const segments = await this.loader.loadSegments(urls[i]);
       if (sessionId !== this.currentSessionId) break;
 
-      await this.loader.play(segments.start);
+      await this.loader.play(segments.start, urls[i], 'start');
       if (sessionId !== this.currentSessionId) break;
 
       if (i < urls.length - 1) {
         // Play ending of current track before next
-        await this.loader.play(segments.end);
+        await this.loader.play(segments.end, urls[i], 'end');
       }
     }
 

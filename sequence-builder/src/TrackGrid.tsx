@@ -1,11 +1,15 @@
 import React from 'react';
 import { Track } from './types';
 import TrackTile from './TrackTile';
+import { trackColor } from './trackColor';
 
 interface TrackGridProps {
   tracks: Track[];
   sequence: string[];
   activeIndex: number;
+  playingUrl: string | null;
+  playProgress: number;
+  playingSegment: 'start' | 'end' | null;
   onTrackClick: (track: Track) => void;
   onTrackHover: (title: string | null) => void;
 }
@@ -15,15 +19,7 @@ interface TrackGridProps {
  *
  * Displays all tracks in a responsive grid
  */
-function TrackGrid({ tracks, sequence, activeIndex, onTrackClick, onTrackHover }: TrackGridProps) {
-  /**
-   * Generate a color for a track based on its index
-   */
-  const getTrackColor = (index: number): string => {
-    const hue = (index * 360 / tracks.length) % 360;
-    return `hsl(${hue}, 70%, 60%)`;
-  };
-
+function TrackGrid({ tracks, sequence, activeIndex, playingUrl, playProgress, playingSegment, onTrackClick, onTrackHover }: TrackGridProps) {
   /**
    * Get sequence number for a track (1-based, or null if not in sequence)
    */
@@ -42,9 +38,11 @@ function TrackGrid({ tracks, sequence, activeIndex, onTrackClick, onTrackHover }
           <TrackTile
             key={track.url}
             track={track}
-            color={getTrackColor(index)}
+            color={trackColor(index, tracks.length)}
             sequenceNumber={sequenceNumber}
             isActive={isActive}
+            progress={playingUrl === track.url ? playProgress : null}
+            playingSegment={playingUrl === track.url ? playingSegment : null}
             onClick={onTrackClick}
             onHover={onTrackHover}
           />
