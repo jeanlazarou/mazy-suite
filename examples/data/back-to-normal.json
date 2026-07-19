@@ -1,0 +1,27 @@
+{
+  "title": "Back to Normal",
+  "period": { "from": "2017/06/18", "to": "2020/05/04" },
+  "playlist": [
+    {
+      "url": "/music/files/Back to Normal/Big Three.mp3",
+      "volume": "89",
+      "title": "Big Three",
+      "creationDate": "2017/09/10",
+      "authors": ["Jean Lazarou"]
+    },
+    {
+      "url": "/music/files/Back to Normal/Born to Die.mp3",
+      "volume": "85",
+      "title": "Born to Die",
+      "creationDate": "2017/08/12",
+      "authors": ["Jean Lazarou"]
+    },
+    {
+      "url": "/music/files/Back to Normal/Against Myself.mp3",
+      "volume": "85",
+      "title": "Against Myself",
+      "creationDate": "2018/06/09",
+      "authors": ["Jean Lazarou"]
+    }
+  ]
+}

@@ -48,10 +48,24 @@ timings with **srt_generator** → fine-tune them in **player_editor** → enjoy
 **player**, prompt it live with **live_prompter**, or turn it into visuals with
 **gig_anim**.
 
-**No music is included in this repository** (and none should ever be committed —
-the root `.gitignore` enforces it). Point the apps at your own library: each app
-reads `public/data/` (playlists, lyrics) and `public/music/` (audio), which you
-can fill with copies or symlinks to your collection.
+All formats are documented in [docs/data-formats.md](docs/data-formats.md), and
+a real **demo album** ships in [examples/](examples/) — three original songs
+("Back to Normal", © Jean Lazarou, published here on purpose) with covers,
+playlist JSON, metadata cache and synchronized SRT lyrics. Copy
+`examples/data` and `examples/music` into any web app's `public/` folder and it
+runs out of the box:
+
+```bash
+cd player
+cp -r ../examples/data public/data
+cp -r ../examples/music public/music
+pnpm install && pnpm dev
+```
+
+**No other music is included** (and none can be committed by accident — the
+root `.gitignore` blocks audio, lyrics and the data folder). Point the apps at
+your own library the same way: fill `public/data/` and `public/music/` with
+copies or symlinks to your collection.
 
 ## Getting started
 
