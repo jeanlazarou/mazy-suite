@@ -9,6 +9,9 @@ Everything is self-hosted and works on your own files — no accounts, no cloud,
 no tracking. Bring your MP3s, get synchronized lyrics, live visuals and polished
 mixes out.
 
+**Live demo:** <https://jeanlazarou.github.io/mazy-suite/> — the portal and the
+player, loaded with the demo album.
+
 ## The tools
 
 ### Web apps (Vite + React unless noted)
@@ -90,9 +93,16 @@ cd mix-mastering
 ## The portal
 
 [portal/index.html](portal/index.html) is a static launcher page for the web
-apps. Build each app, copy the builds next to the portal page (one folder per
-app, named after the project), and serve the whole thing with any static file
-server — locally, from a USB key, or on your own site.
+apps. [scripts/build_site.sh](scripts/build_site.sh) assembles it together with
+the app builds and the demo data into `_site/`, ready to serve with any static
+file server — locally, from a USB key, or on your own site:
+
+```bash
+APPS="player" ./scripts/build_site.sh   # add more apps as you build them
+```
+
+On every push, a [GitHub Actions workflow](.github/workflows/pages.yml) runs
+the same script and deploys the result to GitHub Pages — that's the live demo.
 
 ## Built with Claude
 
