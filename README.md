@@ -36,6 +36,7 @@ player, loaded with the demo album.
 | [cover_ed](cover_ed/) | Desktop app (Tauri + React) to edit audio file metadata: title, authors, album, track number, artwork |
 | [srt_generator](srt_generator/) | Python CLI that drafts an SRT lyrics file from a song (Demucs vocal separation + forced alignment), to be finished in player_editor |
 | [music_cache_updater](music_cache_updater/) | Python CLI that maintains the JSON metadata cache (id, duration, last modified) the player uses to start fast |
+| [mp3-playlist-manager](mp3-playlist-manager/) | Python CLI that writes the playlist JSON metadata into the MP3 files themselves — titles, authors, and embedded cover art |
 
 ## How the tools work together
 

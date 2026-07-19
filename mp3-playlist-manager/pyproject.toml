@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "mp3-playlist-manager"
+version = "1.0.0"
+description = "A tool to manage MP3 playlists and metadata"
+authors = ["Jean Lazarou <jean.lazarou@gmail.com>"]
+readme = "README.md"
+packages = [{include = "mp3_playlist_manager", from = "."}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+mutagen = "^1.47.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+black = "^23.7.0"
+isort = "^5.12.0"
+mypy = "^1.5.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+playlist-manager = "mp3_playlist_manager.cli:main"
