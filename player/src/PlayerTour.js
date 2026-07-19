@@ -74,7 +74,9 @@ const steps = [
     ),
   },
   {
-    selector: ".info.icon.label-icon",
+    // .label-icon without the icon name: the icon is "info" or "headphones"
+    // (recently updated track), the tour must anchor to it either way
+    selector: "#tracks .card:first-child .label-icon",
     content: "Hover this icon to see update and creation times.",
   },
   {
