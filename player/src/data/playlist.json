@@ -1,0 +1,27 @@
+{
+  "title": "Test - 4 tracks",
+  "playlist": [
+    {
+      "url": "audio/Big Three.mp3",
+      "volume": "89",
+      "authors": ["Jean Lazarou"]
+    },
+    {
+      "url": "audio/Against Myself.mp3",
+      "volume": "85",
+      "authors": ["Jean Lazarou"]
+    },
+    {
+      "url": "audio/Fuzzy Town.mp3",
+      "volume": "85",
+      "authors": ["Jean Lazarou"],
+      "enabled": false
+    },
+    {
+      "url": "audio/Born to Die.mp3",
+      "volume": "85",
+      "authors": ["Jean Lazarou"],
+      "enabled": false
+    }
+  ]
+}

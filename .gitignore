@@ -25,7 +25,8 @@ mix-mastering/bin/
 
 # --- personal music data: never commit audio, lyrics or the shared data folder.
 # The apps read these from symlinks or local copies you provide yourself.
-data/
+# (anchored to the repo root: apps may have legit source dirs named data/)
+/data/
 */public/data/
 */public/music/
 */public/colors/music/
