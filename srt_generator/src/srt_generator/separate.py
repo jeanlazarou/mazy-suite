@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -23,6 +24,13 @@ def separate_vocals(audio_path, device, cache_dir=None):
         return vocals
 
     print(f"Separating vocals with demucs ({MODEL}, device={device})...")
+
+    env = os.environ.copy()
+    if device == "mps":
+        # htdemucs has a conv layer too wide for the MPS backend; torch
+        # runs just that op on CPU when this fallback is enabled
+        env["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+
     subprocess.run(
         [
             sys.executable,
@@ -39,6 +47,7 @@ def separate_vocals(audio_path, device, cache_dir=None):
             str(audio_path),
         ],
         check=True,
+        env=env,
     )
 
     if not vocals.exists():

@@ -1,6 +1,6 @@
 [project]
 name = "srt-generator"
-version = "0.1.0"
+version = "0.2.0"
 description = "Generate draft SRT lyric timings from songs, to be finished in player_editor"
 requires-python = ">=3.12,<3.13"
 dependencies = [

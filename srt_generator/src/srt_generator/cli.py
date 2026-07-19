@@ -50,8 +50,8 @@ def build_parser():
         default="auto",
         choices=["auto", "cpu", "mps", "cuda"],
         help=(
-            "compute device; auto uses mps for demucs and cpu for whisper, "
-            "which is the safe default on Apple Silicon"
+            "compute device; auto means cpu on Apple Silicon (htdemucs "
+            "exceeds MPS conv limits and whisper is unreliable there)"
         ),
     )
     parser.add_argument(
@@ -61,6 +61,33 @@ def build_parser():
         help="minimum segment duration in seconds (default: 0.2)",
     )
     parser.add_argument(
+        "--no-trim",
+        action="store_true",
+        help="keep raw aligner edges instead of snapping them to silence",
+    )
+    parser.add_argument(
+        "--trim-db",
+        type=float,
+        default=-40.0,
+        help=(
+            "silence threshold in dB relative to the loudest point "
+            "(default: -40); raise towards -30 if regions still trail "
+            "into noise, lower towards -50 if quiet endings get cut"
+        ),
+    )
+    parser.add_argument(
+        "--max-gap",
+        type=float,
+        default=None,
+        metavar="SECONDS",
+        help=(
+            "experimental: close a region at its first internal silence "
+            "longer than this many seconds (e.g. 1.0); off by default "
+            "because a wrong cut drops real singing from the region, "
+            "which is harder to fix in player_editor than a too-long one"
+        ),
+    )
+    parser.add_argument(
         "--version", action="version", version=f"%(prog)s {__version__}"
     )
 
@@ -68,15 +95,22 @@ def build_parser():
 
 
 def pick_devices(arg):
-    """Return (demucs_device, whisper_device)."""
+    """Return (demucs_device, whisper_device).
+
+    auto resolves to cpu on Apple Silicon: htdemucs has a conv layer that
+    exceeds the MPS backend's 65536 output-channel limit, and the
+    PYTORCH_ENABLE_MPS_FALLBACK escape hatch does not intercept that
+    (it only covers unimplemented ops, not size limits). cuda is picked
+    up automatically when available.
+    """
     if arg != "auto":
         return arg, arg
 
     try:
         import torch
 
-        if torch.backends.mps.is_available():
-            return "mps", "cpu"
+        if torch.cuda.is_available():
+            return "cuda", "cuda"
     except ImportError:
         pass
 
@@ -100,15 +134,30 @@ def main(argv=None):
 
         audio = separate_vocals(audio, demucs_device)
 
-    from .align import align_lyrics, load_lyrics, transcribe
+    from .align import align_lyrics, load_audio, load_lyrics, transcribe
+
+    audio_data = load_audio(audio)
 
     if args.lyrics is not None:
         lines = load_lyrics(args.lyrics)
         segments = align_lyrics(
-            audio, lines, args.model, whisper_device, args.language
+            audio_data, lines, args.model, whisper_device, args.language
         )
     else:
-        segments = transcribe(audio, args.model, whisper_device, args.language)
+        segments = transcribe(
+            audio_data, args.model, whisper_device, args.language
+        )
+
+    if not args.no_trim:
+        from .trim import trim_segments
+
+        segments = trim_segments(
+            audio_data,
+            segments,
+            threshold_db=args.trim_db,
+            min_duration=args.min_duration,
+            max_gap=args.max_gap,
+        )
 
     segments = postprocess(segments, min_duration=args.min_duration)
 

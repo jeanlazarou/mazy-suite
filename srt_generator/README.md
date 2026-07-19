@@ -47,6 +47,20 @@ uv run srt_generator song.mp3 -o song.srt --mix
 Useful options: `--language fr`, `--model medium` (faster, less accurate),
 `--device cpu`, `--min-duration 0.3`.
 
+## Silence trimming
+
+Region edges are snapped back to the actually-voiced audio (RMS gate,
+`--trim-db`, default −40 dB; `--no-trim` disables). Edges only ever
+shrink — the tool deliberately errs on the side of over-long regions:
+dragging an edge in in player_editor takes seconds, while a region that
+skipped real singing is much harder to spot and repair.
+
+For the same reason `--max-gap SECONDS` (close a region at its first
+internal silence longer than that) is **off by default and experimental**:
+when the aligner slips on repeated lines it can cut on the wrong side of
+a silence and drop covered singing. Prefer fixing the occasional
+stretched region by hand.
+
 ## Lyrics file format
 
 Plain text, **one line per SRT entry**, in singing order, **fully expanded**
@@ -55,9 +69,12 @@ lines are ignored.
 
 ## Notes for Apple Silicon
 
-`--device auto` (the default) runs demucs on MPS and whisper on CPU, which
-is the reliable combination. If you want to try whisper on MPS, pass
-`--device mps`; if it errors, fall back to the default.
+`--device auto` (the default) runs everything on CPU. This is deliberate:
+htdemucs has a conv layer that exceeds the MPS backend's output-channel
+limit (`NotImplementedError: Output channels > 65536`), and torch's
+`PYTORCH_ENABLE_MPS_FALLBACK` does not rescue it — the fallback only covers
+unimplemented ops, not size limits. The M-series CPU handles both models at
+usable speed. `--device mps` exists if a future torch lifts the limit.
 
 ## Known limits
 

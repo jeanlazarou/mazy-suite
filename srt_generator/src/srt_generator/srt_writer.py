@@ -46,7 +46,13 @@ def postprocess(segments, min_duration=0.2, min_gap=0.02):
         start, end, text = result[i]
         next_start = result[i + 1][0]
 
-        if end > next_start - min_gap and next_start - min_gap > start:
+        # shaving must not lower this end below the previous (possibly
+        # shaved) end, or the ends stop increasing
+        floor = start
+        if i > 0:
+            floor = max(floor, result[i - 1][1])
+
+        if end > next_start - min_gap and next_start - min_gap > floor:
             result[i] = (start, next_start - min_gap, text)
 
     return result

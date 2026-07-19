@@ -54,6 +54,24 @@ def test_postprocess_shaves_overlaps():
     assert result[0][1] <= result[1][0]
 
 
+def test_postprocess_shaving_keeps_ends_increasing():
+    # "a" cannot be shaved (b starts almost with it), so its long end
+    # survives; shaving "b" against c's start must then be skipped, or the
+    # ends stop increasing (seen on real aligner output, "The Gravity" #19)
+    segments = [
+        (10.0, 30.0, "a"),
+        (10.01, 30.5, "b"),
+        (12.0, 13.0, "c"),
+    ]
+
+    result = postprocess(segments)
+
+    for i in range(1, len(result)):
+        assert result[i][1] > result[i - 1][1]
+    for start, end, _ in result:
+        assert start < end
+
+
 def test_to_srt_matches_player_editor_parser_expectations():
     srt = to_srt([(1.0, 2.5, "hello"), (3.0, 4.0, "world")])
     lines = srt.split("\n")
