@@ -27,6 +27,7 @@ mix-mastering/bin/
 # The apps read these from symlinks or local copies you provide yourself.
 # (anchored to the repo root: apps may have legit source dirs named data/)
 /data/
+lyrics.md
 */public/data/
 */public/music/
 */public/colors/music/
