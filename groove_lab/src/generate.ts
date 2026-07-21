@@ -92,6 +92,104 @@ export const STYLES = {
       ride: offbeatHats(0.75, 0.5),
     },
   },
+  hardRock: {
+    lanes: {
+      kick: [
+        { step: 0, velocity: 0.95 },
+        { step: 6, velocity: 0.8, prob: 0.5 },
+        { step: 8, velocity: 0.9 },
+        { step: 10, velocity: 0.75, prob: 0.6 },
+        { step: 14, velocity: 0.7, prob: 0.35 },
+      ],
+      snare: [
+        { step: 4, velocity: 1 },
+        { step: 12, velocity: 1 },
+        { step: 10, velocity: 0.3, prob: 0.2 },
+      ],
+      ride: offbeatHats(0.9, 0.65),
+      crash: [{ step: 0, velocity: 0.85, prob: 0.4 }],
+    },
+  },
+  rockHalfTime: {
+    lanes: {
+      kick: [
+        { step: 0, velocity: 0.95 },
+        { step: 6, velocity: 0.8, prob: 0.6 },
+        { step: 10, velocity: 0.6, prob: 0.3 },
+      ],
+      snare: [{ step: 8, velocity: 1 }],
+      hhClosed: [0, 4, 8, 12].map((step) => ({ step, velocity: 0.6 })),
+      crash: [{ step: 0, velocity: 0.75, prob: 0.3 }],
+    },
+  },
+  rockArena: {
+    lanes: {
+      kick: [
+        { step: 0, velocity: 0.9 },
+        { step: 4, velocity: 0.9 },
+        { step: 8, velocity: 0.9 },
+        { step: 12, velocity: 0.9 },
+        { step: 14, velocity: 0.6, prob: 0.3 },
+      ],
+      snare: [
+        { step: 4, velocity: 0.95 },
+        { step: 12, velocity: 0.95 },
+      ],
+      ride: offbeatHats(0.85, 0.6),
+      crash: [
+        { step: 0, velocity: 0.9 },
+        { step: 8, velocity: 0.6, prob: 0.3 },
+      ],
+    },
+  },
+  jazz: {
+    swing: 0.6,
+    lanes: {
+      kick: [
+        { step: 0, velocity: 0.5, prob: 0.3 },
+        { step: 8, velocity: 0.45, prob: 0.25 },
+        { step: 10, velocity: 0.4, prob: 0.15 },
+      ],
+      snare: [
+        { step: 6, velocity: 0.35, prob: 0.3 },
+        { step: 11, velocity: 0.3, prob: 0.25 },
+        { step: 14, velocity: 0.4, prob: 0.2 },
+      ],
+      hhClosed: [
+        { step: 4, velocity: 0.5 },
+        { step: 12, velocity: 0.5 },
+      ],
+      ride: [
+        { step: 0, velocity: 0.8 },
+        { step: 4, velocity: 0.6 },
+        { step: 6, velocity: 0.7 },
+        { step: 8, velocity: 0.8 },
+        { step: 12, velocity: 0.6 },
+        { step: 14, velocity: 0.7 },
+      ],
+    },
+  },
+  // Maqsum rhythm (dum-tak-tak-dum-tak): conga carries the low "dum" (GM Low
+  // Conga, 64), snare stands in for the "tak" slap, tambourine (GM 54) gives
+  // the riq's steady sizzle. A fuller oriental flavour also wants a
+  // phrygian-dominant bass scale, which generateBass() doesn't offer yet.
+  oriental: {
+    lanes: {
+      conga: [
+        { step: 0, velocity: 0.95 },
+        { step: 10, velocity: 0.85 },
+      ],
+      snare: [
+        { step: 2, velocity: 0.65 },
+        { step: 6, velocity: 0.6 },
+        { step: 14, velocity: 0.7 },
+      ],
+      tambourine: Array.from({ length: 16 }, (_, step) => ({
+        step,
+        velocity: step % 4 === 0 ? 0.5 : 0.3,
+      })),
+    },
+  },
 } satisfies Record<string, StyleTemplate>;
 
 export type StyleName = keyof typeof STYLES;

@@ -77,7 +77,7 @@ function systemPrompt(pattern: Pattern): string {
   return [
     `You edit drum machine patterns on a sixteenth-note grid.`,
     `This pattern has ${total} steps (0 to ${total - 1}), ${pattern.bars} bar(s) of ${pattern.stepsPerBar} steps; step 0 is beat 1.`,
-    `Drum lanes: kick, snare, hhClosed, hhOpen, tomLow, tomMid, tomHigh, crash, ride.`,
+    `Drum lanes: ${DRUM_LANES.map((lane) => lane.id).join(", ")}.`,
     `velocity is 0.0-1.0 (about 0.9 accent, 0.75 normal, 0.4 ghost).`,
     `Bass notes have step, durationSteps (length in grid steps), midiPitch (${BASS_PITCH_MIN}-${BASS_PITCH_MAX}, E1-G3) and velocity. The bass is monophonic: notes must not overlap.`,
     `Apply the user's instruction to their pattern. Keep everything the instruction doesn't ask you to change. Return ONLY JSON matching the schema.`,

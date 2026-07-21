@@ -7,7 +7,9 @@ export type DrumLane =
   | "tomMid"
   | "tomHigh"
   | "crash"
-  | "ride";
+  | "ride"
+  | "conga"
+  | "tambourine";
 
 export interface Step {
   step: number;
@@ -43,11 +45,13 @@ export interface DrumLaneInfo {
 export const DRUM_LANES: DrumLaneInfo[] = [
   { id: "crash", label: "Crash", gmNote: 49 },
   { id: "ride", label: "Ride", gmNote: 51 },
+  { id: "tambourine", label: "Tambourine", gmNote: 54 },
   { id: "hhOpen", label: "Open Hat", gmNote: 46 },
   { id: "hhClosed", label: "Closed Hat", gmNote: 42 },
   { id: "tomHigh", label: "High Tom", gmNote: 50 },
   { id: "tomMid", label: "Mid Tom", gmNote: 47 },
   { id: "tomLow", label: "Low Tom", gmNote: 45 },
+  { id: "conga", label: "Conga", gmNote: 64 },
   { id: "snare", label: "Snare", gmNote: 38 },
   { id: "kick", label: "Kick", gmNote: 36 },
 ];

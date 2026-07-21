@@ -15,6 +15,9 @@ export class DrumKit {
   private hhOpen: Tone.NoiseSynth;
   private crash: Tone.MetalSynth;
   private ride: Tone.MetalSynth;
+  private conga: Tone.MembraneSynth;
+  private tambourineNoise: Tone.NoiseSynth;
+  private tambourineShimmer: Tone.MetalSynth;
 
   constructor() {
     this.output = new Tone.Gain(0.9).toDestination();
@@ -74,6 +77,30 @@ export class DrumKit {
     };
     this.crash = cymbal(1.4, -18);
     this.ride = cymbal(0.7, -20);
+
+    // Conga = a tighter, higher-tuned membrane than the toms (hand-drum slap).
+    this.conga = new Tone.MembraneSynth({
+      pitchDecay: 0.04,
+      octaves: 4,
+      envelope: { attack: 0.001, decay: 0.25, sustain: 0.02, release: 0.2 },
+      volume: -6,
+    }).connect(this.output);
+
+    // Tambourine = a bandpass noise burst plus a short metallic shimmer.
+    this.tambourineNoise = new Tone.NoiseSynth({
+      noise: { type: "white" },
+      envelope: { attack: 0.001, decay: 0.06, sustain: 0 },
+      volume: -12,
+    });
+    this.tambourineNoise.chain(new Tone.Filter(6500, "bandpass"), this.output);
+    this.tambourineShimmer = new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 0.12, release: 0.12 },
+      harmonicity: 8,
+      modulationIndex: 20,
+      resonance: 5000,
+      octaves: 1,
+      volume: -22,
+    }).connect(this.output);
   }
 
   trigger(lane: DrumLane, velocity: number, time: number): void {
@@ -106,6 +133,18 @@ export class DrumKit {
       case "ride":
         this.ride.triggerAttackRelease("D4", "4n", time, velocity * 0.8);
         break;
+      case "conga":
+        this.conga.triggerAttackRelease("A2", "8n", time, velocity);
+        break;
+      case "tambourine":
+        this.tambourineNoise.triggerAttackRelease("32n", time, velocity);
+        this.tambourineShimmer.triggerAttackRelease(
+          "C6",
+          "32n",
+          time,
+          velocity * 0.6,
+        );
+        break;
     }
   }
 
@@ -119,5 +158,8 @@ export class DrumKit {
     this.hhOpen.dispose();
     this.crash.dispose();
     this.ride.dispose();
+    this.conga.dispose();
+    this.tambourineNoise.dispose();
+    this.tambourineShimmer.dispose();
   }
 }

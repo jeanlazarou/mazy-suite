@@ -7,7 +7,19 @@ export interface DrumSource {
   dispose(): void;
 }
 
-export const KIT_NAMES = ["synth", "acoustic", "CR78", "Kit8"] as const;
+export const KIT_NAMES = [
+  "synth",
+  "acoustic",
+  "CR78",
+  "Kit8",
+  "Bongos",
+  "KPR77",
+  "R8",
+  "LINN",
+  "Stark",
+  "Techno",
+  "4OP-FM",
+] as const;
 export type KitName = (typeof KIT_NAMES)[number];
 
 const SAMPLE_BASE = "https://tonejs.github.io/audio/drum-samples/";
@@ -15,9 +27,17 @@ const KIT_DIRS: Record<Exclude<KitName, "synth">, string> = {
   acoustic: "acoustic-kit/",
   CR78: "CR78/",
   Kit8: "Kit8/",
+  Bongos: "Bongos/",
+  KPR77: "KPR77/",
+  R8: "R8/",
+  LINN: "LINN/",
+  Stark: "Stark/",
+  Techno: "Techno/",
+  "4OP-FM": "4OP-FM/",
 };
 
-// The hosted sets cover the core kit; open hat, crash and ride stay synth.
+// Every hosted set covers only these 6; open hat, crash, ride, conga and
+// tambourine have no sample and always stay on the synth kit.
 const SAMPLE_FILES: Partial<Record<DrumLane, string>> = {
   kick: "kick.mp3",
   snare: "snare.mp3",
