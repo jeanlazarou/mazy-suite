@@ -400,7 +400,22 @@ header h1 {
   user-select: none;
 }
 
+/* Header row and label column stay put while their grid scrolls
+   horizontally, so the beat you're on and the lane you're clicking are
+   never scrolled out of view. */
+.grid-corner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  background: var(--panel);
+}
+
 .step-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
   text-align: center;
   font-size: 11px;
   color: var(--text-dim);
@@ -417,7 +432,10 @@ header h1 {
 }
 
 .lane-label {
-  background: transparent;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--panel);
   border: none;
   color: var(--text-dim);
   font-size: 13px;
@@ -482,7 +500,10 @@ header h1 {
 }
 
 .roll-label {
-  background: transparent;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--panel);
   border: none;
   color: var(--text-dim);
   font-size: 11px;
@@ -589,7 +610,10 @@ header h1 {
 }
 
 .tab-label {
-  background: transparent;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--panel);
   border: none;
   color: var(--text-dim);
   font-size: 12px;
