@@ -5,6 +5,9 @@ import { createZip } from '../audio/zip';
 import type { ZipEntry } from '../audio/zip';
 import { useStore } from '../store/store';
 
+// Envelope resolution (columns) for Chain X-Ray stage lanes.
+const XRAY_BUCKETS = 800;
+
 export function useAudioEngine() {
   // Individual selectors only — this hook is instantiated by most panels,
   // so a whole-store subscription here would re-render the entire app on
@@ -92,8 +95,14 @@ export function useAudioEngine() {
     return postLufs;
   };
 
-  const processAudio = useCallback(async () => {
+  // Shared processing pass. When captureStages is set — or whenever the
+  // Chain X-Ray panel is open — the run also records the signal envelope
+  // at every stage of the chain, so the panel always matches what the
+  // processed buffer sounds like.
+  const runProcess = async (captureStages: boolean) => {
+    const originalBuffer = useStore.getState().originalBuffer;
     if (!wasmReady || !originalBuffer) return;
+    const withStages = captureStages || useStore.getState().xrayOpen;
 
     setIsProcessing(true);
     try {
@@ -126,8 +135,18 @@ export function useAudioEngine() {
 
       // Float32Array args are transferred to the worker, so interleave a
       // fresh copy per call.
-      const processed = await engine.processBuffer(
-        audioBufferToFloat32Array(originalBuffer), channels, sampleRate);
+      let processed: Float32Array;
+      if (withStages) {
+        const res = await engine.processBufferStages(
+          audioBufferToFloat32Array(originalBuffer), channels, sampleRate, XRAY_BUCKETS);
+        processed = res.output;
+        useStore.getState().setXrayStages(res.stages);
+      } else {
+        processed = await engine.processBuffer(
+          audioBufferToFloat32Array(originalBuffer), channels, sampleRate);
+        // Any previously captured stages no longer describe the last run.
+        useStore.getState().setXrayStages(null);
+      }
       const processedAudioBuffer = float32ArrayToAudioBuffer(processed, channels, sampleRate);
 
       setProcessedBuffer(processedAudioBuffer);
@@ -155,7 +174,28 @@ export function useAudioEngine() {
       useStore.getState().setAlbumCalibrating(null);
       setIsProcessing(false);
     }
-  }, [wasmReady, originalBuffer]);
+  };
+
+  const processAudio = useCallback(() => runProcess(false), [wasmReady]);
+
+  // Open the Chain X-Ray panel, for the given album track (made active)
+  // or the current one. Reuses cached stages when they match the current
+  // processed result; otherwise runs one processing pass with taps.
+  const openChainXray = useCallback(async (trackId?: string) => {
+    const st = useStore.getState();
+    if (trackId && trackId !== st.activeTrackId) {
+      st.setActiveTrack(trackId);
+    }
+    useStore.getState().setXrayOpen(true);
+    const s = useStore.getState();
+    if (!(s.xrayStages && !s.paramsDirty)) {
+      await runProcess(true);
+    }
+    // The lanes show the processed chain — listen to it too.
+    if (useStore.getState().processedBuffer) {
+      useStore.getState().setListenMode('processed');
+    }
+  }, [wasmReady]);
 
   const fetchRecommendation = useCallback(async (target: string) => {
     const { analysis, tracks } = useStore.getState();
@@ -309,6 +349,7 @@ export function useAudioEngine() {
 
   return {
     processAudio,
+    openChainXray,
     analyzeAudio,
     fetchRecommendation,
     exportAlbum,

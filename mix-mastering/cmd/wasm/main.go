@@ -18,6 +18,7 @@ func main() {
 	// Register JS functions
 	js.Global().Set("wasmInitEngine", js.FuncOf(initEngine))
 	js.Global().Set("wasmProcessBuffer", js.FuncOf(processBuffer))
+	js.Global().Set("wasmProcessBufferStages", js.FuncOf(processBufferStages))
 	js.Global().Set("wasmSetParam", js.FuncOf(setParam))
 	js.Global().Set("wasmGetParams", js.FuncOf(getParams))
 	js.Global().Set("wasmSetProcessorEnabled", js.FuncOf(setProcessorEnabled))
@@ -83,6 +84,22 @@ func initEngine(this js.Value, args []js.Value) interface{} {
 	})
 }
 
+// toJSFloat32Array copies a Go float32 slice into a new JS Float32Array.
+func toJSFloat32Array(output []float32) js.Value {
+	jsOutput := js.Global().Get("Float32Array").New(len(output))
+	outBytes := make([]byte, len(output)*4)
+	for i, v := range output {
+		bits := math.Float32bits(v)
+		outBytes[i*4] = byte(bits)
+		outBytes[i*4+1] = byte(bits >> 8)
+		outBytes[i*4+2] = byte(bits >> 16)
+		outBytes[i*4+3] = byte(bits >> 24)
+	}
+	jsOutUint8 := js.Global().Get("Uint8Array").New(jsOutput.Get("buffer"))
+	js.CopyBytesToJS(jsOutUint8, outBytes)
+	return jsOutput
+}
+
 func processBuffer(this js.Value, args []js.Value) interface{} {
 	return safeCall(func() interface{} {
 		input := copyFloat32Array(args[0])
@@ -94,20 +111,31 @@ func processBuffer(this js.Value, args []js.Value) interface{} {
 
 		output := bridge.ProcessBuffer(input, channels, sampleRate)
 
-		// Create output Float32Array
-		jsOutput := js.Global().Get("Float32Array").New(len(output))
-		outBytes := make([]byte, len(output)*4)
-		for i, v := range output {
-			bits := math.Float32bits(v)
-			outBytes[i*4] = byte(bits)
-			outBytes[i*4+1] = byte(bits >> 8)
-			outBytes[i*4+2] = byte(bits >> 16)
-			outBytes[i*4+3] = byte(bits >> 24)
-		}
-		jsOutUint8 := js.Global().Get("Uint8Array").New(jsOutput.Get("buffer"))
-		js.CopyBytesToJS(jsOutUint8, outBytes)
+		return toJSFloat32Array(output)
+	})
+}
 
-		return jsOutput
+// processBufferStages processes like processBuffer but also returns
+// per-stage envelope summaries: {output: Float32Array, stages: string}.
+func processBufferStages(this js.Value, args []js.Value) interface{} {
+	return safeCall(func() interface{} {
+		input := copyFloat32Array(args[0])
+		if len(input) == 0 {
+			result := js.Global().Get("Object").New()
+			result.Set("output", js.Global().Get("Float32Array").New(0))
+			result.Set("stages", "[]")
+			return result
+		}
+		channels := args[1].Int()
+		sampleRate := args[2].Int()
+		buckets := args[3].Int()
+
+		output, stagesJSON := bridge.ProcessBufferStages(input, channels, sampleRate, buckets)
+
+		result := js.Global().Get("Object").New()
+		result.Set("output", toJSFloat32Array(output))
+		result.Set("stages", stagesJSON)
+		return result
 	})
 }
 

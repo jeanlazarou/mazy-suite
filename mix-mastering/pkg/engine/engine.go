@@ -101,12 +101,27 @@ func (e *MasteringEngine) Processors() []dsp.Processor {
 
 // Process runs the entire chain on the given buffer.
 func (e *MasteringEngine) Process(buf *dsp.AudioBuffer) error {
+	return e.ProcessWithTaps(buf, nil)
+}
+
+// ProcessWithTaps runs the chain like Process, additionally invoking tap
+// with the unprocessed input (stage "Input") and after each enabled
+// processor, so callers can capture the signal at every stage of the
+// chain. The buffer passed to tap is the live processing buffer — taps
+// must only read it. A nil tap is allowed.
+func (e *MasteringEngine) ProcessWithTaps(buf *dsp.AudioBuffer, tap func(stage string, buf *dsp.AudioBuffer)) error {
+	if tap != nil {
+		tap("Input", buf)
+	}
 	for _, p := range e.processors {
 		if !p.Enabled() {
 			continue
 		}
 		if err := p.Process(buf); err != nil {
 			return fmt.Errorf("processor %q: %w", p.Name(), err)
+		}
+		if tap != nil {
+			tap(p.Name(), buf)
 		}
 	}
 	return nil

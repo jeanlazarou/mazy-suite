@@ -51,6 +51,17 @@ export interface AnalysisResult {
   channels: number;
 }
 
+// Signal at one stage of the chain, reduced by the Go side to a bucketed
+// min/max/RMS envelope (ready to draw) plus overall peak/RMS levels.
+export interface StageSummary {
+  name: string;
+  mins: number[];
+  maxs: number[];
+  rms: number[];
+  peak_db: number;
+  rms_db: number;
+}
+
 export interface Recommendation {
   target: string;
   suggestions: {
@@ -125,6 +136,17 @@ export class AudioEngine {
 
   processBuffer(data: Float32Array, channels: number, sampleRate: number): Promise<Float32Array> {
     return this.call('wasmProcessBuffer', [data, channels, sampleRate], [data.buffer]);
+  }
+
+  /** Like processBuffer, but also captures the signal at every stage of
+   *  the chain ("Input" + each enabled processor) as drawable envelope
+   *  summaries. buckets is the envelope resolution in columns. */
+  async processBufferStages(
+    data: Float32Array, channels: number, sampleRate: number, buckets: number,
+  ): Promise<{ output: Float32Array; stages: StageSummary[] }> {
+    const res = await this.call<{ output: Float32Array; stages: string }>(
+      'wasmProcessBufferStages', [data, channels, sampleRate, buckets], [data.buffer]);
+    return { output: res.output, stages: JSON.parse(res.stages) };
   }
 
   async setParam(processor: string, param: string, value: number): Promise<void> {

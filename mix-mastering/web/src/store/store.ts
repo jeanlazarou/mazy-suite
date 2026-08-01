@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AnalysisResult, Recommendation, PresetInfo, ProcessorParams, MeterData } from '../wasm/engine';
+import type { AnalysisResult, Recommendation, PresetInfo, ProcessorParams, MeterData, StageSummary } from '../wasm/engine';
 
 export interface AudioFileInfo {
   name: string;
@@ -84,6 +84,12 @@ interface AppState {
   paramsDirty: boolean;
   seekRequest: number | null;
 
+  // Chain X-Ray: per-stage signal envelopes of the active track's last
+  // processing run. Non-null only when it matches the current processed
+  // buffer (cleared on track switch; refreshed by processing while open).
+  xrayOpen: boolean;
+  xrayStages: StageSummary[] | null;
+
   // Actions
   addTracks: (tracks: AlbumTrack[]) => void;
   setActiveTrack: (id: string) => void;
@@ -118,6 +124,8 @@ interface AppState {
   setError: (e: string | null) => void;
   requestSeek: (position: number) => void;
   clearSeekRequest: () => void;
+  setXrayOpen: (v: boolean) => void;
+  setXrayStages: (s: StageSummary[] | null) => void;
   reset: () => void;
 }
 
@@ -133,6 +141,7 @@ const freshTrackView = {
   paramsDirty: true,
   isPlaying: false,
   playbackPosition: 0,
+  xrayStages: null,
 } as const;
 
 export const useStore = create<AppState>((set) => ({
@@ -170,6 +179,8 @@ export const useStore = create<AppState>((set) => ({
   error: null,
   paramsDirty: true,
   seekRequest: null,
+  xrayOpen: false,
+  xrayStages: null,
 
   addTracks: (newTracks) => set((s) => {
     const tracks = [...s.tracks, ...newTracks];
@@ -237,6 +248,8 @@ export const useStore = create<AppState>((set) => ({
   setError: (e) => set({ error: e }),
   requestSeek: (position) => set({ seekRequest: position }),
   clearSeekRequest: () => set({ seekRequest: null }),
+  setXrayOpen: (v) => set({ xrayOpen: v }),
+  setXrayStages: (s) => set({ xrayStages: s }),
   reset: () => set({
     tracks: [],
     activeTrackId: null,
@@ -260,5 +273,7 @@ export const useStore = create<AppState>((set) => ({
     error: null,
     meters: {},
     matchGainDB: null,
+    xrayOpen: false,
+    xrayStages: null,
   }),
 }));

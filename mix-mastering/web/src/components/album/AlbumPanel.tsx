@@ -1,8 +1,9 @@
 import React from 'react';
 import {
   Box, Paper, Typography, Switch, Tooltip, CircularProgress, Button,
-  Table, TableBody, TableCell, TableHead, TableRow,
+  IconButton, Table, TableBody, TableCell, TableHead, TableRow,
 } from '@mui/material';
+import TroubleshootIcon from '@mui/icons-material/Troubleshoot';
 import AlbumIcon from '@mui/icons-material/Album';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -70,7 +71,7 @@ const formatTime = (s: number) => {
 };
 
 export const AlbumPanel: React.FC = () => {
-  const { exportAlbum } = useAudioEngine();
+  const { exportAlbum, openChainXray } = useAudioEngine();
   const isProcessing = useStore((s) => s.isProcessing);
   const tracks = useStore((s) => s.tracks);
   const activeTrackId = useStore((s) => s.activeTrackId);
@@ -160,6 +161,7 @@ export const AlbumPanel: React.FC = () => {
             <TableCell align="right">True peak</TableCell>
             <TableCell align="right">DR</TableCell>
             <TableCell>Balance</TableCell>
+            <TableCell align="center" sx={{ width: 40 }}>X-Ray</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -199,6 +201,22 @@ export const AlbumPanel: React.FC = () => {
                 <TableCell align="right">{fmt(t.analysis?.loudness.true_peak_dbtp, 1, ' dBTP')}</TableCell>
                 <TableCell align="right">{fmt(t.analysis?.dynamics.dynamic_range_db, 1, ' dB')}</TableCell>
                 <TableCell>{t.analysis?.spectrum.spectral_balance ?? '—'}</TableCell>
+                <TableCell align="center" sx={{ py: 0 }}>
+                  <Tooltip title="Chain X-Ray: watch this track's signal at every stage of the mastering chain">
+                    <span>
+                      <IconButton
+                        size="small"
+                        disabled={isProcessing}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openChainXray(t.id);
+                        }}
+                      >
+                        <TroubleshootIcon sx={{ fontSize: 16 }} />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </TableCell>
               </TableRow>
             );
           })}

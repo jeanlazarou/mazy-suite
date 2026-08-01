@@ -2,6 +2,7 @@ package wasm
 
 import (
 	"encoding/json"
+	"math"
 
 	"github.com/audiomaster/mastering/pkg/analysis"
 	"github.com/audiomaster/mastering/pkg/dsp"
@@ -74,6 +75,137 @@ func (b *Bridge) ProcessBuffer(input []float32, channels, sampleRate int) []floa
 	}
 
 	return output
+}
+
+// StageSummary describes the signal at one stage of the chain in a form
+// small enough to ship across the WASM boundary: a min/max/RMS envelope
+// bucketed for direct waveform drawing, plus overall peak and RMS levels.
+type StageSummary struct {
+	Name   string    `json:"name"`
+	Mins   []float64 `json:"mins"`
+	Maxs   []float64 `json:"maxs"`
+	RMS    []float64 `json:"rms"`
+	PeakDB float64   `json:"peak_db"`
+	RMSDB  float64   `json:"rms_db"`
+}
+
+// ProcessBufferStages processes like ProcessBuffer but also captures a
+// StageSummary of the signal at every stage of the chain ("Input" plus
+// each enabled processor), returned as a JSON array. buckets is the
+// envelope resolution (typically the display width in pixels).
+func (b *Bridge) ProcessBufferStages(input []float32, channels, sampleRate, buckets int) ([]float32, string) {
+	if b.Engine == nil {
+		b.InitEngine(sampleRate, channels)
+	} else if sampleRate != b.sampleRate {
+		b.sampleRate = sampleRate
+		b.channels = channels
+		b.Engine.SetSampleRate(sampleRate)
+	}
+
+	length := len(input) / channels
+	buf := dsp.NewAudioBuffer(channels, length, sampleRate)
+	for i := 0; i < length; i++ {
+		for ch := 0; ch < channels; ch++ {
+			buf.Samples[ch][i] = float64(input[i*channels+ch])
+		}
+	}
+
+	var stages []StageSummary
+	b.Engine.Reset()
+	b.Engine.ProcessWithTaps(buf, func(stage string, tapped *dsp.AudioBuffer) {
+		stages = append(stages, summarizeStage(stage, tapped, buckets))
+	})
+
+	output := make([]float32, len(input))
+	for i := 0; i < length; i++ {
+		for ch := 0; ch < channels; ch++ {
+			output[i*channels+ch] = float32(buf.Samples[ch][i])
+		}
+	}
+
+	data, _ := json.Marshal(stages)
+	return output, string(data)
+}
+
+// summarizeStage reduces a buffer to a bucketed min/max/RMS envelope over
+// all channels plus overall peak/RMS in dBFS.
+func summarizeStage(name string, buf *dsp.AudioBuffer, buckets int) StageSummary {
+	n := 0
+	if len(buf.Samples) > 0 {
+		n = len(buf.Samples[0])
+	}
+	if buckets < 1 {
+		buckets = 1
+	}
+	if n > 0 && buckets > n {
+		buckets = n
+	}
+
+	s := StageSummary{
+		Name: name,
+		Mins: make([]float64, buckets),
+		Maxs: make([]float64, buckets),
+		RMS:  make([]float64, buckets),
+	}
+	if n == 0 {
+		s.PeakDB, s.RMSDB = -120, -120
+		return s
+	}
+
+	per := (n + buckets - 1) / buckets
+	peak, sumSq, count := 0.0, 0.0, 0
+	for bkt := 0; bkt < buckets; bkt++ {
+		start := bkt * per
+		end := start + per
+		if end > n {
+			end = n
+		}
+		mn, mx, ss, c := 0.0, 0.0, 0.0, 0
+		for _, ch := range buf.Samples {
+			for i := start; i < end; i++ {
+				v := ch[i]
+				if v < mn {
+					mn = v
+				}
+				if v > mx {
+					mx = v
+				}
+				ss += v * v
+				c++
+			}
+		}
+		if c > 0 {
+			s.RMS[bkt] = round4(math.Sqrt(ss / float64(c)))
+		}
+		s.Mins[bkt] = round4(mn)
+		s.Maxs[bkt] = round4(mx)
+		if -mn > peak {
+			peak = -mn
+		}
+		if mx > peak {
+			peak = mx
+		}
+		sumSq += ss
+		count += c
+	}
+	s.PeakDB = round4(toDB(peak))
+	if count > 0 {
+		s.RMSDB = round4(toDB(math.Sqrt(sumSq / float64(count))))
+	} else {
+		s.RMSDB = -120
+	}
+	return s
+}
+
+func toDB(v float64) float64 {
+	if v <= 1e-6 {
+		return -120
+	}
+	return 20 * math.Log10(v)
+}
+
+func round4(v float64) float64 {
+	return math.Round(v*10000) / 10000
 }
 
 // SetParam sets a parameter on a processor.

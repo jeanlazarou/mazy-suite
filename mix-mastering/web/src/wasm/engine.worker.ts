@@ -68,7 +68,10 @@ self.onmessage = async (e: MessageEvent) => {
       throw new Error(`unknown WASM function: ${method}`);
     }
     const result = fn(...args);
-    const transfer = result instanceof Float32Array ? [result.buffer] : [];
+    // Transfer audio buffers back without copying, whether the result is a
+    // bare Float32Array or an object carrying one under `output`.
+    const transfer = result instanceof Float32Array ? [result.buffer]
+      : result?.output instanceof Float32Array ? [result.output.buffer] : [];
     self.postMessage({ id, result }, transfer);
   } catch (err: any) {
     self.postMessage({ id, error: err?.message ?? String(err) });

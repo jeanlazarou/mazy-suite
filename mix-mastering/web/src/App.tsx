@@ -12,6 +12,7 @@ import { DynamicsHistogram } from './components/visualizers/DynamicsHistogram';
 import { PresetBrowser } from './components/presets/PresetBrowser';
 import { AnalysisPanel } from './components/analysis/AnalysisPanel';
 import { AlbumPanel } from './components/album/AlbumPanel';
+import { ChainXRayPanel } from './components/xray/ChainXRayPanel';
 import { useAudioEngine } from './hooks/useAudioEngine';
 import { useStore } from './store/store';
 import { getAnalyserNode, audioBufferToFloat32Array } from './audio/context';
@@ -24,6 +25,7 @@ const App: React.FC = () => {
   const wasmReady = useStore((s) => s.wasmReady);
   const setError = useStore((s) => s.setError);
   const { analyzeAudio, processAudio } = useAudioEngine();
+  const xrayOpen = useStore((s) => s.xrayOpen);
   const analyser = getAnalyserNode();
 
   // Analysis depends only on the original audio, so run it automatically
@@ -119,6 +121,13 @@ const App: React.FC = () => {
           <Box sx={{ px: 2, pt: 1 }}>
             <Waveform />
           </Box>
+
+          {/* Chain X-Ray (open on demand, per track) */}
+          {xrayOpen && (
+            <Box sx={{ px: 2, pt: 1 }}>
+              <ChainXRayPanel />
+            </Box>
+          )}
 
           {/* Album track list (multiple tracks loaded) */}
           {tracks.length > 1 && (

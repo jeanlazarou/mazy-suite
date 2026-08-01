@@ -140,3 +140,33 @@ func TestEngineDisabledProcessor(t *testing.T) {
 		}
 	}
 }
+
+func TestEngineProcessWithTaps(t *testing.T) {
+	eng := NewWithDefaults(44100, 2)
+	comp, _, err := eng.GetProcessorByName("Compressor")
+	if err != nil {
+		t.Fatalf("get compressor: %v", err)
+	}
+	comp.SetEnabled(false)
+
+	buf := generateSine(1000, 44100, 2, 4410)
+	var stages []string
+	if err := eng.ProcessWithTaps(buf, func(stage string, b *dsp.AudioBuffer) {
+		if b != buf {
+			t.Errorf("tap %q received a different buffer", stage)
+		}
+		stages = append(stages, stage)
+	}); err != nil {
+		t.Fatalf("process with taps: %v", err)
+	}
+
+	want := []string{"Input", "Parametric EQ", "Limiter"}
+	if len(stages) != len(want) {
+		t.Fatalf("stages = %v, want %v", stages, want)
+	}
+	for i := range want {
+		if stages[i] != want[i] {
+			t.Errorf("stage[%d] = %q, want %q", i, stages[i], want[i])
+		}
+	}
+}

@@ -5,6 +5,7 @@ import PauseIcon from '@mui/icons-material/Pause';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import DownloadIcon from '@mui/icons-material/Download';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import TroubleshootIcon from '@mui/icons-material/Troubleshoot';
 import { usePlayback } from '../../hooks/usePlayback';
 import { useAudioEngine } from '../../hooks/useAudioEngine';
 import { useStore } from '../../store/store';
@@ -13,7 +14,11 @@ import { openAudioFilePicker } from '../../audio/loadFiles';
 
 export const TransportBar: React.FC = () => {
   const { togglePlayback, seek, pause } = usePlayback();
-  const { processAudio } = useAudioEngine();
+  const { processAudio, openChainXray } = useAudioEngine();
+  // With an album loaded, the X-ray opens from the per-track buttons in
+  // the track list instead.
+  const singleTrack = useStore((s) => s.tracks.length <= 1);
+  const xrayOpen = useStore((s) => s.xrayOpen);
   const isPlaying = useStore((s) => s.isPlaying);
   const playbackPosition = useStore((s) => s.playbackPosition);
   const fileInfo = useStore((s) => s.fileInfo);
@@ -173,6 +178,20 @@ export const TransportBar: React.FC = () => {
             </Button>
           </span>
         </Tooltip>
+        {singleTrack && (
+          <Tooltip title="Chain X-Ray: watch the signal at every stage of the mastering chain while playing">
+            <span>
+              <IconButton
+                size="small"
+                color={xrayOpen ? 'primary' : 'default'}
+                disabled={isProcessing}
+                onClick={() => openChainXray()}
+              >
+                <TroubleshootIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
         <Tooltip title={processedBuffer ? 'Download processed audio as WAV' : 'Process audio first'}>
           <span>
             <IconButton
