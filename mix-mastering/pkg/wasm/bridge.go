@@ -87,13 +87,19 @@ type StageSummary struct {
 	RMS    []float64 `json:"rms"`
 	PeakDB float64   `json:"peak_db"`
 	RMSDB  float64   `json:"rms_db"`
+	// Optional spectrogram: [time column][band] peak level in dBFS over
+	// log-spaced bands (SpecFreqs holds the band centers in Hz).
+	SpecDB    [][]float64 `json:"spec_db,omitempty"`
+	SpecFreqs []float64   `json:"spec_freqs,omitempty"`
 }
 
 // ProcessBufferStages processes like ProcessBuffer but also captures a
 // StageSummary of the signal at every stage of the chain ("Input" plus
 // each enabled processor), returned as a JSON array. buckets is the
-// envelope resolution (typically the display width in pixels).
-func (b *Bridge) ProcessBufferStages(input []float32, channels, sampleRate, buckets int) ([]float32, string) {
+// envelope resolution (typically the display width in pixels). specCols
+// > 0 additionally computes a spectrogram with that many time columns
+// per stage.
+func (b *Bridge) ProcessBufferStages(input []float32, channels, sampleRate, buckets, specCols int) ([]float32, string) {
 	if b.Engine == nil {
 		b.InitEngine(sampleRate, channels)
 	} else if sampleRate != b.sampleRate {
@@ -113,7 +119,11 @@ func (b *Bridge) ProcessBufferStages(input []float32, channels, sampleRate, buck
 	var stages []StageSummary
 	b.Engine.Reset()
 	b.Engine.ProcessWithTaps(buf, func(stage string, tapped *dsp.AudioBuffer) {
-		stages = append(stages, summarizeStage(stage, tapped, buckets))
+		s := summarizeStage(stage, tapped, buckets)
+		if specCols > 0 {
+			s.SpecDB, s.SpecFreqs = spectrogram(tapped, specCols, sampleRate)
+		}
+		stages = append(stages, s)
 	})
 
 	output := make([]float32, len(input))

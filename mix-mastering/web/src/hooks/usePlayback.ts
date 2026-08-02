@@ -1,6 +1,33 @@
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { getAudioContext, resumeAudioContext, getAnalyserNode, getPlaybackGainNode, setPlaybackGainDB } from '../audio/context';
 import { useStore } from '../store/store';
+
+// Playback source state is module-level: there is exactly one playing
+// source at a time no matter how many components use this hook, and
+// components that unmount (e.g. the transport when the Chain X-Ray view
+// takes over) must not orphan a playing source.
+const playback = {
+  source: null as AudioBufferSourceNode | null,
+  startTime: 0,
+  offset: 0,
+};
+
+/** Stop any playing source. Safe to call from outside the hook (e.g.
+ *  when a view without a transport takes over the screen). */
+export function stopPlayback(): void {
+  if (playback.source) {
+    try {
+      playback.source.onended = null;
+      playback.source.stop();
+    } catch {
+      // Already stopped
+    }
+    playback.source = null;
+  }
+  playback.offset = 0;
+  useStore.getState().setIsPlaying(false);
+  useStore.getState().setPlaybackPosition(0);
+}
 
 export function usePlayback() {
   // Individual selectors: a whole-store subscription here would re-render
@@ -16,10 +43,6 @@ export function usePlayback() {
   const loudnessMatch = useStore((s) => s.loudnessMatch);
   const matchGainDB = useStore((s) => s.matchGainDB);
 
-  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const startTimeRef = useRef(0);
-  const offsetRef = useRef(0);
-
   // Select the active buffer: processed if available and selected, otherwise original
   const getBuffer = useCallback((): AudioBuffer | null => {
     if (listenMode === 'processed' && processedBuffer) {
@@ -29,14 +52,14 @@ export function usePlayback() {
   }, [listenMode, originalBuffer, processedBuffer]);
 
   const stopSource = useCallback(() => {
-    if (sourceRef.current) {
+    if (playback.source) {
       try {
-        sourceRef.current.onended = null;
-        sourceRef.current.stop();
+        playback.source.onended = null;
+        playback.source.stop();
       } catch {
         // Already stopped
       }
-      sourceRef.current = null;
+      playback.source = null;
     }
   }, []);
 
@@ -54,23 +77,23 @@ export function usePlayback() {
     source.connect(getPlaybackGainNode());
 
     source.onended = () => {
-      sourceRef.current = null;
+      playback.source = null;
       setIsPlaying(false);
       setPlaybackPosition(0);
-      offsetRef.current = 0;
+      playback.offset = 0;
     };
 
-    const offset = Math.min(offsetRef.current, buffer.duration);
+    const offset = Math.min(playback.offset, buffer.duration);
     source.start(0, offset);
-    startTimeRef.current = ctx.currentTime - offset;
-    sourceRef.current = source;
+    playback.startTime = ctx.currentTime - offset;
+    playback.source = source;
     setIsPlaying(true);
   }, [getBuffer, stopSource]);
 
   const pause = useCallback(() => {
-    if (sourceRef.current) {
+    if (playback.source) {
       const ctx = getAudioContext();
-      offsetRef.current = ctx.currentTime - startTimeRef.current;
+      playback.offset = ctx.currentTime - playback.startTime;
     }
     stopSource();
     setIsPlaying(false);
@@ -85,7 +108,7 @@ export function usePlayback() {
   }, [isPlaying, play, pause]);
 
   const seek = useCallback((position: number) => {
-    offsetRef.current = position;
+    playback.offset = position;
     setPlaybackPosition(position);
     if (isPlaying) {
       stopSource();
@@ -102,7 +125,7 @@ export function usePlayback() {
     let lastPos = -1;
     const update = () => {
       const ctx = getAudioContext();
-      const pos = ctx.currentTime - startTimeRef.current;
+      const pos = ctx.currentTime - playback.startTime;
       if (Math.abs(pos - lastPos) > 0.1) {
         lastPos = pos;
         setPlaybackPosition(pos);
@@ -116,11 +139,11 @@ export function usePlayback() {
   // Switch buffer seamlessly when the A/B toggle changes during playback,
   // or when a processed result arrives while already listening in B mode.
   useEffect(() => {
-    if (!isPlaying || !sourceRef.current) return;
+    if (!isPlaying || !playback.source) return;
     const buffer = listenMode === 'processed' && processedBuffer ? processedBuffer : originalBuffer;
-    if (!buffer || sourceRef.current.buffer === buffer) return;
+    if (!buffer || playback.source.buffer === buffer) return;
     const ctx = getAudioContext();
-    offsetRef.current = ctx.currentTime - startTimeRef.current;
+    playback.offset = ctx.currentTime - playback.startTime;
     stopSource();
 
     const source = ctx.createBufferSource();
@@ -128,16 +151,16 @@ export function usePlayback() {
     source.connect(getPlaybackGainNode());
 
     source.onended = () => {
-      sourceRef.current = null;
+      playback.source = null;
       setIsPlaying(false);
       setPlaybackPosition(0);
-      offsetRef.current = 0;
+      playback.offset = 0;
     };
 
-    const offset = Math.min(offsetRef.current, buffer.duration);
+    const offset = Math.min(playback.offset, buffer.duration);
     source.start(0, offset);
-    startTimeRef.current = ctx.currentTime - offset;
-    sourceRef.current = source;
+    playback.startTime = ctx.currentTime - offset;
+    playback.source = source;
   }, [listenMode, processedBuffer]);
 
   // Loudness-matched A/B: trim processed playback to the original's
@@ -151,7 +174,7 @@ export function usePlayback() {
   useEffect(() => {
     stopSource();
     setIsPlaying(false);
-    offsetRef.current = 0;
+    playback.offset = 0;
     setPlaybackPosition(0);
   }, [originalBuffer]);
 

@@ -4,9 +4,18 @@ import { audioBufferToFloat32Array, float32ArrayToAudioBuffer, encodeWav } from 
 import { createZip } from '../audio/zip';
 import type { ZipEntry } from '../audio/zip';
 import { useStore } from '../store/store';
+import { stopPlayback } from './usePlayback';
 
-// Envelope resolution (columns) for Chain X-Ray stage lanes.
-const XRAY_BUCKETS = 800;
+// Chain X-Ray resolutions: envelope buckets (high, for horizontal zoom)
+// and spectrogram time columns.
+const XRAY_BUCKETS = 4096;
+const XRAY_SPEC_COLS = 800;
+
+// Guards against overlapping computeXrayStages runs (e.g. one triggered
+// while params were still loading, another right after they arrived):
+// only the result of the most recently *started* run is ever committed,
+// so a slow stale run can't clobber a frester one that finishes first.
+let xrayRunSeq = 0;
 
 export function useAudioEngine() {
   // Individual selectors only — this hook is instantiated by most panels,
@@ -95,58 +104,46 @@ export function useAudioEngine() {
     return postLufs;
   };
 
-  // Shared processing pass. When captureStages is set — or whenever the
-  // Chain X-Ray panel is open — the run also records the signal envelope
-  // at every stage of the chain, so the panel always matches what the
-  // processed buffer sounds like.
-  const runProcess = async (captureStages: boolean) => {
+  // Prepare the engine for a full-chain run under the current settings:
+  // init at the audio's rate, apply params/bypass, and configure album
+  // loudness (one shared Gain offset instead of per-track normalization).
+  const prepareEngineRun = async (channels: number, sampleRate: number) => {
+    const { albumMode, tracks } = useStore.getState();
+    let albumOffsetDB: number | null = null;
+    if (albumMode && tracks.length > 1) {
+      const postLufs = await ensureAlbumCalibration();
+      if (postLufs !== null && postLufs > -100) {
+        const target = useStore.getState().params['Loudness Normalizer']?.target_lufs ?? -14;
+        albumOffsetDB = target - postLufs;
+      }
+    }
+
+    await engine.initEngine(sampleRate, channels);
+    await applyEngineState();
+
+    if (albumOffsetDB !== null) {
+      await engine.setProcessorEnabled('Loudness Normalizer', false);
+      await engine.setParam('Gain', 'gain_db', albumOffsetDB);
+    } else {
+      await engine.setParam('Gain', 'gain_db', 0);
+    }
+  };
+
+  // Full processing pass: chain + meters + result analysis + match gain.
+  const runProcess = async () => {
     const originalBuffer = useStore.getState().originalBuffer;
     if (!wasmReady || !originalBuffer) return;
-    const withStages = captureStages || useStore.getState().xrayOpen;
 
     setIsProcessing(true);
     try {
       const channels = originalBuffer.numberOfChannels;
       const sampleRate = originalBuffer.sampleRate;
-
-      // Album mode: one shared gain offset (post-chain album loudness ->
-      // target) replaces per-track normalization, preserving relative
-      // track levels.
-      const { albumMode, tracks } = useStore.getState();
-      let albumOffsetDB: number | null = null;
-      if (albumMode && tracks.length > 1) {
-        const postLufs = await ensureAlbumCalibration();
-        if (postLufs !== null && postLufs > -100) {
-          const target = useStore.getState().params['Loudness Normalizer']?.target_lufs ?? -14;
-          albumOffsetDB = target - postLufs;
-        }
-      }
-
-      // Initialize engine with audio params
-      await engine.initEngine(sampleRate, channels);
-      await applyEngineState();
-
-      if (albumOffsetDB !== null) {
-        await engine.setProcessorEnabled('Loudness Normalizer', false);
-        await engine.setParam('Gain', 'gain_db', albumOffsetDB);
-      } else {
-        await engine.setParam('Gain', 'gain_db', 0);
-      }
+      await prepareEngineRun(channels, sampleRate);
 
       // Float32Array args are transferred to the worker, so interleave a
       // fresh copy per call.
-      let processed: Float32Array;
-      if (withStages) {
-        const res = await engine.processBufferStages(
-          audioBufferToFloat32Array(originalBuffer), channels, sampleRate, XRAY_BUCKETS);
-        processed = res.output;
-        useStore.getState().setXrayStages(res.stages);
-      } else {
-        processed = await engine.processBuffer(
-          audioBufferToFloat32Array(originalBuffer), channels, sampleRate);
-        // Any previously captured stages no longer describe the last run.
-        useStore.getState().setXrayStages(null);
-      }
+      const processed = await engine.processBuffer(
+        audioBufferToFloat32Array(originalBuffer), channels, sampleRate);
       const processedAudioBuffer = float32ArrayToAudioBuffer(processed, channels, sampleRate);
 
       setProcessedBuffer(processedAudioBuffer);
@@ -176,26 +173,111 @@ export function useAudioEngine() {
     }
   };
 
-  const processAudio = useCallback(() => runProcess(false), [wasmReady]);
+  const processAudio = useCallback(() => runProcess(), [wasmReady]);
 
-  // Open the Chain X-Ray panel, for the given album track (made active)
-  // or the current one. Reuses cached stages when they match the current
-  // processed result; otherwise runs one processing pass with taps.
-  const openChainXray = useCallback(async (trackId?: string) => {
+  // Settings identity for the X-ray stage capture: the stages are valid
+  // only for the params/bypass/track they were computed under.
+  const xraySettingsKey = () => {
+    const s = useStore.getState();
+    return JSON.stringify({
+      p: s.params,
+      e: Object.entries(s.processorEnabled).sort(),
+      t: s.activeTrackId,
+      a: s.albumMode,
+    });
+  };
+
+  // Lean stage-capture pass for the Chain X-Ray view: chain + envelope
+  // and spectrogram summaries only — no processed buffer, no result
+  // analysis, no match gain. Refreshes the active setup's snapshot when
+  // the capture corresponds to a just-applied setup.
+  const computeXrayStages = useCallback(async () => {
+    const originalBuffer = useStore.getState().originalBuffer;
+    if (!wasmReady || !originalBuffer) return;
+    const mySeq = ++xrayRunSeq;
+    const { setXrayBusy, setXrayStages } = useStore.getState();
+
+    setXrayBusy(true);
+    try {
+      const channels = originalBuffer.numberOfChannels;
+      const sampleRate = originalBuffer.sampleRate;
+      // prepareEngineRun may be the very first call to touch the WASM
+      // engine (loading a file only runs analysis, not the chain), in
+      // which case it initializes fresh engine-side defaults rather than
+      // applying anything from (still-empty) store params.
+      await prepareEngineRun(channels, sampleRate);
+      const res = await engine.processBufferStages(
+        audioBufferToFloat32Array(originalBuffer), channels, sampleRate,
+        XRAY_BUCKETS, XRAY_SPEC_COLS);
+      if (mySeq !== xrayRunSeq) return; // superseded by a newer run
+      // Sync the store from the engine's actual post-run state *before*
+      // computing the settings key, so the key (and any setup saved from
+      // it) always matches what was really processed — never a stale or
+      // still-empty params snapshot from before the engine existed.
+      setParams(await engine.getParams());
+      setXrayStages(res.stages, xraySettingsKey());
+      setMeters(await engine.getMeters());
+    } catch (err: any) {
+      if (mySeq === xrayRunSeq) setError(`Chain X-Ray failed: ${err.message}`);
+    } finally {
+      useStore.getState().setAlbumCalibrating(null);
+      if (mySeq === xrayRunSeq) useStore.getState().setXrayBusy(false);
+    }
+  }, [wasmReady]);
+
+  // Open the Chain X-Ray view, for the given album track (made active) or
+  // the current one. The view itself triggers stage computation whenever
+  // the settings key changes, so nothing is computed here.
+  const openChainXray = useCallback((trackId?: string) => {
+    stopPlayback();
     const st = useStore.getState();
     if (trackId && trackId !== st.activeTrackId) {
       st.setActiveTrack(trackId);
     }
     useStore.getState().setXrayOpen(true);
+  }, []);
+
+  // Apply a saved setup's params and bypass state. When the setup carries
+  // a stage capture for the current track, the lanes are restored from it
+  // instantly (the capture was made under exactly these settings), so
+  // flipping between setups is an immediate visual A/B — no reprocessing.
+  const applyXraySetup = useCallback(async (setupId: string) => {
+    const setup = useStore.getState().xraySetups.find((x) => x.id === setupId);
+    if (!setup) return;
+    for (const [proc, procParams] of Object.entries(setup.params)) {
+      for (const [param, value] of Object.entries(procParams)) {
+        await engine.setParam(proc, param, value);
+      }
+    }
+    for (const [name, enabled] of Object.entries(setup.enabled)) {
+      useStore.getState().setProcessorEnabledState(name, enabled);
+      await engine.setProcessorEnabled(name, enabled);
+    }
+    setParams(await engine.getParams());
+    // setParams cleared the marker; this is an exact setup application.
+    useStore.getState().setXrayActiveSetup(setupId);
+    if (setup.stages && setup.stagesKey === xraySettingsKey()) {
+      useStore.getState().setXrayStages(setup.stages, setup.stagesKey);
+      if (setup.meters) setMeters(setup.meters);
+    }
+  }, []);
+
+  // Snapshot the current settings (and stage capture, for diffing) as a
+  // named setup.
+  const saveXraySetup = useCallback((name: string) => {
     const s = useStore.getState();
-    if (!(s.xrayStages && !s.paramsDirty)) {
-      await runProcess(true);
-    }
-    // The lanes show the processed chain — listen to it too.
-    if (useStore.getState().processedBuffer) {
-      useStore.getState().setListenMode('processed');
-    }
-  }, [wasmReady]);
+    const fresh = s.xrayStagesKey === xraySettingsKey();
+    s.addXraySetup({
+      id: `setup-${Date.now()}`,
+      name,
+      trackId: s.activeTrackId,
+      params: s.params,
+      enabled: { ...s.processorEnabled },
+      stages: fresh ? s.xrayStages : null,
+      meters: fresh ? s.meters : null,
+      stagesKey: fresh ? s.xrayStagesKey : null,
+    });
+  }, []);
 
   const fetchRecommendation = useCallback(async (target: string) => {
     const { analysis, tracks } = useStore.getState();
@@ -350,6 +432,10 @@ export function useAudioEngine() {
   return {
     processAudio,
     openChainXray,
+    computeXrayStages,
+    xraySettingsKey,
+    applyXraySetup,
+    saveXraySetup,
     analyzeAudio,
     fetchRecommendation,
     exportAlbum,

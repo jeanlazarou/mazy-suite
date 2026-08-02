@@ -12,7 +12,7 @@ import { DynamicsHistogram } from './components/visualizers/DynamicsHistogram';
 import { PresetBrowser } from './components/presets/PresetBrowser';
 import { AnalysisPanel } from './components/analysis/AnalysisPanel';
 import { AlbumPanel } from './components/album/AlbumPanel';
-import { ChainXRayPanel } from './components/xray/ChainXRayPanel';
+import { ChainXRayView } from './components/xray/ChainXRayView';
 import { useAudioEngine } from './hooks/useAudioEngine';
 import { useStore } from './store/store';
 import { getAnalyserNode, audioBufferToFloat32Array } from './audio/context';
@@ -43,8 +43,10 @@ const App: React.FC = () => {
   // original right away (a track switch clears the processed buffer).
   const activeTrackId = useStore((s) => s.activeTrackId);
   useEffect(() => {
-    const { tracks, activePreset, appliedTarget, paramsEdited, isProcessing } = useStore.getState();
+    const { tracks, activePreset, appliedTarget, paramsEdited, isProcessing, xrayOpen: inXray } = useStore.getState();
     if (!wasmReady || tracks.length < 2 || isProcessing) return;
+    // In the Chain X-Ray view stage capture handles its own processing.
+    if (inXray) return;
     if (!(activePreset || appliedTarget || paramsEdited)) return;
     processAudio();
   }, [activeTrackId]);
@@ -110,6 +112,8 @@ const App: React.FC = () => {
         <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4 }}>
           <FileDropZone />
         </Box>
+      ) : xrayOpen ? (
+        <ChainXRayView />
       ) : (
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Transport bar */}
@@ -121,13 +125,6 @@ const App: React.FC = () => {
           <Box sx={{ px: 2, pt: 1 }}>
             <Waveform />
           </Box>
-
-          {/* Chain X-Ray (open on demand, per track) */}
-          {xrayOpen && (
-            <Box sx={{ px: 2, pt: 1 }}>
-              <ChainXRayPanel />
-            </Box>
-          )}
 
           {/* Album track list (multiple tracks loaded) */}
           {tracks.length > 1 && (

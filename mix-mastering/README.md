@@ -23,20 +23,22 @@ cd web && npx vite
 
 ## CLI Commands
 
-| Command                                 | Description                                   |
-| --------------------------------------- | --------------------------------------------- |
-| `master process <file> -o <out>`        | Process audio through the mastering chain     |
-| `master analyze <file> --target <t>`    | Analyze audio and get recommendations         |
-| `master preset list [--category genre]` | List presets (filter by genre/target/usecase) |
-| `master preset search <query>`          | Search presets by name, description, or tags  |
-| `master preset show <name>`             | Show preset details as JSON                   |
-| `master batch <dir> -o <outdir>`        | Batch process a directory of audio files      |
+| Command                                 | Description                                                  |
+| ---------------------------------------- | ------------------------------------------------------------ |
+| `master process <file> -o <out>`         | Process a single file through the mastering chain             |
+| `master analyze <file> --target <t>`     | Analyze audio and get recommendations                          |
+| `master preset list [--category genre]`  | List presets (filter by genre/target/usecase)                 |
+| `master preset search <query>`           | Search presets by name, description, or tags                  |
+| `master preset show <name>`              | Show preset details as JSON                                    |
+| `master batch <dir> -o <outdir>`         | Process every file in a directory independently                |
+| `master album <dir> -o <outdir>`         | Master a directory as one album: shared chain, loudness normalized by a single offset computed from the album's integrated loudness (preserves relative track levels) — use this instead of `batch` for related tracks |
 
 ### Process flags
 
 - `-o, --output` — Output file path (required)
 - `-p, --preset` — Preset name to apply
-- `-b, --bit-depth` — Output bit depth (16, 24, 32)
+- `-b, --bit-depth` — Output bit depth (16, 24, 32; default: same as input)
+- `-r, --sample-rate` — Output sample rate in Hz (default: same as input)
 - `--eq`, `--comp`, `--limit` — Toggle individual processors
 
 ### Analyze targets
@@ -45,25 +47,29 @@ cd web && npx vite
 
 ## Web UI
 
-The web interface runs the Go DSP engine via WebAssembly in the browser. Features:
+The web interface runs the Go DSP engine via WebAssembly in a Web Worker (so processing never blocks the UI). Features:
 
-- Drag-and-drop audio file loading
-- Real-time A/B comparison (original vs processed)
+- Drag-and-drop file loading, single track or a whole album at once
+- Album mastering: one shared chain and a single loudness offset across tracks, so relative levels are preserved instead of squashed flat
+- Chain X-Ray: a full-screen workbench showing the signal at every stage of the chain as waveform or spectrogram lanes, with in-place processor editing (changes ripple through downstream lanes) and instant visual A/B between saved setups
+- Loudness-matched A/B (original vs processed, trimmed to equal LUFS) and per-run gain-reduction stats
 - Interactive EQ curve, knob controls for compressor/limiter/stereo
 - Spectrum analyzer, waveform display, stereo field (Lissajous), LUFS meter
 - Preset browser with search and filtering
-- Analysis panel with per-target recommendations
+- Analysis panel with per-target recommendations (aggregated across the album when more than one track is loaded)
 
 ## DSP Chain
 
+The full chain used by the web UI and CLI (`engine.NewFullChain`) runs in this order — the limiter stays last so its ceiling holds on the actual output:
+
 1. **Parametric EQ** — 6-band (HPF, low shelf, 2× peak, high shelf, LPF)
-2. **Compressor** — Soft-knee with attack/release envelope
-3. **Limiter** — Lookahead brickwall limiter
-4. **Stereo Widener** — Mid/side width control
-5. **Loudness Normalizer** — LUFS-based normalization
-6. **Multiband Compressor** — 3-band (low/mid/high)
-7. **Harmonic Exciter** — Tanh saturation on high frequencies
-8. **De-Esser** — Sibilance reduction with bandpass detection
+2. **Stereo Widener** — Mid/side width control
+3. **Compressor** — Soft-knee with attack/release envelope
+4. **Loudness Normalizer** — LUFS-based normalization (disabled by default; the web UI enables it, the CLI enables it when a preset configures it)
+5. **Gain** — Unity by default; carries the shared album loudness offset in album mastering
+6. **Limiter** — Lookahead brickwall limiter, zero added latency
+
+`pkg/dsp` also implements a Multiband Compressor, Harmonic Exciter, and De-Esser — functional and tested, but not yet wired into any chain or preset.
 
 ## Supported Formats
 
@@ -106,24 +112,3 @@ go build -o bin/master ./cmd/master/
 # WASM only
 GOOS=js GOARCH=wasm go build -o web/public/engine.wasm ./cmd/wasm/
 ```
-
---------
-
-<pre><font color="#FFFFFF">●</font> Sounds good. Here&apos;s a quick summary of where things stand:                                                                                                                                                                         
-                                                                                                                                                                                                                                     
-  <b>Working:</b>                                                                                                                                                                                                                           
-  - Go backend: all 25 tests pass, CLI builds and runs (<font color="#99CCFF">process</font>, <font color="#99CCFF">analyze</font>, <font color="#99CCFF">preset</font>, <font color="#99CCFF">batch</font>)                                                                                                                                             
-  - WASM: compiles (4.6MB), bridge has panic recovery                                                                                                                                                                                
-  - Web UI: TypeScript compiles clean, Vite builds                                                                                                                                                                                   
-                                                                                                                                                                                                                                     
-  <b>Fixed</b> <b>during</b> <b>session:</b>
-  - Zustand infinite re-render loop (<font color="#99CCFF">||</font> <font color="#99CCFF">{}</font> → <font color="#99CCFF">??</font> <font color="#99CCFF">EMPTY_PARAMS</font>)
-  - WASM &quot;already exited&quot; crash (GC&apos;d Go instance + missing panic recovery + bad <font color="#99CCFF">byteOffset</font> handling)
-
-  <b>To</b> <b>validate</b> <b>when</b> <b>you</b> <b>return:</b>
-  1. <font color="#99CCFF">cd</font> <font color="#99CCFF">web</font> <font color="#99CCFF">&amp;&amp;</font> <font color="#99CCFF">npx</font> <font color="#99CCFF">vite</font> → load a file → click Process → check A/B playback works
-  2. Click Analyze → verify recommendations appear
-  3. Try applying a preset then processing
-
-  If you hit issues, the browser console will now show <font color="#99CCFF">&quot;WASM</font> <font color="#99CCFF">panic:</font> <font color="#99CCFF">...&quot;</font> messages instead of silent crashes.
-</pre>

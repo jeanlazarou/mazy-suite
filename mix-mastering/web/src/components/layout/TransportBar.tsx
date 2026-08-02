@@ -179,7 +179,7 @@ export const TransportBar: React.FC = () => {
           </span>
         </Tooltip>
         {singleTrack && (
-          <Tooltip title="Chain X-Ray: watch the signal at every stage of the mastering chain while playing">
+          <Tooltip title="Chain X-Ray: inspect and shape the signal at every stage of the mastering chain">
             <span>
               <IconButton
                 size="small"

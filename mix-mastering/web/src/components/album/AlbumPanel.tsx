@@ -202,7 +202,7 @@ export const AlbumPanel: React.FC = () => {
                 <TableCell align="right">{fmt(t.analysis?.dynamics.dynamic_range_db, 1, ' dB')}</TableCell>
                 <TableCell>{t.analysis?.spectrum.spectral_balance ?? '—'}</TableCell>
                 <TableCell align="center" sx={{ py: 0 }}>
-                  <Tooltip title="Chain X-Ray: watch this track's signal at every stage of the mastering chain">
+                  <Tooltip title="Chain X-Ray: inspect and shape this track's signal at every stage of the mastering chain">
                     <span>
                       <IconButton
                         size="small"

@@ -129,8 +129,9 @@ func processBufferStages(this js.Value, args []js.Value) interface{} {
 		channels := args[1].Int()
 		sampleRate := args[2].Int()
 		buckets := args[3].Int()
+		specCols := args[4].Int()
 
-		output, stagesJSON := bridge.ProcessBufferStages(input, channels, sampleRate, buckets)
+		output, stagesJSON := bridge.ProcessBufferStages(input, channels, sampleRate, buckets, specCols)
 
 		result := js.Global().Get("Object").New()
 		result.Set("output", toJSFloat32Array(output))

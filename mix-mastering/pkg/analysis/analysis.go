@@ -347,6 +347,13 @@ func linToDb(v float64) float64 {
 	return 20 * math.Log10(v)
 }
 
+// FFT computes the discrete Fourier transform of x (padded to a power of
+// two). Exported for other packages that need raw spectra (e.g. the WASM
+// bridge's per-stage spectrograms).
+func FFT(x []complex128) []complex128 {
+	return fft(x)
+}
+
 // Simple Cooley-Tukey FFT
 func fft(x []complex128) []complex128 {
 	n := len(x)

@@ -8,6 +8,23 @@ export interface AudioFileInfo {
   channels: number;
 }
 
+export interface XraySetup {
+  id: string;
+  name: string;
+  // Track the stages snapshot was captured on.
+  trackId: string | null;
+  params: ProcessorParams;
+  enabled: Record<string, boolean>;
+  stages: StageSummary[] | null;
+  // Gain-reduction meters captured alongside stages — the lane labels
+  // read from live `meters` state, so restoring stages without these
+  // would leave GR readouts showing the previous setup's values.
+  meters: MeterData | null;
+  // Settings key the capture was made under; applying the setup restores
+  // the lanes instantly when the key matches the post-apply settings.
+  stagesKey: string | null;
+}
+
 export interface AlbumTrack {
   id: string;
   name: string;
@@ -84,11 +101,20 @@ interface AppState {
   paramsDirty: boolean;
   seekRequest: number | null;
 
-  // Chain X-Ray: per-stage signal envelopes of the active track's last
-  // processing run. Non-null only when it matches the current processed
-  // buffer (cleared on track switch; refreshed by processing while open).
+  // Chain X-Ray view: full-screen workbench showing per-stage signal
+  // envelopes and spectrograms of the active track under the current
+  // settings. xrayStagesKey records the settings+track the stages were
+  // computed for, so the view knows when to recompute.
   xrayOpen: boolean;
   xrayStages: StageSummary[] | null;
+  xrayStagesKey: string | null;
+  xrayBusy: boolean;
+
+  // Saved setups: named parameter snapshots (plus the stage capture they
+  // were saved with, so switching setups flips the lanes instantly for
+  // visual A/B comparison).
+  xraySetups: XraySetup[];
+  xrayActiveSetupId: string | null; // setup the current params came from
 
   // Actions
   addTracks: (tracks: AlbumTrack[]) => void;
@@ -125,7 +151,11 @@ interface AppState {
   requestSeek: (position: number) => void;
   clearSeekRequest: () => void;
   setXrayOpen: (v: boolean) => void;
-  setXrayStages: (s: StageSummary[] | null) => void;
+  setXrayStages: (s: StageSummary[] | null, key: string | null) => void;
+  setXrayBusy: (v: boolean) => void;
+  addXraySetup: (setup: XraySetup) => void;
+  deleteXraySetup: (id: string) => void;
+  setXrayActiveSetup: (id: string | null) => void;
   reset: () => void;
 }
 
@@ -142,6 +172,7 @@ const freshTrackView = {
   isPlaying: false,
   playbackPosition: 0,
   xrayStages: null,
+  xrayStagesKey: null,
 } as const;
 
 export const useStore = create<AppState>((set) => ({
@@ -181,6 +212,10 @@ export const useStore = create<AppState>((set) => ({
   seekRequest: null,
   xrayOpen: false,
   xrayStages: null,
+  xrayStagesKey: null,
+  xrayBusy: false,
+  xraySetups: [],
+  xrayActiveSetupId: null,
 
   addTracks: (newTracks) => set((s) => {
     const tracks = [...s.tracks, ...newTracks];
@@ -227,7 +262,10 @@ export const useStore = create<AppState>((set) => ({
   setPlaybackPosition: (v) => set({ playbackPosition: v }),
   setListenMode: (mode) => set({ listenMode: mode }),
   setWasmReady: (v) => set({ wasmReady: v }),
-  setParams: (params) => set({ params, paramsDirty: true }),
+  // Any params change means the current settings may no longer exactly
+  // match the setup they came from, so the active-setup marker clears;
+  // paths that apply a setup re-set it afterwards.
+  setParams: (params) => set({ params, paramsDirty: true, xrayActiveSetupId: null }),
   setMeters: (m) => set({ meters: m }),
   setProcessorEnabledState: (name, enabled) => set((s) => ({
     processorEnabled: { ...s.processorEnabled, [name]: enabled },
@@ -249,7 +287,17 @@ export const useStore = create<AppState>((set) => ({
   requestSeek: (position) => set({ seekRequest: position }),
   clearSeekRequest: () => set({ seekRequest: null }),
   setXrayOpen: (v) => set({ xrayOpen: v }),
-  setXrayStages: (s) => set({ xrayStages: s }),
+  setXrayStages: (s, key) => set({ xrayStages: s, xrayStagesKey: key }),
+  setXrayBusy: (v) => set({ xrayBusy: v }),
+  addXraySetup: (setup) => set((s) => ({
+    xraySetups: [...s.xraySetups, setup],
+    xrayActiveSetupId: setup.id,
+  })),
+  deleteXraySetup: (id) => set((s) => ({
+    xraySetups: s.xraySetups.filter((x) => x.id !== id),
+    xrayActiveSetupId: s.xrayActiveSetupId === id ? null : s.xrayActiveSetupId,
+  })),
+  setXrayActiveSetup: (id) => set({ xrayActiveSetupId: id }),
   reset: () => set({
     tracks: [],
     activeTrackId: null,
@@ -275,5 +323,7 @@ export const useStore = create<AppState>((set) => ({
     matchGainDB: null,
     xrayOpen: false,
     xrayStages: null,
+    xrayStagesKey: null,
+    xrayBusy: false,
   }),
 }));

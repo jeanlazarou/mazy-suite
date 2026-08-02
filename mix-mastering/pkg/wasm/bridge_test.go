@@ -32,7 +32,7 @@ func TestProcessBufferStages(t *testing.T) {
 	plainOut := plain.ProcessBuffer(append([]float32(nil), input...), channels, sampleRate)
 
 	staged := NewBridge()
-	output, stagesJSON := staged.ProcessBufferStages(append([]float32(nil), input...), channels, sampleRate, buckets)
+	output, stagesJSON := staged.ProcessBufferStages(append([]float32(nil), input...), channels, sampleRate, buckets, 0)
 
 	if len(output) != len(plainOut) {
 		t.Fatalf("output length = %d, want %d", len(output), len(plainOut))
@@ -81,7 +81,7 @@ func TestProcessBufferStages(t *testing.T) {
 func TestSummarizeStageEmptyAndTiny(t *testing.T) {
 	// Fewer frames than buckets must clamp, not panic.
 	staged := NewBridge()
-	out, stagesJSON := staged.ProcessBufferStages(sineInterleaved(1000, 44100, 2, 10, 0.5), 2, 44100, 800)
+	out, stagesJSON := staged.ProcessBufferStages(sineInterleaved(1000, 44100, 2, 10, 0.5), 2, 44100, 800, 0)
 	if len(out) != 20 {
 		t.Fatalf("output length = %d, want 20", len(out))
 	}
@@ -93,5 +93,46 @@ func TestSummarizeStageEmptyAndTiny(t *testing.T) {
 		if len(s.Mins) != 10 {
 			t.Errorf("stage %q buckets = %d, want clamped to 10", s.Name, len(s.Mins))
 		}
+	}
+}
+
+func TestProcessBufferStagesSpectrogram(t *testing.T) {
+	const (
+		sampleRate = 44100
+		channels   = 2
+		frames     = 44100
+		specCols   = 40
+	)
+	input := sineInterleaved(1000, sampleRate, channels, frames, 0.5)
+	staged := NewBridge()
+	_, stagesJSON := staged.ProcessBufferStages(input, channels, sampleRate, 100, specCols)
+
+	var stages []StageSummary
+	if err := json.Unmarshal([]byte(stagesJSON), &stages); err != nil {
+		t.Fatalf("stages JSON: %v", err)
+	}
+	in := stages[0]
+	if len(in.SpecDB) != specCols {
+		t.Fatalf("spec columns = %d, want %d", len(in.SpecDB), specCols)
+	}
+	if len(in.SpecFreqs) != len(in.SpecDB[0]) {
+		t.Fatalf("spec freqs = %d bins, columns have %d", len(in.SpecFreqs), len(in.SpecDB[0]))
+	}
+
+	// The middle column must peak in the band containing 1 kHz, at about
+	// -6 dBFS (0.5 amplitude sine).
+	col := in.SpecDB[specCols/2]
+	best, bestDB := -1, -1000.0
+	for b, db := range col {
+		if db > bestDB {
+			best, bestDB = b, db
+		}
+	}
+	f := in.SpecFreqs[best]
+	if f < 800 || f > 1250 {
+		t.Errorf("spectral peak at %.0f Hz, want ~1000 Hz", f)
+	}
+	if math.Abs(bestDB-(-6.0)) > 1.5 {
+		t.Errorf("spectral peak level = %.1f dB, want ~-6 dB", bestDB)
 	}
 }
