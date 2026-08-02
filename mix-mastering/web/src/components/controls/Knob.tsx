@@ -69,17 +69,29 @@ export const Knob: React.FC<KnobProps> = ({
       >
         {/* Background arc */}
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={3} />
-        {/* Value arc */}
-        <circle
-          cx={cx} cy={cy} r={r}
-          fill="none"
-          stroke={color}
-          strokeWidth={3}
-          strokeDasharray={`${normalized * 2 * Math.PI * r * 0.75} ${2 * Math.PI * r}`}
-          strokeDashoffset={2 * Math.PI * r * 0.375}
-          strokeLinecap="round"
-          opacity={0.8}
-        />
+        {/* Value arc: grows clockwise from the indicator's minimum position
+            (matching `angle` at normalized=0) up to the current value.
+            The dash/gap pair must always sum to one full circumference —
+            otherwise a fixed strokeDashoffset lands at a different phase
+            of the pattern every time the dash length changes, and the
+            arc's start point visibly drifts as the value changes instead
+            of staying anchored. */}
+        {(() => {
+          const circumference = 2 * Math.PI * r;
+          const sweep = normalized * circumference * 0.75;
+          return (
+            <circle
+              cx={cx} cy={cy} r={r}
+              fill="none"
+              stroke={color}
+              strokeWidth={3}
+              strokeDasharray={`${sweep} ${circumference - sweep}`}
+              strokeDashoffset={circumference * 0.125}
+              strokeLinecap="round"
+              opacity={0.8}
+            />
+          );
+        })()}
         {/* Knob body */}
         <circle cx={cx} cy={cy} r={r - 6} fill={dragging ? '#2A2A36' : '#1E1E2A'} stroke="rgba(255,255,255,0.1)" strokeWidth={1} />
         {/* Indicator */}
