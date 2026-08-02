@@ -212,8 +212,12 @@ func applyPreset(eng *engine.MasteringEngine, p *preset.Preset) {
 				fmt.Printf("  Warning: preset %q: %v\n", p.Name, err)
 			}
 		}
-		// The normalizer starts disabled; a preset that configures it
-		// intends it to run.
+		// The normalizer starts disabled and has no "enabled" param of
+		// its own, so a preset that configures it needs this special
+		// case to actually run. The Bass/Treble Exciters also start
+		// disabled but don't need one: they expose a generic "enabled"
+		// param (like the EQ's band.N.enabled) that flows through
+		// SetParam above, so a preset can switch them on by setting it.
 		if procName == "Loudness Normalizer" {
 			if proc, _, err := eng.GetProcessorByName(procName); err == nil {
 				proc.SetEnabled(true)

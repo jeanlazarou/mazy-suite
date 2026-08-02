@@ -21,6 +21,7 @@ import { EQPanel } from '../processors/EQPanel';
 import { CompressorPanel } from '../processors/CompressorPanel';
 import { LimiterPanel } from '../processors/LimiterPanel';
 import { StereoPanel } from '../processors/StereoPanel';
+import { BassExciterPanel, TrebleExciterPanel } from '../processors/ExciterPanel';
 
 const LANE_HEIGHT = 96;
 const BASE_WIDTH = 1000; // canvas logical width at zoom x1
@@ -32,7 +33,9 @@ type LaneMode = 'wave' | 'spec';
 // Stages whose settings can be edited in place.
 const SETTINGS_PANELS: Record<string, React.FC<{ expanded: boolean; onExpandToggle: () => void }>> = {
   'Parametric EQ': EQPanel,
+  'Bass Exciter': BassExciterPanel,
   Compressor: CompressorPanel,
+  'Treble Exciter': TrebleExciterPanel,
   Limiter: LimiterPanel,
   'Stereo Widener': StereoPanel,
 };

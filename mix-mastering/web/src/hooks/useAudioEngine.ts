@@ -41,6 +41,7 @@ export function useAudioEngine() {
   const setAppliedTarget = useStore((s) => s.setAppliedTarget);
   const setParamsEdited = useStore((s) => s.setParamsEdited);
   const setProcessorEnabledState = useStore((s) => s.setProcessorEnabledState);
+  const setProcessorNames = useStore((s) => s.setProcessorNames);
 
   useEffect(() => {
     engine.init().then(async () => {
@@ -48,6 +49,7 @@ export function useAudioEngine() {
       setLoading(false);
       setPresets(await engine.listPresets());
       setParams(await engine.getParams());
+      setProcessorNames(await engine.getProcessorNames());
     }).catch((err) => {
       setError(`Failed to load WASM: ${err.message}`);
       setLoading(false);

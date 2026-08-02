@@ -21,6 +21,7 @@ func main() {
 	js.Global().Set("wasmProcessBufferStages", js.FuncOf(processBufferStages))
 	js.Global().Set("wasmSetParam", js.FuncOf(setParam))
 	js.Global().Set("wasmGetParams", js.FuncOf(getParams))
+	js.Global().Set("wasmGetProcessorNames", js.FuncOf(getProcessorNames))
 	js.Global().Set("wasmSetProcessorEnabled", js.FuncOf(setProcessorEnabled))
 	js.Global().Set("wasmAnalyzeBuffer", js.FuncOf(analyzeBuffer))
 	js.Global().Set("wasmInspectBuffer", js.FuncOf(inspectBuffer))
@@ -155,6 +156,12 @@ func setParam(this js.Value, args []js.Value) interface{} {
 func getParams(this js.Value, args []js.Value) interface{} {
 	return safeCall(func() interface{} {
 		return bridge.GetParams()
+	})
+}
+
+func getProcessorNames(this js.Value, args []js.Value) interface{} {
+	return safeCall(func() interface{} {
+		return bridge.GetProcessorNames()
 	})
 }
 

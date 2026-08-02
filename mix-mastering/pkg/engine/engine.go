@@ -37,12 +37,26 @@ func NewWithDefaults(sampleRate, channels int) *MasteringEngine {
 // from widening, loudness normalization, and the album offset happen
 // before it. The loudness normalizer starts disabled; enable it to
 // normalize to a target LUFS. The Gain stage is unity by default and
-// carries the shared album loudness offset in album mastering.
+// carries the shared album loudness offset in album mastering. The Bass
+// and Treble Exciters start disabled — they're generative/creative
+// additions (harmonics that weren't in the source), not corrective ones,
+// so the default chain stays transparent; recommendations and presets
+// switch them on via their "enabled" param when a target profile calls
+// for them (e.g. phone/bluetooth). Bass excitement sits before the
+// Stereo Widener so the synthesized low end stays centered; treble
+// excitement sits after the Compressor to restore sparkle that gain
+// reduction tends to dull.
 func NewFullChain(sampleRate, channels int) *MasteringEngine {
 	e := New(sampleRate, channels)
 	e.AddProcessor(dsp.NewParametricEQ(float64(sampleRate), channels))
+	bassExciter := dsp.NewBassExciter(float64(sampleRate))
+	bassExciter.SetEnabled(false)
+	e.AddProcessor(bassExciter)
 	e.AddProcessor(dsp.NewStereoWidener())
 	e.AddProcessor(dsp.NewCompressor(float64(sampleRate)))
+	trebleExciter := dsp.NewTrebleExciter(float64(sampleRate))
+	trebleExciter.SetEnabled(false)
+	e.AddProcessor(trebleExciter)
 	normalizer := dsp.NewLoudnessNormalizer(float64(sampleRate))
 	normalizer.SetEnabled(false)
 	e.AddProcessor(normalizer)

@@ -239,6 +239,24 @@ func (b *Bridge) GetParams() string {
 	return string(data)
 }
 
+// GetProcessorNames returns the chain's processor names in processing
+// order as a JSON array, e.g. ["Parametric EQ", "Bass Exciter", ...].
+// Go's JSON map serialization is alphabetical, so GetParams can't convey
+// chain order — the web UI's studio strip needs this to render the real
+// signal flow instead of a hand-maintained list. Lazily initializes the
+// engine so the strip can render before any audio has been processed.
+func (b *Bridge) GetProcessorNames() string {
+	if b.Engine == nil {
+		b.InitEngine(b.sampleRate, b.channels)
+	}
+	names := make([]string, 0, len(b.Engine.Processors()))
+	for _, p := range b.Engine.Processors() {
+		names = append(names, p.Name())
+	}
+	data, _ := json.Marshal(names)
+	return string(data)
+}
+
 // GetMeters returns gain-reduction metering from the last ProcessBuffer
 // call as JSON: processor name -> {"max_gr_db": x, "avg_gr_db": y}.
 func (b *Bridge) GetMeters() string {

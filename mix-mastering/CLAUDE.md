@@ -30,7 +30,7 @@ cd web && npx vite
 
 All processors implement `pkg/dsp.Processor` — the central interface with `Process(buf *AudioBuffer)`, `SetParam/GetParam`, `Name`, `Reset`, `Enabled`. `AudioBuffer` holds `[][]float64` (channel-major, float64 internally; float32 only at I/O and WASM boundaries).
 
-`pkg/engine.MasteringEngine` chains processors in order. `NewWithDefaults()` creates EQ → Compressor → Limiter. `NewFullChain()` (used by the CLI and WASM bridge) creates EQ → Stereo Widener → Compressor → Loudness Normalizer → Limiter; the limiter must stay last so its ceiling holds on the actual output. The normalizer starts disabled in `NewFullChain` (the web bridge enables it; the CLI enables it when a preset configures it). Processors are addressed by name string (e.g., `"Parametric EQ"`, `"Compressor"`). Processors whose coefficients depend on sample rate implement `dsp.SampleRateAware`; `engine.SetSampleRate` propagates rate changes.
+`pkg/engine.MasteringEngine` chains processors in order. `NewWithDefaults()` creates EQ → Compressor → Limiter. `NewFullChain()` (used by the CLI and WASM bridge) creates EQ → Bass Exciter → Stereo Widener → Compressor → Treble Exciter → Loudness Normalizer → Gain → Limiter; the limiter must stay last so its ceiling holds on the actual output. The normalizer starts disabled in `NewFullChain` (the web bridge enables it; the CLI enables it when a preset configures it). The Bass and Treble Exciters (`pkg/dsp/exciter.go`) also start disabled — they generate harmonics that aren't in the source (creative, not corrective), so the default chain stays transparent; recommendations and presets switch them on via their `enabled` param when a target profile calls for it (phone/bluetooth/car). Bass excitement sits before the Stereo Widener so synthesized lows stay centered; treble excitement sits after the Compressor to restore sparkle gain reduction tends to dull. Processors are addressed by name string (e.g., `"Parametric EQ"`, `"Compressor"`). Processors whose coefficients depend on sample rate implement `dsp.SampleRateAware`; `engine.SetSampleRate` propagates rate changes. The studio UI's pipeline strip (`ProcessorPipeline.tsx`) renders this real order dynamically via `wasmGetProcessorNames` rather than a hand-maintained list, since Go's JSON map serialization is alphabetical and can't otherwise convey chain order.
 
 `dsp.LUFSMeter` follows ITU-R BS.1770-4 (gated integrated loudness, K-weighted momentary/short-term, EBU Tech 3342 loudness range, 4x-oversampled true peak). The limiter computes its gain envelope offline (sliding-window minimum over the lookahead + release smoothing + moving-average attack), guaranteeing the ceiling with zero latency. Conformance tests for these guarantees live in `pkg/dsp/conformance_test.go`.
 
@@ -66,7 +66,7 @@ Audio flows: file → Web Audio `decodeAudioData` → `AudioBuffer` → interlea
 
 ### Analysis & Recommendations
 
-`pkg/analysis` provides FFT spectrum, dynamics (peak/RMS/crest), stereo field (correlation/width), and LUFS measurement. `recommend.go` maps 5 target profiles (headphones, car, studio, phone, bluetooth) to EQ/compression/loudness suggestions based on analysis results.
+`pkg/analysis` provides FFT spectrum, dynamics (peak/RMS/crest), stereo field (correlation/width), and LUFS measurement. `recommend.go` maps 6 target profiles (neutral, headphones, car, studio, phone, bluetooth) to EQ/compression/loudness/exciter suggestions based on analysis results. `Recommend()` always emits a Bass Exciter and Treble Exciter block (with `enabled: 0` for profiles that don't want them) rather than omitting the block when the amount is zero — otherwise re-targeting (e.g. phone → studio) couldn't turn a previously auto-enabled exciter back off.
 
 ## CLI
 
@@ -81,5 +81,6 @@ Built with Cobra. Commands: `process`, `analyze`, `preset list|search|show`, `ba
 - Limiter: `ceiling`, `release`, `lookahead`
 - Stereo Widener: `width`
 - Mid/Side: `mid_gain`, `side_gain`
+- Bass/Treble Exciter: `frequency`, `drive`, `mix`, `enabled` (like EQ's `band.{i}.enabled`, lets presets/recommendations switch them on — they start disabled)
 - Loudness: `target_lufs`
 - Gain: `gain_db`

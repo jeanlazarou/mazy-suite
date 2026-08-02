@@ -162,6 +162,13 @@ export class AudioEngine {
     return JSON.parse(await this.call<string>('wasmGetParams', []));
   }
 
+  /** Chain processor names in real signal-flow order (Go map JSON is
+   *  alphabetical, so this is the only way to learn chain order). Drives
+   *  the studio pipeline strip so it can't drift from the real chain. */
+  async getProcessorNames(): Promise<string[]> {
+    return JSON.parse(await this.call<string>('wasmGetProcessorNames', []));
+  }
+
   async getMeters(): Promise<MeterData> {
     return JSON.parse(await this.call<string>('wasmGetMeters', []));
   }

@@ -66,7 +66,13 @@ interface AppState {
   params: ProcessorParams;
   meters: MeterData;
   // Bypass state per processor name; survives engine re-initialization.
+  // Reconciled from params by setParams for processors that expose an
+  // "enabled" param (currently the exciters) — see setParams below.
   processorEnabled: Record<string, boolean>;
+  // Chain processor names in real signal-flow order, from the engine
+  // (wasmGetProcessorNames) — drives the studio pipeline strip so it
+  // can't drift from the actual chain the way a hand-maintained list did.
+  processorNames: string[];
 
   // Loudness-matched A/B: gain (dB) applied to processed playback so both
   // buffers compare at equal loudness.
@@ -134,6 +140,7 @@ interface AppState {
   setParams: (params: ProcessorParams) => void;
   setMeters: (m: MeterData) => void;
   setProcessorEnabledState: (name: string, enabled: boolean) => void;
+  setProcessorNames: (names: string[]) => void;
   setLoudnessMatch: (v: boolean) => void;
   setMatchGainDB: (v: number | null) => void;
   setIsAnalyzing: (v: boolean) => void;
@@ -194,6 +201,7 @@ export const useStore = create<AppState>((set) => ({
   params: {},
   meters: {},
   processorEnabled: {},
+  processorNames: [],
   loudnessMatch: false,
   matchGainDB: null,
   analysis: null,
@@ -265,11 +273,39 @@ export const useStore = create<AppState>((set) => ({
   // Any params change means the current settings may no longer exactly
   // match the setup they came from, so the active-setup marker clears;
   // paths that apply a setup re-set it afterwards.
-  setParams: (params) => set({ params, paramsDirty: true, xrayActiveSetupId: null }),
+  //
+  // Also reconciles processorEnabled from any processor whose params
+  // carry a top-level "enabled" key (currently the Bass/Treble Exciters,
+  // which self-report bypass state through the params mirror the way the
+  // EQ's bands report band.N.enabled). Every mutation path — setParam,
+  // setProcessorEnabled, applyPreset, applyRecommendations,
+  // applyXraySetup, computeXrayStages, engine init — funnels through
+  // setParams(await engine.getParams()), so this is the one place that
+  // keeps the store's bypass state from ever diverging from the engine's:
+  // a recommendation that turns an exciter on writes "enabled: 1" into
+  // its params, and that alone is enough for the panel switch, the strip
+  // chip, and the X-Ray lane to agree, with no separate wiring needed.
+  // Preserves object identity when nothing changed, so this doesn't
+  // trigger renders/key churn on every unrelated param edit.
+  setParams: (params) => set((s) => {
+    let enabledPatch: Record<string, boolean> | null = null;
+    for (const [proc, procParams] of Object.entries(params)) {
+      if (!('enabled' in procParams)) continue;
+      const on = procParams.enabled > 0.5;
+      if (s.processorEnabled[proc] !== on) {
+        enabledPatch = { ...(enabledPatch ?? s.processorEnabled), [proc]: on };
+      }
+    }
+    return {
+      params, paramsDirty: true, xrayActiveSetupId: null,
+      ...(enabledPatch ? { processorEnabled: enabledPatch } : {}),
+    };
+  }),
   setMeters: (m) => set({ meters: m }),
   setProcessorEnabledState: (name, enabled) => set((s) => ({
     processorEnabled: { ...s.processorEnabled, [name]: enabled },
   })),
+  setProcessorNames: (names) => set({ processorNames: names }),
   setLoudnessMatch: (v) => set({ loudnessMatch: v }),
   setMatchGainDB: (v) => set({ matchGainDB: v }),
   setIsAnalyzing: (v) => set({ isAnalyzing: v }),

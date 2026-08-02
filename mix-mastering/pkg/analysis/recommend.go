@@ -17,6 +17,12 @@ type TargetProfile struct {
 	MaxTruePeak float64 `json:"max_true_peak_dbtp"`
 	StereoWidth float64 `json:"stereo_width"` // 0-1 multiplier
 	Compression float64 `json:"compression"`  // 0-1, how much to compress
+	// Harmonic excitement, 0-1: how much to generate low/high harmonics
+	// that aren't in the source but help the mix translate on the
+	// target's drivers (e.g. small phone/bluetooth speakers can't
+	// reproduce true sub-bass, but hear it via generated harmonics).
+	BassExcite   float64 `json:"bass_excite"`
+	TrebleExcite float64 `json:"treble_excite"`
 }
 
 // Recommendation contains suggested mastering settings.
@@ -37,70 +43,82 @@ type Suggestion struct {
 
 var targetProfiles = map[string]*TargetProfile{
 	"neutral": {
-		Name:        "Neutral",
-		Description: "No device compensation — corrective suggestions from the analysis only",
-		LowBoost:    0,
-		MidAdjust:   0,
-		HighBoost:   0,
-		TargetLUFS:  -14,
-		MaxTruePeak: -1,
-		StereoWidth: 1.0,
-		Compression: 0.3,
+		Name:         "Neutral",
+		Description:  "No device compensation — corrective suggestions from the analysis only",
+		LowBoost:     0,
+		MidAdjust:    0,
+		HighBoost:    0,
+		TargetLUFS:   -14,
+		MaxTruePeak:  -1,
+		StereoWidth:  1.0,
+		Compression:  0.3,
+		BassExcite:   0,
+		TrebleExcite: 0,
 	},
 	"headphones": {
-		Name:        "Headphones",
-		Description: "Optimized for headphone listening",
-		LowBoost:    -1,
-		MidAdjust:   0.5,
-		HighBoost:   -0.5,
-		TargetLUFS:  -14,
-		MaxTruePeak: -1,
-		StereoWidth: 0.9,
-		Compression: 0.3,
+		Name:         "Headphones",
+		Description:  "Optimized for headphone listening",
+		LowBoost:     -1,
+		MidAdjust:    0.5,
+		HighBoost:    -0.5,
+		TargetLUFS:   -14,
+		MaxTruePeak:  -1,
+		StereoWidth:  0.9,
+		Compression:  0.3,
+		BassExcite:   0,
+		TrebleExcite: 0,
 	},
 	"car": {
-		Name:        "Car Audio",
-		Description: "Optimized for in-car listening with road noise",
-		LowBoost:    3,
-		MidAdjust:   1,
-		HighBoost:   1.5,
-		TargetLUFS:  -12,
-		MaxTruePeak: -0.3,
-		StereoWidth: 0.7,
-		Compression: 0.7,
+		Name:         "Car Audio",
+		Description:  "Optimized for in-car listening with road noise",
+		LowBoost:     3,
+		MidAdjust:    1,
+		HighBoost:    1.5,
+		TargetLUFS:   -12,
+		MaxTruePeak:  -0.3,
+		StereoWidth:  0.7,
+		Compression:  0.7,
+		BassExcite:   0.15,
+		TrebleExcite: 0.4,
 	},
 	"studio": {
-		Name:        "Studio Monitors",
-		Description: "Neutral reference mastering",
-		LowBoost:    0,
-		MidAdjust:   0,
-		HighBoost:   0.5,
-		TargetLUFS:  -14,
-		MaxTruePeak: -1,
-		StereoWidth: 1.0,
-		Compression: 0.3,
+		Name:         "Studio Monitors",
+		Description:  "Neutral reference mastering",
+		LowBoost:     0,
+		MidAdjust:    0,
+		HighBoost:    0.5,
+		TargetLUFS:   -14,
+		MaxTruePeak:  -1,
+		StereoWidth:  1.0,
+		Compression:  0.3,
+		BassExcite:   0,
+		TrebleExcite: 0,
 	},
 	"phone": {
-		Name:        "Phone Speaker",
-		Description: "Optimized for small phone speakers",
-		LowBoost:    -3,
-		MidAdjust:   3,
-		HighBoost:   1,
-		TargetLUFS:  -12,
-		MaxTruePeak: -0.5,
-		StereoWidth: 0.5,
-		Compression: 0.8,
+		Name:         "Phone Speaker",
+		Description:  "Optimized for small phone speakers",
+		LowBoost:     -3,
+		MidAdjust:    3,
+		HighBoost:    1,
+		TargetLUFS:   -12,
+		MaxTruePeak:  -0.5,
+		StereoWidth:  0.5,
+		Compression:  0.8,
+		BassExcite:   0.7,
+		TrebleExcite: 0.4,
 	},
 	"bluetooth": {
-		Name:        "Bluetooth Speaker",
-		Description: "Optimized for portable Bluetooth speakers",
-		LowBoost:    2,
-		MidAdjust:   1,
-		HighBoost:   0.5,
-		TargetLUFS:  -12,
-		MaxTruePeak: -0.5,
-		StereoWidth: 0.6,
-		Compression: 0.6,
+		Name:         "Bluetooth Speaker",
+		Description:  "Optimized for portable Bluetooth speakers",
+		LowBoost:     2,
+		MidAdjust:    1,
+		HighBoost:    0.5,
+		TargetLUFS:   -12,
+		MaxTruePeak:  -0.5,
+		StereoWidth:  0.6,
+		Compression:  0.6,
+		BassExcite:   0.6,
+		TrebleExcite: 0.3,
 	},
 }
 
@@ -284,5 +302,42 @@ func Recommend(result *AnalysisResult, target string) (*Recommendation, error) {
 		})
 	}
 
+	// Harmonic excitement — always emit both blocks (even when the
+	// amount is 0) so re-targeting always sets the exciters' enabled
+	// state explicitly: applying "studio" after "phone" must turn them
+	// back off, not just leave them at whatever a previous target left.
+	rec.Processors["Bass Exciter"] = exciterParams(profile.BassExcite)
+	if profile.BassExcite > 0 {
+		rec.Suggestions = append(rec.Suggestions, Suggestion{
+			Category:    "Enhance",
+			Description: fmt.Sprintf("Adding bass harmonics so lows carry on %s", profile.Name),
+			Priority:    "medium",
+			AutoApply:   true,
+		})
+	}
+	rec.Processors["Treble Exciter"] = exciterParams(profile.TrebleExcite)
+	if profile.TrebleExcite > 0 {
+		rec.Suggestions = append(rec.Suggestions, Suggestion{
+			Category:    "Enhance",
+			Description: fmt.Sprintf("Adding treble harmonics for presence on %s", profile.Name),
+			Priority:    "medium",
+			AutoApply:   true,
+		})
+	}
+
 	return rec, nil
+}
+
+// exciterParams builds a Bass/Treble Exciter param block from a 0-1
+// excitement amount. amount <= 0 explicitly disables the exciter (see
+// the comment above the call site) rather than omitting it.
+func exciterParams(amount float64) map[string]float64 {
+	if amount <= 0 {
+		return map[string]float64{"enabled": 0}
+	}
+	return map[string]float64{
+		"enabled": 1,
+		"drive":   amount,
+		"mix":     0.1 + 0.3*amount,
+	}
 }

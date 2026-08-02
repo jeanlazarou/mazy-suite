@@ -75,13 +75,17 @@ Save the current settings as a named setup, tweak further, save another — clic
 The full chain used by the web UI and CLI (`engine.NewFullChain`) runs in this order — the limiter stays last so its ceiling holds on the actual output:
 
 1. **Parametric EQ** — 6-band (HPF, low shelf, 2× peak, high shelf, LPF)
-2. **Stereo Widener** — Mid/side width control
-3. **Compressor** — Soft-knee with attack/release envelope
-4. **Loudness Normalizer** — LUFS-based normalization (disabled by default; the web UI enables it, the CLI enables it when a preset configures it)
-5. **Gain** — Unity by default; carries the shared album loudness offset in album mastering
-6. **Limiter** — Lookahead brickwall limiter, zero added latency
+2. **Bass Exciter** — Harmonic exciter isolating lows, generating harmonics audible on speakers that can't reproduce true sub-bass (disabled by default)
+3. **Stereo Widener** — Mid/side width control
+4. **Compressor** — Soft-knee with attack/release envelope
+5. **Treble Exciter** — Harmonic exciter isolating highs, restoring presence gain reduction tends to dull (disabled by default)
+6. **Loudness Normalizer** — LUFS-based normalization (disabled by default; the web UI enables it, the CLI enables it when a preset configures it)
+7. **Gain** — Unity by default; carries the shared album loudness offset in album mastering
+8. **Limiter** — Lookahead brickwall limiter, zero added latency
 
-`pkg/dsp` also implements a Multiband Compressor, Harmonic Exciter, and De-Esser — functional and tested, but not yet wired into any chain or preset.
+Both exciters start disabled — they add harmonic content that isn't in the source (a creative choice, not a corrective one) — and are switched on by the target-device recommendations (phone, bluetooth, car) or explicitly via their `enabled` param.
+
+`pkg/dsp` also implements a Multiband Compressor, a (separate, unused) Harmonic Exciter, and a De-Esser — functional and tested, but not yet wired into any chain or preset.
 
 ## Supported Formats
 

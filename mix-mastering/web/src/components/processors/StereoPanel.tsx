@@ -14,7 +14,6 @@ interface StereoPanelProps {
 export const StereoPanel: React.FC<StereoPanelProps> = ({ expanded, onExpandToggle }) => {
   const { setParam, setProcessorEnabled } = useAudioEngine();
   const widthParams = useStore((s) => s.params['Stereo Widener'] ?? EMPTY_PARAMS);
-  const msParams = useStore((s) => s.params['Mid/Side Processor'] ?? EMPTY_PARAMS);
   const enabled = useStore((s) => s.processorEnabled['Stereo Widener'] ?? true);
 
   const handleToggle = (v: boolean) => setProcessorEnabled('Stereo Widener', v);
@@ -32,26 +31,6 @@ export const StereoPanel: React.FC<StereoPanelProps> = ({ expanded, onExpandTogg
             step={0.01}
             color="#A78BFA"
             onChange={(v) => setParam('Stereo Widener', 'width', v)}
-          />
-          <Knob
-            label="Mid Gain"
-            value={msParams.mid_gain ?? 0}
-            min={-12}
-            max={12}
-            step={0.1}
-            unit="dB"
-            color="#4ADE80"
-            onChange={(v) => setParam('Mid/Side Processor', 'mid_gain', v)}
-          />
-          <Knob
-            label="Side Gain"
-            value={msParams.side_gain ?? 0}
-            min={-12}
-            max={12}
-            step={0.1}
-            unit="dB"
-            color="#22D3EE"
-            onChange={(v) => setParam('Mid/Side Processor', 'side_gain', v)}
           />
         </Box>
       </Collapse>

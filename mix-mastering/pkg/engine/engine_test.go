@@ -170,3 +170,68 @@ func TestEngineProcessWithTaps(t *testing.T) {
 		}
 	}
 }
+
+// TestFullChainOrder locks in the chain order as a real assertion, not
+// just a doc comment: the limiter must stay last, and the exciters sit
+// where they were designed to (bass before widening so synthesized lows
+// stay centered, treble after compression to restore what gain
+// reduction dulls).
+func TestFullChainOrder(t *testing.T) {
+	eng := NewFullChain(44100, 2)
+
+	want := []string{
+		"Parametric EQ", "Bass Exciter", "Stereo Widener", "Compressor",
+		"Treble Exciter", "Loudness Normalizer", "Gain", "Limiter",
+	}
+	got := make([]string, len(eng.Processors()))
+	for i, p := range eng.Processors() {
+		got[i] = p.Name()
+	}
+	if len(got) != len(want) {
+		t.Fatalf("chain = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("chain[%d] = %q, want %q (full chain: %v)", i, got[i], want[i], got)
+		}
+	}
+}
+
+// TestFullChainDefaultTransparent verifies the chain-level analogue of
+// TestDefaultEQTransparent (pkg/dsp/conformance_test.go): a freshly
+// constructed NewFullChain, with the normalizer and both exciters
+// disabled by default, must not audibly alter the signal. The signal is
+// kept quiet (well under the compressor's -18dB threshold and the
+// limiter's ceiling) so this test isolates the exciter/normalizer
+// defaults rather than exercising dynamics processing, which is
+// expected to engage at normal mastering levels.
+func TestFullChainDefaultTransparent(t *testing.T) {
+	eng := NewFullChain(44100, 2)
+	buf := generateSine(50, 44100, 2, 44100)
+	for ch := range buf.Samples {
+		for i := range buf.Samples[ch] {
+			buf.Samples[ch][i] *= 0.02 // quiet: ~-34dBFS peak
+		}
+	}
+
+	var rmsBefore float64
+	for _, s := range buf.Samples[0] {
+		rmsBefore += s * s
+	}
+	rmsBefore = math.Sqrt(rmsBefore / float64(len(buf.Samples[0])))
+
+	if err := eng.Process(buf); err != nil {
+		t.Fatalf("engine process: %v", err)
+	}
+
+	var rmsAfter float64
+	for _, s := range buf.Samples[0] {
+		rmsAfter += s * s
+	}
+	rmsAfter = math.Sqrt(rmsAfter / float64(len(buf.Samples[0])))
+
+	deltaDB := 20 * math.Log10(rmsAfter/rmsBefore)
+	if math.Abs(deltaDB) > 0.2 {
+		t.Errorf("default full chain should be transparent, got %.3fdB RMS change", deltaDB)
+	}
+}
