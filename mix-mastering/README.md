@@ -2,6 +2,8 @@
 
 A professional audio mastering tool written in Go with a CLI and a React/WebAssembly web UI. Process audio through a configurable DSP chain (EQ, compression, limiting, stereo processing), analyze tracks, and get mastering recommendations tailored to target listening environments.
 
+![Studio view: waveform, processor chain, analysis and recommendations, loudness and stereo field meters](docs/screenshots/studio.png)
+
 ## Quick Start
 
 ```bash
@@ -57,6 +59,16 @@ The web interface runs the Go DSP engine via WebAssembly in a Web Worker (so pro
 - Spectrum analyzer, waveform display, stereo field (Lissajous), LUFS meter
 - Preset browser with search and filtering
 - Analysis panel with per-target recommendations (aggregated across the album when more than one track is loaded)
+
+### Chain X-Ray
+
+A full-screen workbench: the signal at every stage of the chain as stacked lanes, switchable between waveform (dynamics — red where a stage hits 0 dBFS) and spectrogram (tone — 30 Hz to 20 kHz). Edit a processor in place and the change ripples through every lane downstream, so you can watch, for instance, the compressor swallow the clipping the EQ stage still shows.
+
+![Chain X-Ray, waveform lanes: red clipping columns in the early stages are gone by the Compressor lane, held clean through the Limiter](docs/screenshots/xray-waveform.png)
+
+Save the current settings as a named setup, tweak further, save another — clicking between setup chips flips every lane to that setup's captured state instantly, no reprocessing, so differences are a blink comparison rather than a diff you have to decode.
+
+![Chain X-Ray, spectrogram lanes: a frequency sweep and hi-hat transients visible as bright bands moving through the chain](docs/screenshots/xray-spectrogram.png)
 
 ## DSP Chain
 
