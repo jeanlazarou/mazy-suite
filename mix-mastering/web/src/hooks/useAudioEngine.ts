@@ -5,6 +5,7 @@ import { createZip } from '../audio/zip';
 import type { ZipEntry } from '../audio/zip';
 import { useStore } from '../store/store';
 import { stopPlayback } from './usePlayback';
+import type { CustomPreset } from '../audio/customPresets';
 
 // Chain X-Ray resolutions: envelope buckets (high, for horizontal zoom)
 // and spectrogram time columns.
@@ -414,6 +415,22 @@ export function useAudioEngine() {
     useStore.getState().setActivePreset(name);
   }, []);
 
+  // Custom presets are saved locally (see audio/customPresets.ts) — the
+  // Go engine has no way to look one up by name the way it does built-in
+  // presets, so this replays its param map directly, the same way
+  // applyRecommendations replays a recommendation's.
+  const applyCustomPreset = useCallback(async (preset: CustomPreset) => {
+    for (const [proc, procParams] of Object.entries(preset.processors)) {
+      for (const [param, value] of Object.entries(procParams)) {
+        await engine.setParam(proc, param, value);
+      }
+    }
+    setParams(await engine.getParams());
+    setAppliedTarget(null);
+    setParamsEdited(false);
+    useStore.getState().setActivePreset(preset.name);
+  }, []);
+
   const applyRecommendations = useCallback(async (target: string) => {
     // Apply the recommendation currently on screen (track- or album-scoped)
     // by writing its params into the shared engine settings.
@@ -444,6 +461,7 @@ export function useAudioEngine() {
     setParam,
     setProcessorEnabled,
     applyPreset,
+    applyCustomPreset,
     applyRecommendations,
     isReady: wasmReady,
   };

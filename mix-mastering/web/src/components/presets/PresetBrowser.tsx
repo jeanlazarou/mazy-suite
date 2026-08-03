@@ -1,13 +1,17 @@
 import React, { useState, useMemo } from 'react';
-import { Box, Paper, Typography, TextField, Chip, List, ListItemButton, ListItemText, Tabs, Tab, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Paper, Typography, TextField, List, ListItemButton, ListItemText, IconButton, Tabs, Tab, Button, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip } from '@mui/material';
 import LibraryMusicIcon from '@mui/icons-material/LibraryMusic';
 import SaveIcon from '@mui/icons-material/Save';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { useAudioEngine } from '../../hooks/useAudioEngine';
 import { useStore } from '../../store/store';
+import { saveCustomPreset, deleteCustomPreset, type CustomPreset } from '../../audio/customPresets';
 
 export const PresetBrowser: React.FC = () => {
-  const { applyPreset, processAudio } = useAudioEngine();
+  const { applyPreset, applyCustomPreset, processAudio } = useAudioEngine();
   const presets = useStore((s) => s.presets);
+  const customPresets = useStore((s) => s.customPresets);
+  const setCustomPresets = useStore((s) => s.setCustomPresets);
   const activePreset = useStore((s) => s.activePreset);
   const [tab, setTab] = useState(0);
   const [search, setSearch] = useState('');
@@ -18,7 +22,7 @@ export const PresetBrowser: React.FC = () => {
 
   const filtered = useMemo(() => {
     // Exclude target presets — device targeting is handled by Analysis & Recommendations
-    let list = presets.filter(p => p.category !== 'target');
+    let list = [...presets.filter(p => p.category !== 'target'), ...customPresets];
     if (tab > 0) {
       list = list.filter(p => p.category === categories[tab]);
     }
@@ -31,40 +35,39 @@ export const PresetBrowser: React.FC = () => {
       );
     }
     return list;
-  }, [presets, tab, search]);
+  }, [presets, customPresets, tab, search]);
 
   const handleApply = async (name: string) => {
-    await applyPreset(name);
+    // Custom presets only exist in the browser — the engine can't look
+    // them up by name the way it does built-ins, so their params are
+    // replayed directly instead of asking the engine to resolve `name`.
+    const custom = customPresets.find((p) => p.name === name);
+    if (custom) {
+      await applyCustomPreset(custom);
+    } else {
+      await applyPreset(name);
+    }
     await processAudio();
   };
 
   const handleSave = () => {
-    if (!newPresetName.trim()) return;
-    // Save to IndexedDB in production
-    const params = useStore.getState().params;
-    const preset = {
-      name: newPresetName,
+    const name = newPresetName.trim();
+    if (!name) return;
+    const preset: CustomPreset = {
+      name,
       category: 'custom',
       description: 'Custom preset',
       tags: ['custom'],
-      processors: params,
+      processors: useStore.getState().params,
     };
-    // Store in IndexedDB
-    try {
-      const tx = indexedDB.open('audiomaster-presets', 1);
-      tx.onupgradeneeded = () => {
-        tx.result.createObjectStore('presets', { keyPath: 'name' });
-      };
-      tx.onsuccess = () => {
-        const db = tx.result;
-        const store = db.transaction('presets', 'readwrite').objectStore('presets');
-        store.put(preset);
-      };
-    } catch (e) {
-      console.warn('IndexedDB save failed:', e);
-    }
+    setCustomPresets(saveCustomPreset(preset));
     setSaveOpen(false);
     setNewPresetName('');
+  };
+
+  const handleDelete = (e: React.MouseEvent, name: string) => {
+    e.stopPropagation(); // don't trigger the row's onClick (apply)
+    setCustomPresets(deleteCustomPreset(name));
   };
 
   return (
@@ -101,19 +104,25 @@ export const PresetBrowser: React.FC = () => {
 
       <List dense sx={{ flex: 1, overflow: 'auto', mx: -1 }}>
         {filtered.map((p) => (
-          <ListItemButton
-            key={p.name}
-            selected={activePreset === p.name}
-            onClick={() => handleApply(p.name)}
-            sx={{ borderRadius: 1, mx: 1, py: 0.5 }}
-          >
-            <ListItemText
-              primary={p.name}
-              secondary={p.description}
-              primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: 500 }}
-              secondaryTypographyProps={{ fontSize: '0.65rem', noWrap: true }}
-            />
-          </ListItemButton>
+          <Tooltip key={p.name} title={p.description} placement="right" enterDelay={400}>
+            <ListItemButton
+              selected={activePreset === p.name}
+              onClick={() => handleApply(p.name)}
+              sx={{ borderRadius: 1, mx: 1, py: 0.5 }}
+            >
+              <ListItemText
+                primary={p.name}
+                secondary={p.description}
+                primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: 500 }}
+                secondaryTypographyProps={{ fontSize: '0.65rem', noWrap: true }}
+              />
+              {p.category === 'custom' && (
+                <IconButton size="small" onClick={(e) => handleDelete(e, p.name)} sx={{ ml: 0.5 }}>
+                  <DeleteIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              )}
+            </ListItemButton>
+          </Tooltip>
         ))}
         {filtered.length === 0 && (
           <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', py: 3, fontSize: '0.8rem' }}>

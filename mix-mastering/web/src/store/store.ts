@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AnalysisResult, Recommendation, PresetInfo, ProcessorParams, MeterData, StageSummary } from '../wasm/engine';
+import { type CustomPreset, loadCustomPresets } from '../audio/customPresets';
 
 export interface AudioFileInfo {
   name: string;
@@ -97,8 +98,11 @@ interface AppState {
   // recommendation apply — the settings no longer exactly match either.
   paramsEdited: boolean;
 
-  // Presets
+  // Presets. Built-in presets come from the Go engine (setPresets, on
+  // init); custom presets are saved locally and loaded synchronously at
+  // store creation, independent of WASM being ready.
   presets: PresetInfo[];
+  customPresets: CustomPreset[];
   activePreset: string | null;
 
   // UI
@@ -152,6 +156,7 @@ interface AppState {
   setRecommendation: (r: Recommendation | null) => void;
   setSelectedTarget: (t: string) => void;
   setPresets: (p: PresetInfo[]) => void;
+  setCustomPresets: (p: CustomPreset[]) => void;
   setActivePreset: (name: string | null) => void;
   setLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
@@ -213,6 +218,7 @@ export const useStore = create<AppState>((set) => ({
   appliedTarget: null,
   paramsEdited: false,
   presets: [],
+  customPresets: loadCustomPresets(),
   activePreset: null,
   loading: true,
   error: null,
@@ -317,6 +323,7 @@ export const useStore = create<AppState>((set) => ({
   setRecommendation: (r) => set({ recommendation: r }),
   setSelectedTarget: (t) => set({ selectedTarget: t }),
   setPresets: (p) => set({ presets: p }),
+  setCustomPresets: (p) => set({ customPresets: p }),
   setActivePreset: (name) => set({ activePreset: name }),
   setLoading: (v) => set({ loading: v }),
   setError: (e) => set({ error: e }),
