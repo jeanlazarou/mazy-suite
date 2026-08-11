@@ -1,14 +1,16 @@
+import { AudioClip, Track, TrackClip } from '../types';
+
 export type UndoAction =
   | {
       type: 'REMOVE_CLIP';
       clipId: string;
-      clip: any;
+      clip: AudioClip;
     }
   | {
       type: 'REMOVE_TRACK_CLIP';
       trackId: string;
       trackClipId: string;
-      trackClip: any;
+      trackClip: TrackClip;
     }
   | {
       type: 'MOVE_TRACK_CLIP';
@@ -19,7 +21,7 @@ export type UndoAction =
     }
   | {
       type: 'DELETE_TRACK';
-      track: any;
+      track: Track;
       trackIndex: number;
     }
   | {
@@ -37,7 +39,7 @@ export type UndoAction =
       type: 'ADD_TRACK_CLIP';
       trackId: string;
       trackClipId: string;
-      trackClip: any;
+      trackClip: TrackClip;
     }
   | {
       type: 'MOVE_CLIP_BETWEEN_TRACKS';
@@ -51,8 +53,8 @@ export type UndoAction =
       type: 'UPDATE_TRACK_CLIP_OPTIONS';
       trackId: string;
       trackClipId: string;
-      oldValues: any;
-      newValues: any;
+      oldValues: Partial<TrackClip>;
+      newValues: Partial<TrackClip>;
     };
 
 export class UndoRedoManager {

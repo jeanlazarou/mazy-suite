@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AudioFile, AudioClip, Track, PlaybackState } from './types';
+import { AudioFile, AudioClip, Track, TrackClip, PlaybackState } from './types';
 import { UndoRedoManager } from './utils/undoRedo';
 
 interface AppState {
@@ -21,7 +21,7 @@ interface AppState {
   updateTrack: (id: string, updates: Partial<Track>) => void;
   addClipToTrack: (trackId: string, clipId: string, position: number) => void;
   removeClipFromTrack: (trackId: string, trackClipId: string, addToHistory?: boolean) => void;
-  updateTrackClip: (trackId: string, trackClipId: string, updates: any, addToHistory?: boolean) => void;
+  updateTrackClip: (trackId: string, trackClipId: string, updates: Partial<TrackClip>, addToHistory?: boolean) => void;
   moveTrackClip: (trackId: string, trackClipId: string, oldPosition: number, newPosition: number) => void;
   moveClipBetweenTracks: (sourceTrackId: string, targetTrackId: string, trackClipId: string, position: number) => void;
 
@@ -268,9 +268,9 @@ export const useStore = create<AppState>((set, get) => ({
 
       if (trackClip && addToHistory) {
         // Record old values for properties being updated
-        const oldValues: any = {};
-        Object.keys(updates).forEach((key) => {
-          oldValues[key] = (trackClip as any)[key];
+        const oldValues: Partial<TrackClip> = {};
+        (Object.keys(updates) as (keyof TrackClip)[]).forEach((key) => {
+          Object.assign(oldValues, { [key]: trackClip[key] });
         });
 
         // Add to undo history

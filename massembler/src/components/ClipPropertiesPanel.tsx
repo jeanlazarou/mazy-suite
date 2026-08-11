@@ -31,19 +31,17 @@ export function ClipPropertiesPanel() {
   const [repeat, setRepeat] = useState(false);
   const [repeatCount, setRepeatCount] = useState(2);
 
-  if (!selectedTrackClip) return null;
+  // Resolve the selection. This has to happen before any early return so that
+  // every hook below runs on every render (rules-of-hooks).
+  const track = selectedTrackClip
+    ? tracks.find((t) => t.id === selectedTrackClip.trackId)
+    : undefined;
+  const trackClip = track?.clips.find((tc) => tc.id === selectedTrackClip?.trackClipId);
+  const clip = trackClip ? clips.find((c) => c.id === trackClip.clipId) : undefined;
+  const audioFile = clip ? audioFiles.find((f) => f.id === clip.audioFileId) : undefined;
 
-  const track = tracks.find((t) => t.id === selectedTrackClip.trackId);
-  const trackClip = track?.clips.find((tc) => tc.id === selectedTrackClip.trackClipId);
-  const clip = trackClip ? clips.find((c) => c.id === trackClip.clipId) : null;
-  const audioFile = clip ? audioFiles.find((f) => f.id === clip.audioFileId) : null;
-
-  if (!trackClip || !clip || !audioFile) {
-    return null;
-  }
-
-  const effectiveStartTime = trackClip.trimStart ?? clip.startTime;
-  const effectiveEndTime = trackClip.trimEnd ?? clip.endTime;
+  const effectiveStartTime = trackClip?.trimStart ?? clip?.startTime ?? 0;
+  const effectiveEndTime = trackClip?.trimEnd ?? clip?.endTime ?? 0;
   const effectiveDuration = effectiveEndTime - effectiveStartTime;
 
   // Sync local state when selection changes or when trackClip properties change (e.g., undo/redo)
@@ -54,11 +52,11 @@ export function ClipPropertiesPanel() {
       setRepeat(trackClip.repeat || false);
       setRepeatCount(trackClip.repeatCount || 2);
     }
-  }, [trackClip?.id, trackClip?.fadeIn, trackClip?.fadeOut, trackClip?.repeat, trackClip?.repeatCount]);
+  }, [trackClip]);
 
   // Draw waveform
   useEffect(() => {
-    if (!canvasRef.current || !audioFile.buffer) return;
+    if (!trackClip || !audioFile?.buffer || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -145,7 +143,7 @@ export function ClipPropertiesPanel() {
       ctx.fillStyle = '#ef4444';
       ctx.fillRect(fadeOutStart - 2, 0, 4, height);
     }
-  }, [audioFile, effectiveStartTime, effectiveEndTime, effectiveDuration, trackClip.fadeIn, trackClip.fadeOut, canvasSize]);
+  }, [audioFile, effectiveStartTime, effectiveEndTime, effectiveDuration, trackClip, canvasSize]);
 
   // Handle resize observer for canvas - needs to depend on selected clip to reinitialize
   useEffect(() => {
@@ -176,38 +174,8 @@ export function ClipPropertiesPanel() {
     return () => resizeObserver.disconnect();
   }, [selectedTrackClip?.trackClipId]);
 
-  // Handle mouse interaction for fade controls
-  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
-
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const width = rect.width;
-
-    const currentFadeIn = trackClip.fadeIn || 0;
-    const currentFadeOut = trackClip.fadeOut || 0;
-    const fadeInWidth = (currentFadeIn / effectiveDuration) * width;
-    const fadeOutWidth = (currentFadeOut / effectiveDuration) * width;
-    const fadeOutStart = width - fadeOutWidth;
-
-    // Check if clicking near fade in handle
-    if (Math.abs(x - fadeInWidth) < 10) {
-      dragStartValuesRef.current = { fadeIn: currentFadeIn, fadeOut: currentFadeOut };
-      setIsDraggingFadeIn(true);
-      e.preventDefault();
-      return;
-    }
-
-    // Check if clicking near fade out handle
-    if (Math.abs(x - fadeOutStart) < 10) {
-      dragStartValuesRef.current = { fadeIn: currentFadeIn, fadeOut: currentFadeOut };
-      setIsDraggingFadeOut(true);
-      e.preventDefault();
-      return;
-    }
-  };
-
   useEffect(() => {
+    if (!selectedTrackClip) return;
     if (!isDraggingFadeIn && !isDraggingFadeOut) return;
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -269,7 +237,43 @@ export function ClipPropertiesPanel() {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDraggingFadeIn, isDraggingFadeOut, effectiveDuration, selectedTrackClip]);
+  }, [isDraggingFadeIn, isDraggingFadeOut, effectiveDuration, selectedTrackClip, updateTrackClip]);
+
+  // All hooks have run; safe to bail out on an unresolvable selection.
+  if (!selectedTrackClip || !trackClip || !clip || !audioFile) {
+    return null;
+  }
+
+  // Handle mouse interaction for fade controls
+  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const width = rect.width;
+
+    const currentFadeIn = trackClip.fadeIn || 0;
+    const currentFadeOut = trackClip.fadeOut || 0;
+    const fadeInWidth = (currentFadeIn / effectiveDuration) * width;
+    const fadeOutWidth = (currentFadeOut / effectiveDuration) * width;
+    const fadeOutStart = width - fadeOutWidth;
+
+    // Check if clicking near fade in handle
+    if (Math.abs(x - fadeInWidth) < 10) {
+      dragStartValuesRef.current = { fadeIn: currentFadeIn, fadeOut: currentFadeOut };
+      setIsDraggingFadeIn(true);
+      e.preventDefault();
+      return;
+    }
+
+    // Check if clicking near fade out handle
+    if (Math.abs(x - fadeOutStart) < 10) {
+      dragStartValuesRef.current = { fadeIn: currentFadeIn, fadeOut: currentFadeOut };
+      setIsDraggingFadeOut(true);
+      e.preventDefault();
+      return;
+    }
+  };
 
   const handleClose = () => {
     setSelectedTrackClip(null);

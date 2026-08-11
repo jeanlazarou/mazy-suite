@@ -167,14 +167,6 @@ export class AudioEngine {
   }
 }
 
-export async function loadAudioFile(
-  file: File,
-  audioContext: AudioContext
-): Promise<AudioBuffer> {
-  const arrayBuffer = await file.arrayBuffer();
-  return await audioContext.decodeAudioData(arrayBuffer);
-}
-
 export function generateWaveformData(
   buffer: AudioBuffer,
   samples: number = 500,

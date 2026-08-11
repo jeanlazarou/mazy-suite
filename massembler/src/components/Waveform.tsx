@@ -56,15 +56,12 @@ export function Waveform({ audioFile, onRegionSelect, selectedStart, selectedEnd
     const maxAmplitude = Math.max(...waveformData);
 
     ctx.fillStyle = '#3b82f6';
-    let barsDrawn = 0;
     waveformData.forEach((amplitude, i) => {
       const barHeight = (amplitude / maxAmplitude) * (height / 2);
       const x = i;
       const y = height / 2;
 
       ctx.fillRect(x, y - barHeight, 1, barHeight * 2);
-
-      barsDrawn++;
     });
 
     // Draw selection
