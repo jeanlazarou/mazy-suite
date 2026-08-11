@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { TrackClip } from '../types';
+import { UndoAction } from '../utils/undoRedo';
 import { useStore } from '../store';
 
 interface TrackClipBlockProps {
@@ -172,7 +173,7 @@ export function TrackClipBlock({
         const finalTrimEnd = finalTrackClip.trimEnd ?? clip.endTime;
 
         // Record resize action to undo history
-        const resizeAction: any = {
+        const resizeAction: UndoAction = {
           type: 'RESIZE_CLIP',
           trackId: trackId,
           trackClipId: trackClip.id,
