@@ -8,8 +8,20 @@ import {
   resolveClipPlaybackRate,
 } from './clipEffects';
 
+/**
+ * Version of the .mass container format.
+ *
+ * Bump this whenever the archive layout or project.json shape changes in a
+ * way older readers could not handle. Loading refuses anything it does not
+ * recognise rather than guessing.
+ *
+ * 1 - audio always stored as `<id>.wav` (decoded PCM)
+ * 2 - audio stored in its source encoding, named by `storedFile`
+ */
+export const PROJECT_FORMAT_VERSION = 2;
+
 export interface ProjectData {
-  version: string;
+  version: number;
   name: string;
   tracks: Track[];
   clips: AudioClip[];
@@ -17,8 +29,18 @@ export interface ProjectData {
     id: string;
     name: string;
     duration: number;
+    /** Name of this file inside the archive's audio/ folder. */
+    storedFile: string;
   }>;
   pixelsPerSecond: number;
+}
+
+/** Extension to store an audio file under, derived from its original name. */
+function storedFileName(audioFile: AudioFile): string {
+  const original = audioFile.sourceFileName ?? '';
+  const dot = original.lastIndexOf('.');
+  const extension = dot > 0 ? original.slice(dot).toLowerCase() : '.wav';
+  return `${audioFile.id}${extension}`;
 }
 
 /**
@@ -222,7 +244,7 @@ export async function saveProject(
 
   // Create project data (without audio buffers)
   const projectData: ProjectData = {
-    version: '1.0.0',
+    version: PROJECT_FORMAT_VERSION,
     name: projectName,
     tracks: tracks.map((t) => ({
       ...t,
@@ -233,6 +255,7 @@ export async function saveProject(
       id: af.id,
       name: af.name,
       duration: af.duration,
+      storedFile: af.sourceBlob ? storedFileName(af) : `${af.id}.wav`,
     })),
     pixelsPerSecond,
   };
@@ -247,8 +270,14 @@ export async function saveProject(
   if (audioFolder) {
     for (let i = 0; i < audioFiles.length; i++) {
       const audioFile = audioFiles[i];
-      const wavBlob = audioBufferToWav(audioFile.buffer);
-      audioFolder.file(`${audioFile.id}.wav`, wavBlob);
+      if (audioFile.sourceBlob) {
+        // Store the upload as-is. For a compressed source this is typically
+        // several times smaller than the decoded PCM, and it is lossless
+        // with respect to what the user actually gave us.
+        audioFolder.file(storedFileName(audioFile), audioFile.sourceBlob);
+      } else {
+        audioFolder.file(`${audioFile.id}.wav`, audioBufferToWav(audioFile.buffer));
+      }
       onProgress?.(0.3 + (i / audioFiles.length) * 0.5);
     }
   }
@@ -291,6 +320,13 @@ export async function loadProject(
   const projectJsonText = await projectJsonFile.async('text');
   const projectData: ProjectData = JSON.parse(projectJsonText);
 
+  if (projectData.version !== PROJECT_FORMAT_VERSION) {
+    throw new Error(
+      `Unsupported project format (found version ${projectData.version ?? 'none'}, ` +
+        `this build reads version ${PROJECT_FORMAT_VERSION})`
+    );
+  }
+
   onProgress?.(0.3);
 
   // Load audio files
@@ -301,33 +337,34 @@ export async function loadProject(
     throw new Error('Invalid project file: audio folder not found');
   }
 
-  const audioFileEntries = Object.keys(zipContent.files)
-    .filter((name) => name.startsWith('audio/') && name.endsWith('.wav'))
-    .map((name) => zipContent.files[name]);
+  // Drive the load from the metadata rather than from whatever is in the
+  // folder, so the stored encoding can be anything the browser can decode.
+  const audioContext = new AudioContext();
+  const metas = projectData.audioFiles ?? [];
 
-  for (let i = 0; i < audioFileEntries.length; i++) {
-    const file = audioFileEntries[i];
-    const blob = await file.async('blob');
-    const arrayBuffer = await blob.arrayBuffer();
+  for (let i = 0; i < metas.length; i++) {
+    const meta = metas[i];
+    const entry = zipContent.file(`audio/${meta.storedFile}`);
 
-    // Decode audio
-    const audioContext = new AudioContext();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-    // Find the corresponding audio file metadata
-    const fileName = file.name.split('/').pop()?.replace('.wav', '') || '';
-    const audioFileMeta = projectData.audioFiles.find((af) => af.id === fileName);
-
-    if (audioFileMeta) {
-      audioFiles.push({
-        id: audioFileMeta.id,
-        name: audioFileMeta.name,
-        buffer: audioBuffer,
-        duration: audioBuffer.duration,
-      });
+    if (!entry) {
+      throw new Error(`Invalid project file: audio for "${meta.name}" not found`);
     }
 
-    onProgress?.(0.3 + (i / audioFileEntries.length) * 0.6);
+    const blob = await entry.async('blob');
+    // decodeAudioData detaches the buffer it is given, so decode a copy and
+    // keep the blob for the next save.
+    const audioBuffer = await audioContext.decodeAudioData(await blob.arrayBuffer());
+
+    audioFiles.push({
+      id: meta.id,
+      name: meta.name,
+      buffer: audioBuffer,
+      duration: audioBuffer.duration,
+      sourceBlob: blob,
+      sourceFileName: meta.storedFile,
+    });
+
+    onProgress?.(0.3 + (i / Math.max(metas.length, 1)) * 0.6);
   }
 
   onProgress?.(1.0);
