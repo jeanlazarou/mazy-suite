@@ -30,6 +30,10 @@ interface ToastProps {
 
 function Toast({ id, message, type, duration, onClose }: ToastProps) {
   useEffect(() => {
+    // duration <= 0 means "stay until dismissed" - used for failures, whose
+    // text is worth reading rather than catching in three seconds.
+    if (duration <= 0) return;
+
     const timer = setTimeout(() => {
       onClose(id);
     }, duration);
@@ -56,11 +60,14 @@ function Toast({ id, message, type, duration, onClose }: ToastProps) {
       className={`${bgColors[type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px] max-w-[500px] pointer-events-auto animate-slide-in`}
       onClick={() => onClose(id)}
     >
-      <div className="text-xl font-bold">{icons[type]}</div>
-      <div className="flex-1">{message}</div>
+      <div className="text-xl font-bold shrink-0">{icons[type]}</div>
+      {/* min-w-0 so a long unbreakable token (a URL in an error message)
+          wraps instead of pushing the dismiss button out of the toast */}
+      <div className="flex-1 min-w-0 break-words">{message}</div>
       <button
         onClick={() => onClose(id)}
-        className="text-white hover:text-gray-200 font-bold"
+        className="text-white hover:text-gray-200 font-bold shrink-0 self-start"
+        title="Dismiss"
       >
         ×
       </button>
