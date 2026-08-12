@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AudioFile } from '../types';
+import { useStore } from '../store';
 import { generateWaveformData } from '../utils/audioEngine';
 
 interface WaveformEditorModalProps {
@@ -17,6 +18,7 @@ export function WaveformEditorModal({
   initialStart = 0,
   initialEnd = 0,
 }: WaveformEditorModalProps) {
+  const showToast = useStore((state) => state.showToast);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -255,7 +257,7 @@ export function WaveformEditorModal({
 
   const handleCreate = () => {
     if (!clipName.trim()) {
-      alert('Please enter a clip name');
+      showToast('Please enter a clip name', 'warning');
       return;
     }
 
@@ -263,7 +265,7 @@ export function WaveformEditorModal({
     const end = Math.max(selectionStart, selectionEnd);
 
     if (end - start < 0.01) {
-      alert('Selection is too short');
+      showToast('Selection is too short', 'warning');
       return;
     }
 

@@ -31,6 +31,7 @@ export function ProjectActions() {
     loadProjectState,
     audioContext,
     setAudioContext,
+    showToast,
   } = useStore();
 
   const handleUploadAudio = () => {
@@ -68,7 +69,7 @@ export function ProjectActions() {
         addAudioFile(audioFile);
       } catch (error) {
         console.error('Error loading audio file:', error);
-        alert(`Failed to load ${file.name}`);
+        showToast(`Failed to load ${file.name}`, 'error', 0);
       }
     }
 
@@ -98,7 +99,11 @@ export function ProjectActions() {
       }, 2000);
     } catch (error) {
       console.error('Export error:', error);
-      alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showToast(
+        `Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error',
+        0
+      );
       setIsProcessing(false);
       setStatusMessage('');
     }
@@ -131,7 +136,11 @@ export function ProjectActions() {
       }, 2000);
     } catch (error) {
       console.error('Save error:', error);
-      alert(`Save failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showToast(
+        `Save failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error',
+        0
+      );
       setIsProcessing(false);
       setStatusMessage('');
     }
@@ -175,7 +184,11 @@ export function ProjectActions() {
       }, 2000);
     } catch (error) {
       console.error('Load error:', error);
-      alert(`Load failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showToast(
+        `Load failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'error',
+        0
+      );
       setIsProcessing(false);
       setStatusMessage('');
     }
