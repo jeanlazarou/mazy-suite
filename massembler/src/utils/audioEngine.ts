@@ -1,9 +1,17 @@
 import { Track, AudioClip, AudioFile, TrackClip } from '../types';
+import {
+  EffectChain,
+  createEffectChain,
+  resolveClipBuffer,
+  resolveClipOffset,
+  resolveClipPlaybackRate,
+} from './clipEffects';
 
 export class AudioEngine {
   private audioContext: AudioContext;
   private sources: AudioBufferSourceNode[] = [];
   private gainNodes: GainNode[] = [];
+  private effectChains: EffectChain[] = [];
   private startTime: number = 0;
 
   constructor(audioContext: AudioContext) {
@@ -55,11 +63,20 @@ export class AudioEngine {
   ) {
     const playClipOnce = (offset: number = 0) => {
       const source = this.audioContext.createBufferSource();
-      source.buffer = buffer;
+      source.buffer = resolveClipBuffer(this.audioContext, buffer, trackClip.effect);
 
       // Create a gain node for fade in/out
       const fadeGain = this.audioContext.createGain();
-      source.connect(fadeGain);
+
+      // Route the clip through its effect chain, if it has one
+      const effectChain = createEffectChain(this.audioContext, trackClip.effect);
+      if (effectChain) {
+        source.connect(effectChain.input);
+        effectChain.output.connect(fadeGain);
+        this.effectChains.push(effectChain);
+      } else {
+        source.connect(fadeGain);
+      }
       fadeGain.connect(destination);
 
       // Use trimStart/trimEnd if set, otherwise use clip's default values
@@ -67,6 +84,19 @@ export class AudioEngine {
       const effectiveEndTime = trackClip.trimEnd ?? clip.endTime;
       const clipDuration = effectiveEndTime - effectiveStartTime;
       const startPosition = trackClip.position + offset;
+
+      // Reversed clips read from the mirrored position in the buffer
+      const sourceOffset = resolveClipOffset(
+        source.buffer,
+        trackClip.effect,
+        effectiveStartTime,
+        effectiveEndTime
+      );
+
+      // Pitch presets read `rate` seconds of buffer per second of timeline,
+      // so the clip still fills exactly its slot.
+      const rate = resolveClipPlaybackRate(trackClip.effect);
+      source.playbackRate.value = rate;
 
       const fadeIn = trackClip.fadeIn || 0;
       const fadeOut = trackClip.fadeOut || 0;
@@ -94,8 +124,8 @@ export class AudioEngine {
 
         source.start(
           playTime,
-          effectiveStartTime + offsetInClip,
-          remainingDuration
+          sourceOffset + offsetInClip * rate,
+          remainingDuration * rate
         );
       } else if (startFrom < startPosition) {
         const playTime = this.audioContext.currentTime + (startPosition - startFrom);
@@ -116,8 +146,8 @@ export class AudioEngine {
 
         source.start(
           playTime,
-          effectiveStartTime,
-          clipDuration
+          sourceOffset,
+          clipDuration * rate
         );
       }
 
@@ -146,6 +176,11 @@ export class AudioEngine {
     });
     this.sources = [];
     this.gainNodes = [];
+
+    // Effect chains own generators (the underwater LFO) that outlive the
+    // source nodes, so they have to be torn down explicitly.
+    this.effectChains.forEach((chain) => chain.dispose());
+    this.effectChains = [];
   }
 
   pause(_currentTime: number) {

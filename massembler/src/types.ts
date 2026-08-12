@@ -14,12 +14,25 @@ export interface AudioClip {
   duration: number;
 }
 
+// One-click clip treatments. Deliberately preset-only: no parameters to tune.
+export type ClipEffectId =
+  | 'none'
+  | 'reverse'
+  | 'underwater'
+  | 'telephone'
+  | 'cathedral'
+  | 'distant'
+  | 'tremolo'
+  | 'lofi'
+  | 'deep';
+
 export interface TrackClip {
   id: string;
   clipId: string;
   position: number;  // Position on the timeline (in seconds)
   repeat: boolean;
   repeatCount?: number;
+  effect?: ClipEffectId;
   // Optional trim overrides - if set, these override the clip's default start/end times
   trimStart?: number; // Start time in the source audio file (overrides clip.startTime)
   trimEnd?: number;   // End time in the source audio file (overrides clip.endTime)
