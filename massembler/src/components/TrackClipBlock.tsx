@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { TrackClip } from '../types';
 import { UndoAction } from '../utils/undoRedo';
 import { getEffectInfo } from '../utils/clipEffects';
+import { getTrackClipEnd } from '../utils/clipTiming';
 import { useStore } from '../store';
 
 interface TrackClipBlockProps {
@@ -50,13 +51,8 @@ export function TrackClipBlock({
       const otherClip = clips.find((c) => c.id === tc.clipId);
       if (!otherClip) return false;
 
-      const otherEffectiveStart = tc.trimStart ?? otherClip.startTime;
-      const otherEffectiveEnd = tc.trimEnd ?? otherClip.endTime;
-      const otherDuration = otherEffectiveEnd - otherEffectiveStart;
-      const otherTotalDuration = otherDuration * (tc.repeatCount || 1);
-
       const existingStart = tc.position;
-      const existingEnd = tc.position + otherTotalDuration;
+      const existingEnd = getTrackClipEnd(tc, otherClip);
 
       return newStart < existingEnd && newEnd > existingStart;
     });
@@ -97,14 +93,9 @@ export function TrackClipBlock({
         const otherClip = clips.find((c) => c.id === tc.clipId);
         if (!otherClip) return null;
 
-        const otherStart = tc.trimStart ?? otherClip.startTime;
-        const otherEnd = tc.trimEnd ?? otherClip.endTime;
-        const otherDuration = otherEnd - otherStart;
-        const totalDuration = otherDuration * (tc.repeatCount || 1);
-
         return {
           position: tc.position,
-          endPosition: tc.position + totalDuration,
+          endPosition: getTrackClipEnd(tc, otherClip),
         };
       })
       .filter((tc): tc is { position: number; endPosition: number } => tc !== null);

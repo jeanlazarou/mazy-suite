@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from '../store';
 import { AudioEngine } from '../utils/audioEngine';
+import { getProjectDuration } from '../utils/clipTiming';
 
 export function PlaybackControls() {
   const {
@@ -48,19 +49,7 @@ export function PlaybackControls() {
     }
 
     // Calculate total duration
-    const maxDuration = Math.max(
-      1,
-      ...tracks.flatMap((track) =>
-        track.clips.map((tc) => {
-          const clip = clips.find((c) => c.id === tc.clipId);
-          if (!clip) return 0;
-          const duration = tc.repeat && tc.repeatCount
-            ? clip.duration * tc.repeatCount
-            : clip.duration;
-          return tc.position + duration;
-        })
-      )
-    );
+    const maxDuration = getProjectDuration(tracks, clips, 1);
 
     audioEngineRef.current.play(
       tracks,

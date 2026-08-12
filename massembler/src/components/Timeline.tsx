@@ -1,5 +1,6 @@
 import { useStore } from '../store';
 import { Track } from './Track';
+import { getProjectDuration } from '../utils/clipTiming';
 import { useRef, useEffect } from 'react';
 
 export function Timeline() {
@@ -8,20 +9,8 @@ export function Timeline() {
   const tracksScrollRef = useRef<HTMLDivElement>(null);
   const controlsScrollRef = useRef<HTMLDivElement>(null);
 
-  // Calculate maximum duration
-  const maxDuration = Math.max(
-    30, // Minimum 30 seconds
-    ...tracks.flatMap((track) =>
-      track.clips.map((tc) => {
-        const clip = clips.find((c) => c.id === tc.clipId);
-        if (!clip) return 0;
-        const duration = tc.repeat && tc.repeatCount
-          ? clip.duration * tc.repeatCount
-          : clip.duration;
-        return tc.position + duration;
-      })
-    )
-  );
+  // Calculate maximum duration (minimum 30 seconds)
+  const maxDuration = getProjectDuration(tracks, clips, 30);
 
   // Generate time markers - major every 5 seconds, minor every 1 second
   const majorMarkers = [];

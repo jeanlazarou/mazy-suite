@@ -7,6 +7,7 @@ import {
   resolveClipOffset,
   resolveClipPlaybackRate,
 } from './clipEffects';
+import { getTrackClipEnd } from './clipTiming';
 
 /**
  * Version of the .mass container format.
@@ -61,13 +62,12 @@ export async function exportMix(
     track.clips.forEach((trackClip) => {
       const clip = clips.find((c) => c.id === trackClip.clipId);
       if (clip) {
-        const effectiveStartTime = trackClip.trimStart ?? clip.startTime;
-        const effectiveEndTime = trackClip.trimEnd ?? clip.endTime;
-        const clipDuration = effectiveEndTime - effectiveStartTime;
-        const endTime = trackClip.position + clipDuration * (trackClip.repeatCount || 1);
         // Reverb-style effects keep ringing after their source stops, so the
         // render has to be long enough to hold the tail.
-        maxDuration = Math.max(maxDuration, endTime + getEffectTailSeconds(trackClip.effect));
+        maxDuration = Math.max(
+          maxDuration,
+          getTrackClipEnd(trackClip, clip) + getEffectTailSeconds(trackClip.effect)
+        );
       }
     });
   });
