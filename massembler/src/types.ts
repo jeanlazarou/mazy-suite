@@ -3,6 +3,15 @@ export interface AudioFile {
   name: string;
   buffer: AudioBuffer;
   duration: number;
+  /**
+   * The bytes the audio was originally decoded from, kept so projects can be
+   * saved in the source encoding instead of re-encoded PCM. A Blob rather
+   * than an ArrayBuffer: it stays backed by disk and survives decodeAudioData
+   * detaching its input.
+   */
+  sourceBlob?: Blob;
+  /** Original upload filename, used to pick the extension inside the .mass */
+  sourceFileName?: string;
 }
 
 export interface AudioClip {

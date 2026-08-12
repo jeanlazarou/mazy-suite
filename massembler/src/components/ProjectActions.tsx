@@ -56,6 +56,10 @@ export function ProjectActions() {
           name: file.name,
           buffer: audioBuffer,
           duration: audioBuffer.duration,
+          // Keep the upload itself: saving these bytes back out is far
+          // smaller than re-encoding the decoded buffer to PCM.
+          sourceBlob: file,
+          sourceFileName: file.name,
         };
 
         addAudioFile(audioFile);
