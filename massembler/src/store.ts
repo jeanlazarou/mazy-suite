@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { AudioFile, AudioClip, Track, TrackClip, PlaybackState } from './types';
 import { UndoRedoManager } from './utils/undoRedo';
+import { getTrackClipEnd } from './utils/clipTiming';
 
 interface AppState {
   // Audio files
@@ -102,16 +103,8 @@ function checkOverlap(
     const clip = state.clips.find((c) => c.id === trackClip.clipId);
     if (!clip) return false;
 
-    // Calculate effective duration (considering trim values)
-    const effectiveStartTime = trackClip.trimStart ?? clip.startTime;
-    const effectiveEndTime = trackClip.trimEnd ?? clip.endTime;
-    const effectiveDuration = effectiveEndTime - effectiveStartTime;
-
-    // Calculate total duration including repeats
-    const totalDuration = effectiveDuration * (trackClip.repeatCount || 1);
-
     const existingStart = trackClip.position;
-    const existingEnd = trackClip.position + totalDuration;
+    const existingEnd = getTrackClipEnd(trackClip, clip);
 
     // Check if ranges overlap
     return newStart < existingEnd && newEnd > existingStart;
