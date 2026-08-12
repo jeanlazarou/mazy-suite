@@ -6,6 +6,8 @@ import SaveIcon from '@mui/icons-material/Save';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import CompressIcon from '@mui/icons-material/Compress';
+import { OptimizeDialog } from './OptimizeDialog';
 import { useStore } from '../store';
 import { exportMix, saveProject, loadProject, downloadBlob } from '../utils/projectManager';
 import { AudioFile } from '../types';
@@ -15,6 +17,7 @@ export function ProjectActions() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState('');
+  const [showOptimize, setShowOptimize] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
 
@@ -187,6 +190,14 @@ export function ProjectActions() {
     { icon: <CloudUploadIcon />, name: 'Upload Audio', onClick: handleUploadAudio },
     { icon: <FolderOpenIcon />, name: 'Load Project', onClick: handleLoadProject },
     { icon: <SaveIcon />, name: 'Save Project', onClick: handleSaveProject },
+    {
+      icon: <CompressIcon />,
+      name: 'Optimize Project',
+      onClick: () => {
+        setOpen(false);
+        setShowOptimize(true);
+      },
+    },
     { icon: <MusicNoteIcon />, name: 'Export Mix', onClick: handleExportMix },
   ];
 
@@ -230,6 +241,8 @@ export function ProjectActions() {
         style={{ display: 'none' }}
         onChange={handleProjectFileSelect}
       />
+
+      {showOptimize && <OptimizeDialog onClose={() => setShowOptimize(false)} />}
 
       {/* Progress overlay */}
       {isProcessing && (

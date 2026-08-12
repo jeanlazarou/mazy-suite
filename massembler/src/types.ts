@@ -1,8 +1,27 @@
+/** A span of an audio file, in seconds of the original recording. */
+export interface UsedSegment {
+  start: number;
+  end: number;
+}
+
+/**
+ * Record of an optimization pass. Kept so the original recording can be
+ * relinked later: `segments` is what survived, in original-file time, and the
+ * optimized buffer is those segments concatenated in order.
+ */
+export interface AudioFileOptimization {
+  originalName: string;
+  originalDuration: number;
+  segments: UsedSegment[];
+}
+
 export interface AudioFile {
   id: string;
   name: string;
   buffer: AudioBuffer;
   duration: number;
+  /** Set when this file has been trimmed to the regions actually in use. */
+  optimization?: AudioFileOptimization;
   /**
    * The bytes the audio was originally decoded from, kept so projects can be
    * saved in the source encoding instead of re-encoded PCM. A Blob rather

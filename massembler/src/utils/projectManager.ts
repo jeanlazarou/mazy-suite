@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { AudioFile, Track, AudioClip } from '../types';
+import { AudioFile, AudioFileOptimization, Track, AudioClip } from '../types';
 import {
   createEffectChain,
   getEffectTailSeconds,
@@ -17,8 +17,9 @@ import {
  *
  * 1 - audio always stored as `<id>.wav` (decoded PCM)
  * 2 - audio stored in its source encoding, named by `storedFile`
+ * 3 - audio may be trimmed to used regions, described by `optimization`
  */
-export const PROJECT_FORMAT_VERSION = 2;
+export const PROJECT_FORMAT_VERSION = 3;
 
 export interface ProjectData {
   version: number;
@@ -31,6 +32,8 @@ export interface ProjectData {
     duration: number;
     /** Name of this file inside the archive's audio/ folder. */
     storedFile: string;
+    /** Present when the audio was trimmed to the regions clips reference. */
+    optimization?: AudioFileOptimization;
   }>;
   pixelsPerSecond: number;
 }
@@ -256,6 +259,7 @@ export async function saveProject(
       name: af.name,
       duration: af.duration,
       storedFile: af.sourceBlob ? storedFileName(af) : `${af.id}.wav`,
+      optimization: af.optimization,
     })),
     pixelsPerSecond,
   };
@@ -362,6 +366,7 @@ export async function loadProject(
       duration: audioBuffer.duration,
       sourceBlob: blob,
       sourceFileName: meta.storedFile,
+      optimization: meta.optimization,
     });
 
     onProgress?.(0.3 + (i / Math.max(metas.length, 1)) * 0.6);
