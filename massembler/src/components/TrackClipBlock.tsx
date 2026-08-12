@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { TrackClip } from '../types';
 import { UndoAction } from '../utils/undoRedo';
+import { getEffectInfo } from '../utils/clipEffects';
 import { useStore } from '../store';
 
 interface TrackClipBlockProps {
@@ -334,8 +335,15 @@ export function TrackClipBlock({
 
         <div className="p-1 h-full flex flex-col justify-between text-xs pointer-events-none">
           <div className="font-medium truncate">{clip.name}</div>
-          <div className="text-blue-100 text-[10px]">
-            {effectiveDuration.toFixed(2)}s @ {trackClip.position.toFixed(1)}s
+          <div className="text-blue-100 text-[10px] flex items-center gap-1">
+            <span className="truncate">
+              {effectiveDuration.toFixed(2)}s @ {trackClip.position.toFixed(1)}s
+            </span>
+            {trackClip.effect && trackClip.effect !== 'none' && (
+              <span className="shrink-0 px-1 rounded bg-purple-600 text-white text-[9px] uppercase tracking-wide">
+                {getEffectInfo(trackClip.effect).label}
+              </span>
+            )}
           </div>
         </div>
       </div>

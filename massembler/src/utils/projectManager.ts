@@ -1,5 +1,12 @@
 import JSZip from 'jszip';
 import { AudioFile, Track, AudioClip } from '../types';
+import {
+  createEffectChain,
+  getEffectTailSeconds,
+  resolveClipBuffer,
+  resolveClipOffset,
+  resolveClipPlaybackRate,
+} from './clipEffects';
 
 export interface ProjectData {
   version: string;
@@ -33,7 +40,9 @@ export async function exportMix(
         const effectiveEndTime = trackClip.trimEnd ?? clip.endTime;
         const clipDuration = effectiveEndTime - effectiveStartTime;
         const endTime = trackClip.position + clipDuration * (trackClip.repeatCount || 1);
-        maxDuration = Math.max(maxDuration, endTime);
+        // Reverb-style effects keep ringing after their source stops, so the
+        // render has to be long enough to hold the tail.
+        maxDuration = Math.max(maxDuration, endTime + getEffectTailSeconds(trackClip.effect));
       }
     });
   });
@@ -69,11 +78,19 @@ export async function exportMix(
 
       const playClipOnce = (offset: number = 0) => {
         const source = offlineContext.createBufferSource();
-        source.buffer = audioFile.buffer;
+        source.buffer = resolveClipBuffer(offlineContext, audioFile.buffer, trackClip.effect);
 
         // Create a gain node for fade in/out
         const fadeGain = offlineContext.createGain();
-        source.connect(fadeGain);
+
+        // Same effect chain as realtime playback, so the export matches
+        const effectChain = createEffectChain(offlineContext, trackClip.effect);
+        if (effectChain) {
+          source.connect(effectChain.input);
+          effectChain.output.connect(fadeGain);
+        } else {
+          source.connect(fadeGain);
+        }
         fadeGain.connect(trackGain);
 
         const startPosition = trackClip.position + offset;
@@ -94,7 +111,13 @@ export async function exportMix(
           fadeGain.gain.linearRampToValueAtTime(0, startPosition + clipDuration);
         }
 
-        source.start(startPosition, effectiveStartTime, clipDuration);
+        const rate = resolveClipPlaybackRate(trackClip.effect);
+        source.playbackRate.value = rate;
+        source.start(
+          startPosition,
+          resolveClipOffset(source.buffer, trackClip.effect, effectiveStartTime, effectiveEndTime),
+          clipDuration * rate
+        );
       };
 
       if (trackClip.repeat && trackClip.repeatCount) {

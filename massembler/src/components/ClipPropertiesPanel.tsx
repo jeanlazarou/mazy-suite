@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
+import { ClipEffectId } from '../types';
+import { CLIP_EFFECTS } from '../utils/clipEffects';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -298,6 +300,14 @@ export function ClipPropertiesPanel() {
     });
   };
 
+  const currentEffect: ClipEffectId = trackClip.effect ?? 'none';
+
+  const handleEffectChange = (effect: ClipEffectId) => {
+    updateTrackClip(selectedTrackClip.trackId, selectedTrackClip.trackClipId, {
+      effect: effect === 'none' ? undefined : effect,
+    });
+  };
+
   const handleRepeatChange = (checked: boolean) => {
     setRepeat(checked);
     updateTrackClip(selectedTrackClip.trackId, selectedTrackClip.trackClipId, {
@@ -358,6 +368,30 @@ export function ClipPropertiesPanel() {
 
         {/* Controls */}
         <div className="space-y-4">
+          {/* Effect */}
+          <div>
+            <div className="text-sm mb-2 text-gray-300">Effect</div>
+            <div className="flex flex-wrap gap-2">
+              {CLIP_EFFECTS.map((option) => {
+                const isActive = currentEffect === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    onClick={() => handleEffectChange(option.id)}
+                    title={option.description}
+                    className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+                      isActive
+                        ? 'bg-blue-600 border-blue-400 text-white'
+                        : 'bg-gray-900 border-gray-700 text-gray-300 hover:border-gray-500'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Fade In */}
           <div>
             <TextField
