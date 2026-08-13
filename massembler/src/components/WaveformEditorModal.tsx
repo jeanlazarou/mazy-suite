@@ -3,12 +3,20 @@ import { AudioFile } from '../types';
 import { useStore } from '../store';
 import { generateWaveformData } from '../utils/audioEngine';
 
+/** How close to a selection edge the pointer must be to grab it, in pixels. */
+const EDGE_GRAB_PX = 8;
+
 interface WaveformEditorModalProps {
   audioFile: AudioFile;
   onClose: () => void;
   onCreateClip: (start: number, end: number, name: string) => void;
   initialStart?: number;
   initialEnd?: number;
+  initialName?: string;
+  /** Editing a clip that is already placed - only the name may change. */
+  regionLocked?: boolean;
+  title?: string;
+  submitLabel?: string;
 }
 
 export function WaveformEditorModal({
@@ -17,6 +25,10 @@ export function WaveformEditorModal({
   onCreateClip,
   initialStart = 0,
   initialEnd = 0,
+  initialName = '',
+  regionLocked = false,
+  title = 'Waveform Editor',
+  submitLabel = 'Create Clip',
 }: WaveformEditorModalProps) {
   const showToast = useStore((state) => state.showToast);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -24,7 +36,7 @@ export function WaveformEditorModal({
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionStart, setSelectionStart] = useState<number>(initialStart);
   const [selectionEnd, setSelectionEnd] = useState<number>(initialEnd || audioFile.duration);
-  const [clipName, setClipName] = useState('');
+  const [clipName, setClipName] = useState(initialName);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -36,6 +48,7 @@ export function WaveformEditorModal({
   const [panStart, setPanStart] = useState(0);
   const [isDraggingSelection, setIsDraggingSelection] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
+  const [hoverEdge, setHoverEdge] = useState<'start' | 'end' | null>(null);
 
   useEffect(() => {
     // Initialize audio context
@@ -125,27 +138,66 @@ export function WaveformEditorModal({
       ctx.stroke();
 
 
+      // Grips, so the edges read as draggable rather than decorative
+      if (!regionLocked) {
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(startX - 3, 0, 6, 18);
+        ctx.fillRect(endX - 3, 0, 6, 18);
+        ctx.fillRect(startX - 3, height - 18, 6, 18);
+        ctx.fillRect(endX - 3, height - 18, 6, 18);
+      }
+
       // Draw time labels
       ctx.fillStyle = '#22c55e';
       ctx.font = '12px monospace';
       ctx.fillText(`${start.toFixed(2)}s`, startX + 4, 20);
       ctx.fillText(`${end.toFixed(2)}s`, endX - 50, 20);
     }
-  }, [audioFile, selectionStart, selectionEnd, canvasSize, viewStart, viewEnd]);
+  }, [audioFile, selectionStart, selectionEnd, canvasSize, viewStart, viewEnd, regionLocked]);
+
+  /** Pixel position of a time value in the current view. */
+  const xForTime = (time: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return 0;
+    const rect = canvas.getBoundingClientRect();
+    return ((time - viewStart) / (viewEnd - viewStart)) * rect.width;
+  };
+
+  /** Which selection edge, if any, sits under this pixel. */
+  const edgeAt = (x: number): 'start' | 'end' | null => {
+    const selStart = Math.min(selectionStart, selectionEnd);
+    const selEnd = Math.max(selectionStart, selectionEnd);
+    if (selEnd - selStart <= 0.001) return null;
+    if (Math.abs(x - xForTime(selStart)) <= EDGE_GRAB_PX) return 'start';
+    if (Math.abs(x - xForTime(selEnd)) <= EDGE_GRAB_PX) return 'end';
+    return null;
+  };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (regionLocked) return;
 
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const viewDuration = viewEnd - viewStart;
     const time = viewStart + (x / rect.width) * viewDuration;
 
+    const edge = edgeAt(x);
+
     if (e.shiftKey) {
       // Pan mode
       setIsPanning(true);
       setPanStart(x);
+    } else if (edge) {
+      // Grab an edge: anchor the opposite bound as the selection start and let
+      // the normal drag path move the grabbed one. Reads use min/max, so the
+      // inverted order does not matter.
+      const selStart = Math.min(selectionStart, selectionEnd);
+      const selEnd = Math.max(selectionStart, selectionEnd);
+      setSelectionStart(edge === 'start' ? selEnd : selStart);
+      setSelectionEnd(edge === 'start' ? selStart : selEnd);
+      setIsSelecting(true);
     } else if (e.altKey) {
       // Alt+drag to move existing selection
       const selStart = Math.min(selectionStart, selectionEnd);
@@ -178,6 +230,10 @@ export function WaveformEditorModal({
     const x = e.clientX - rect.left;
     const viewDuration = viewEnd - viewStart;
     const time = viewStart + (x / rect.width) * viewDuration;
+
+    if (!isPanning && !isSelecting && !isDraggingSelection) {
+      setHoverEdge(regionLocked ? null : edgeAt(x));
+    }
 
     if (isPanning) {
       const deltaX = x - panStart;
@@ -345,7 +401,7 @@ export function WaveformEditorModal({
         {/* Header */}
         <div className="p-4 border-b border-gray-700 flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold">Waveform Editor</h2>
+            <h2 className="text-xl font-bold">{title}</h2>
             <p className="text-sm text-gray-400">{audioFile.name}</p>
           </div>
           <button
@@ -398,14 +454,24 @@ export function WaveformEditorModal({
             </span>
           </div>
           
+          {regionLocked && (
+            <div className="mb-3 px-3 py-2 rounded bg-yellow-900/40 border border-yellow-700 text-sm text-yellow-200">
+              This clip is placed on a track, so its region is locked - changing it
+              would move audio already arranged on the timeline. You can still
+              rename it.
+            </div>
+          )}
+
           <div className="mb-4" ref={containerRef}>
             <canvas
               ref={canvasRef}
               width={canvasSize.width}
               height={canvasSize.height}
               className={`w-full border border-gray-700 rounded bg-gray-900 ${
+                regionLocked ? 'cursor-not-allowed' :
                 isDraggingSelection ? 'cursor-grabbing' :
                 isPanning ? 'cursor-grabbing' :
+                hoverEdge ? 'cursor-ew-resize' :
                 'cursor-crosshair'
               }`}
               onMouseDown={handleMouseDown}
@@ -478,7 +544,7 @@ export function WaveformEditorModal({
               disabled={selectedDuration < 0.01}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded font-semibold"
             >
-              Create Clip
+              {submitLabel}
             </button>
           </div>
         </div>
