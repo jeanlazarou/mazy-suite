@@ -1,19 +1,32 @@
 import { useState } from 'react';
 import { useStore } from '../store';
-import { Waveform } from './Waveform';
+import { AudioClip } from '../types';
+import { Waveform, WaveformSelection } from './Waveform';
 import { WaveformEditorModal } from './WaveformEditorModal';
 
 export function ClipLibrary() {
-  const { audioFiles, clips, addClip, removeClip, showToast } = useStore();
+  const { audioFiles, clips, tracks, addClip, updateClip, removeClip, showToast } =
+    useStore();
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [clipName, setClipName] = useState('');
+  const [selection, setSelection] = useState<WaveformSelection | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [editingClip, setEditingClip] = useState<AudioClip | null>(null);
   const [isQuickClipExpanded, setIsQuickClipExpanded] = useState(true);
 
   const selectedFile = audioFiles.find((f) => f.id === selectedFileId);
 
-  const handleCreateClip = (start: number, end: number) => {
-    if (!selectedFileId || !clipName.trim()) {
+  /** A clip placed on any track cannot have its region changed. */
+  const clipUsageCount = (clipId: string) =>
+    tracks.reduce(
+      (count, track) => count + track.clips.filter((tc) => tc.clipId === clipId).length,
+      0
+    );
+
+  const handleCreateClip = () => {
+    if (!selectedFileId || !selection) return;
+
+    if (!clipName.trim()) {
       showToast('Please enter a clip name', 'warning');
       return;
     }
@@ -22,16 +35,29 @@ export function ClipLibrary() {
       id: `clip-${Date.now()}`,
       name: clipName,
       audioFileId: selectedFileId,
-      startTime: start,
-      endTime: end,
-      duration: end - start,
+      startTime: selection.start,
+      endTime: selection.end,
+      duration: selection.end - selection.start,
     });
 
     setClipName('');
+    setSelection(null);
     showToast('Clip created!', 'success');
   };
 
-  const handleCreateClipFromModal = (start: number, end: number, name: string) => {
+  // The modal is used both to define a new clip and to edit an existing one.
+  const handleModalSubmit = (start: number, end: number, name: string) => {
+    if (editingClip) {
+      updateClip(editingClip.id, {
+        name,
+        startTime: start,
+        endTime: end,
+        duration: end - start,
+      });
+      showToast('Clip updated', 'success');
+      return;
+    }
+
     if (!selectedFileId) return;
 
     addClip({
@@ -43,6 +69,22 @@ export function ClipLibrary() {
       duration: end - start,
     });
   };
+
+  const handleEditClip = (clip: AudioClip) => {
+    setEditingClip(clip);
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingClip(null);
+  };
+
+  // Editing works on the clip's own audio file, which need not be the one
+  // currently selected for defining new clips.
+  const modalAudioFile = editingClip
+    ? audioFiles.find((f) => f.id === editingClip.audioFileId)
+    : selectedFile;
 
   const handleDragStart = (e: React.DragEvent, clipId: string) => {
     e.dataTransfer.setData('clipId', clipId);
@@ -152,7 +194,11 @@ export function ClipLibrary() {
                   >
                     Open Waveform Editor
                   </button>
-                  <Waveform audioFile={selectedFile} onRegionSelect={handleCreateClip} />
+                  <Waveform
+                    audioFile={selectedFile}
+                    selection={selection}
+                    onSelectionChange={setSelection}
+                  />
                   <input
                     type="text"
                     value={clipName}
@@ -160,9 +206,13 @@ export function ClipLibrary() {
                     placeholder="Clip name..."
                     className="w-full mt-2 bg-gray-800 border border-gray-700 rounded px-2 py-1"
                   />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Select a region on the waveform or use the editor for better precision
-                  </p>
+                  <button
+                    onClick={handleCreateClip}
+                    disabled={!selection || selection.end - selection.start < 0.01}
+                    className="w-full mt-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 rounded font-semibold"
+                  >
+                    Create Clip
+                  </button>
                 </div>
               )}
             </div>
@@ -176,6 +226,7 @@ export function ClipLibrary() {
         <div className="space-y-2">
           {clips.map((clip) => {
             const file = audioFiles.find((f) => f.id === clip.audioFileId);
+            const usage = clipUsageCount(clip.id);
             return (
               <div
                 key={clip.id}
@@ -193,13 +244,26 @@ export function ClipLibrary() {
                       {clip.startTime.toFixed(2)}s - {clip.endTime.toFixed(2)}s
                       ({clip.duration.toFixed(2)}s)
                     </div>
+                    {usage > 0 && (
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        used on {usage} track clip{usage === 1 ? '' : 's'} - name only
+                      </div>
+                    )}
                   </div>
-                  <button
-                    onClick={() => removeClip(clip.id)}
-                    className="text-red-500 hover:text-red-400 text-xs ml-2"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex flex-col items-end gap-1 ml-2">
+                    <button
+                      onClick={() => handleEditClip(clip)}
+                      className="text-blue-400 hover:text-blue-300 text-xs"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => removeClip(clip.id)}
+                      className="text-red-500 hover:text-red-400 text-xs"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -207,12 +271,18 @@ export function ClipLibrary() {
         </div>
       </div>
 
-      {/* Waveform Editor Modal */}
-      {showModal && selectedFile && (
+      {/* Waveform Editor Modal - defines a new clip, or edits an existing one */}
+      {showModal && modalAudioFile && (
         <WaveformEditorModal
-          audioFile={selectedFile}
-          onClose={() => setShowModal(false)}
-          onCreateClip={handleCreateClipFromModal}
+          audioFile={modalAudioFile}
+          onClose={closeModal}
+          onCreateClip={handleModalSubmit}
+          initialStart={editingClip?.startTime}
+          initialEnd={editingClip?.endTime}
+          initialName={editingClip?.name}
+          regionLocked={!!editingClip && clipUsageCount(editingClip.id) > 0}
+          title={editingClip ? 'Edit Clip' : 'Waveform Editor'}
+          submitLabel={editingClip ? 'Save Changes' : 'Create Clip'}
         />
       )}
     </div>
