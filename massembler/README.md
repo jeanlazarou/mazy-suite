@@ -2,16 +2,28 @@
 
 A web-based multi-track audio sequencer that allows you to upload audio files, create clips from selected portions, and arrange them across multiple tracks with full playback control, project management, and audio export capabilities.
 
+**▶ [Try it live](https://jeanlazarou.github.io/mazy-suite/massembler/)** — part of the [Mazy Suite](https://jeanlazarou.github.io/mazy-suite/). Everything runs in the browser; no audio is uploaded anywhere.
+
 ## 🎉 Major Features
 
 ### Core Editing Features
-- **Audio File Upload**: Support for WAV and MP3 files via Material UI Speed Dial
+- **Audio File Upload**: Any format the browser can decode (WAV, MP3, M4A, FLAC…), via Material UI Speed Dial
 - **Waveform Visualization**: Visual representation of audio with interactive selection
 - **Advanced Waveform Editor**:
   - Large popup modal for precise waveform editing
   - Audio preview playback for selected regions
   - Better visualization for creating clips
+- **Adjustable Selections**: A region stays put until you commit it
+  - Drag either green edge to move that bound, with the other anchored
+  - Drag the middle to slide the whole region
+  - A stray click no longer discards the selection
+  - Creating the clip is an explicit action
 - **Clip Library**: Create and manage audio clips from uploaded files (collapsible sidebar)
+- **Editable Clips**: Clips are not write-once
+  - A clip nothing references can have its region and name changed
+  - A clip already placed on a track has its region locked (changing it would
+    shift audio arranged on the timeline) and only its name can change
+  - The library row shows how many track clips use it
 - **Multi-Track Timeline**: Arrange clips across multiple tracks
 - **Drag & Drop**:
   - Easy placement of clips from library to tracks
@@ -26,6 +38,18 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
 - **Repeat Functionality**: Mark clips to repeat with configurable repeat count
   - Visual phantom clips show where repetitions will play
   - Can be disabled by setting count to 1
+- **Fades**: Per-clip fade in/out, draggable directly on the clip's waveform
+- **Clip Effects**: One-click treatments applied per track clip, no parameters to tune
+  - **Reverse** — plays the clip backwards
+  - **Underwater** — muffled, slowly wobbling
+  - **Telephone** — thin, bandlimited, slightly crunchy
+  - **Cathedral** — long reverberant tail
+  - **Distant** — dulled and set back, as if through a wall
+  - **Tremolo** — level pulsing at a steady rate
+  - **Lo-fi** — coarsely quantised and dulled
+  - **Deep** — slowed down and pitched below the original
+  - Playback and export share one implementation, so the exported WAV matches
+    what you hear; reverb tails are given room rather than being cut off
 - **Undo/Redo**: Comprehensive history system supporting:
   - Adding/removing clips from library
   - Adding/removing clips from tracks
@@ -57,9 +81,21 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
 
 - **Save Project** 💾: Save complete project as `.mass` file (ZIP format)
   - Contains `project.json` with all state (tracks, clips, positions, trim values, volumes, etc.)
-  - Includes `audio/` folder with all audio files as WAV format
+  - Includes `audio/` folder holding each file **in its original encoding**
+  - An MP3-sourced project stays MP3-sized instead of being re-encoded to PCM
   - Progress indicator during save
   - Downloads as `[ProjectName].mass`
+
+- **Optimize Project** 🗜️: Trim audio down to the regions clips actually use
+  - Lists every audio file with exact byte counts, ranked by absolute saving
+  - Sizes are computed, not estimated: the archive stores uncompressed PCM
+  - Savings can be **negative** — re-encoding a trimmed compressed file to PCM
+    often costs more than it saves, so those are flagged and never preselected
+  - Unused audio files are dropped entirely
+  - Keeps a margin around each region so clip edges stay resizable
+  - Writes a copy; the project you have open is left untouched
+  - **Relink** points an optimized file back at its original recording, expanding
+    every clip time back as it goes
 
 - **Load Project** 📂: Load `.mass` files and completely restore state
   - Extracts and decodes all audio files
@@ -72,17 +108,21 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - 📁 Upload Audio
   - 📂 Load Project
   - 💾 Save Project
+  - 🗜️ Optimize Project
   - 🎵 Export Mix
 - **Collapsible Quick Clip Definition**: Save space in sidebar when not needed
 - **Editable Project Name**: Click title in header to rename project
 - **Progress Indicators**: All long-running operations show progress bars with percentages
+- **Toast Notifications**: Failures and confirmations appear as dismissible toasts
+  rather than blocking browser dialogs; failures stay until dismissed so their
+  detail can be read
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js (v18 or higher recommended)
-- npm or yarn
+- pnpm (the suite uses pnpm workspaces)
 
 ### Installation
 
@@ -94,12 +134,12 @@ cd massembler
 
 2. Install dependencies:
 ```bash
-npm install
+pnpm install
 ```
 
 3. Start the development server:
 ```bash
-npm run dev
+pnpm dev
 ```
 
 4. Open your browser and navigate to `http://localhost:5173`
@@ -108,7 +148,7 @@ npm run dev
 
 ### 1. Upload Audio Files
 
-Click the **Speed Dial** button (bottom-right) → **Upload Audio** → Select one or more WAV/MP3 files.
+Click the **Speed Dial** button (the blue **+** at the bottom-right) → **Upload Audio** → select one or more audio files.
 
 ### 2. Create Clips
 
@@ -116,16 +156,27 @@ Click the **Speed Dial** button (bottom-right) → **Upload Audio** → Select o
 1. Expand "Quick Clip Definition" section if collapsed
 2. Select an audio file from the dropdown
 3. Click and drag on the waveform to select a region
-4. Enter a name for your clip
-5. The clip will be created and appear in the library
+4. Fine-tune it: drag either green edge to move that bound, or drag the middle
+   to slide the whole region. The selection survives clicks elsewhere.
+5. Enter a name for your clip
+6. Click "Create Clip"
 
 **Option B: Advanced Editor (recommended)**
 1. Select an audio file from the dropdown
 2. Click "Open Waveform Editor" button
 3. Use the large waveform display to precisely select a region
-4. Click "Play Selection" to preview your selection
-5. Enter a name for your clip
-6. Click "Create Clip"
+4. Drag the green edges to adjust; `Shift`+drag pans, `Alt`+drag moves the whole
+   selection, and the mouse wheel zooms
+5. Click "Play Selection" to preview your selection
+6. Enter a name for your clip
+7. Click "Create Clip"
+
+### 2b. Edit a Clip
+
+Click **Edit** on any clip in the library. If nothing references the clip yet you
+can change its region and its name. Once it has been placed on a track the region
+is locked — changing it would move audio already arranged on the timeline — and
+only the name can be edited. The row tells you which case applies.
 
 ### 3. Arrange Clips on Tracks
 
@@ -136,10 +187,14 @@ Click the **Speed Dial** button (bottom-right) → **Upload Audio** → Select o
 5. **Resize Clips**: Hover over clip edges and drag left/right edge to adjust trim
    - Each instance can be resized independently
    - Left edge resize moves the clip position for intuitive editing
-6. Hover over a clip block to access controls:
-   - Toggle repeat on/off
-   - Adjust repeat count (set to 1 to disable)
-   - Remove from track
+6. Click a clip block to open its properties panel below the timeline:
+   - Pick a one-click **effect** (reverse, underwater, cathedral, …)
+   - Set fade in/out, either numerically or by dragging the green/red handles
+     on the clip's waveform
+   - Toggle repeat on/off and adjust the repeat count (set to 1 to disable)
+   - Delete it from the track
+
+   Clips carrying an effect show a badge on the timeline block.
 
 ### 4. Control Tracks
 
@@ -181,8 +236,14 @@ Click the **Speed Dial** button (bottom-right) → **Upload Audio** → Select o
 
 **Export Final Mix**:
 - Click Speed Dial → **Export Mix**
-- Renders all tracks to a single WAV file
+- Renders all tracks to a single WAV file, effects and fades included
 - Downloads as `[ProjectName]-mix.wav`
+
+**Shrink a Project**:
+- Click Speed Dial → **Optimize Project**
+- Review the per-file savings, tick the files worth trimming, and save the copy
+- Rows shown in red would *grow* the project: their audio is already compressed,
+  and trimming it means storing PCM instead
 
 ## 📦 Technical Stack
 
@@ -198,6 +259,8 @@ Click the **Speed Dial** button (bottom-right) → **Upload Audio** → Select o
 ### Key Technical Features
 - **OfflineAudioContext**: High-quality audio rendering for export
 - **AudioBuffer Management**: Efficient in-memory audio handling
+- **Shared Effect Chains**: One implementation drives both realtime playback and
+  offline rendering, so exports match what you hear
 - **Custom Drag & Drop**: Enhanced drag preview with visual feedback
 - **ResizeObserver**: Responsive waveform rendering
 - **WAV Encoding**: Client-side WAV file generation
@@ -209,18 +272,25 @@ Click the **Speed Dial** button (bottom-right) → **Upload Audio** → Select o
 massembler/
 ├── src/
 │   ├── components/
-│   │   ├── Waveform.tsx            # Waveform visualization
+│   │   ├── Waveform.tsx            # Waveform with adjustable selection
 │   │   ├── ClipLibrary.tsx         # Clip management (collapsible)
-│   │   ├── WaveformEditorModal.tsx # Advanced waveform editor
+│   │   ├── WaveformEditorModal.tsx # Advanced waveform editor / clip editor
 │   │   ├── Timeline.tsx            # Multi-track timeline
 │   │   ├── Track.tsx               # Individual track component
 │   │   ├── TrackClipBlock.tsx      # Clip block with resize/repeat
+│   │   ├── ClipPropertiesPanel.tsx # Per-clip effects, fades and repeats
 │   │   ├── VolumeKnob.tsx          # Rotary volume control
 │   │   ├── PlaybackControls.tsx    # Playback UI
 │   │   ├── UndoRedoControls.tsx    # Undo/redo UI
+│   │   ├── ToastContainer.tsx      # Non-blocking notifications
+│   │   ├── OptimizeDialog.tsx      # Per-file savings and relinking
 │   │   └── ProjectActions.tsx      # Speed Dial for save/load/export
 │   ├── utils/
 │   │   ├── audioEngine.ts          # Web Audio API engine
+│   │   ├── clipEffects.ts          # Preset effect chains, shared by
+│   │   │                           #   playback and export
+│   │   ├── clipTiming.ts           # How long a track clip occupies
+│   │   ├── projectOptimizer.ts     # Trim analysis, remapping, relinking
 │   │   ├── undoRedo.ts             # Undo/redo manager
 │   │   └── projectManager.ts       # Save/load/export logic
 │   ├── types.ts                    # TypeScript interfaces
@@ -245,15 +315,19 @@ Project files use the `.mass` extension and are standard ZIP archives containing
 project.mass (ZIP file)
 ├── project.json          # Project metadata and state
 └── audio/
-    ├── [audioId1].wav   # Audio file 1
-    ├── [audioId2].wav   # Audio file 2
+    ├── [audioId1].mp3    # stored in whatever encoding it arrived as
+    ├── [audioId2].wav
     └── ...
 ```
+
+Audio is stored in its **source encoding** rather than re-encoded to PCM, which
+keeps projects close to the size of the files they were built from. Trimmed
+(optimized) audio has no original encoding left, so it is written as WAV.
 
 **project.json structure:**
 ```json
 {
-  "version": "1.0.0",
+  "version": 3,
   "name": "My Project",
   "tracks": [...],           // All tracks with clips
   "clips": [...],            // All clip definitions
@@ -262,6 +336,40 @@ project.mass (ZIP file)
 }
 ```
 
+Each entry in `audioFiles` names the file that holds it inside the archive, and
+optimized files additionally record what was kept:
+
+```json
+{
+  "id": "audio-1",
+  "name": "drums.mp3",
+  "duration": 182.4,
+  "storedFile": "audio-1.mp3",
+  "optimization": {
+    "originalName": "drums.mp3",
+    "originalDuration": 182.4,
+    "segments": [{ "start": 8, "end": 14 }, { "start": 47, "end": 55 }]
+  }
+}
+```
+
+`segments` are in original-recording time, and the stored audio is those
+segments concatenated in order — which is what lets **Relink** map clip times
+back onto the full recording.
+
+### Format versions
+
+`version` is a number and is checked on load; an unrecognised value is refused
+rather than half-loaded.
+
+| Version | Change |
+| ------- | ------ |
+| 1 | Audio always stored as `<id>.wav` (decoded PCM) |
+| 2 | Audio stored in its source encoding, named by `storedFile` |
+| 3 | Audio may be trimmed to used regions, described by `optimization` |
+
+Only the current version is readable — earlier ones were never released.
+
 The `.mass` format is compatible with standard ZIP tools, so you can inspect or manually edit projects if needed.
 
 ## Development
@@ -269,7 +377,7 @@ The `.mass` format is compatible with standard ZIP tools, so you can inspect or 
 ### Build for Production
 
 ```bash
-npm run build
+pnpm build
 ```
 
 The built files will be in the `dist/` directory.
@@ -277,13 +385,13 @@ The built files will be in the `dist/` directory.
 ### Preview Production Build
 
 ```bash
-npm run preview
+pnpm preview
 ```
 
 ### Linting
 
 ```bash
-npm run lint
+pnpm lint
 ```
 
 ## Browser Support
@@ -304,7 +412,9 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Roadmap
 
 Future feature ideas:
-- Real-time audio effects (reverb, delay, EQ)
+- Adjustable effect parameters, for when a preset is nearly right
+- A pitched-*up* preset (needs a decision on reading past a clip's trim)
+- Configurable optimizer margin, currently a fixed 2 seconds
 - MIDI support
 - Automation curves for volume/pan
 - Collaborative editing

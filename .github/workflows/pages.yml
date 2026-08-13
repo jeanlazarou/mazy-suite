@@ -28,10 +28,14 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: player/pnpm-lock.yaml
+          cache-dependency-path: |
+            player/pnpm-lock.yaml
+            massembler/pnpm-lock.yaml
 
       - name: Build site
         run: bash scripts/build_site.sh
+        env:
+          APPS: player massembler
 
       - uses: actions/upload-pages-artifact@v3
         with:
