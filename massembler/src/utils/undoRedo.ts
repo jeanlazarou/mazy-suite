@@ -62,6 +62,16 @@ export class UndoRedoManager {
   private redoStack: UndoAction[] = [];
   private maxStackSize = 50;
 
+  /**
+   * Called whenever the stacks change.
+   *
+   * These stacks live outside the store, so nothing re-renders on their own
+   * when history changes; anything showing whether undo is available has to
+   * be told. Without this it only refreshed when some unrelated state
+   * happened to change in the same breath.
+   */
+  onChange: (() => void) | null = null;
+
   addAction(action: UndoAction) {
     this.undoStack.push(action);
     if (this.undoStack.length > this.maxStackSize) {
@@ -69,6 +79,7 @@ export class UndoRedoManager {
     }
     // Clear redo stack when a new action is performed
     this.redoStack = [];
+    this.onChange?.();
   }
 
   canUndo(): boolean {
@@ -84,6 +95,7 @@ export class UndoRedoManager {
     if (action) {
       this.redoStack.push(action);
     }
+    this.onChange?.();
     return action || null;
   }
 
@@ -92,12 +104,14 @@ export class UndoRedoManager {
     if (action) {
       this.undoStack.push(action);
     }
+    this.onChange?.();
     return action || null;
   }
 
   clear() {
     this.undoStack = [];
     this.redoStack = [];
+    this.onChange?.();
   }
 
   getUndoStackSize(): number {

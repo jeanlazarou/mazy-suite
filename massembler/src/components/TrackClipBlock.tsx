@@ -16,7 +16,7 @@ export function TrackClipBlock({
   trackClip,
   pixelsPerSecond,
 }: TrackClipBlockProps) {
-  const { clips, updateTrackClip, moveTrackClip, moveClipBetweenTracks, audioFiles, tracks, selectedTrackClip, setSelectedTrackClip } = useStore();
+  const { clips, updateTrackClip, moveTrackClip, moveClipBetweenTracks, recordClipMovedBetweenTracks, audioFiles, tracks, selectedTrackClip, setSelectedTrackClip } = useStore();
   const clip = clips.find((s) => s.id === trackClip.clipId);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
@@ -235,13 +235,15 @@ export function TrackClipBlock({
         return;
       }
 
-      // If we've moved to a different track, move the clip
+      // Nothing here is recorded in the undo history: this runs on every
+      // mouse move, so it would bury the drag under hundreds of entries.
+      // handleMouseUp files one action for the whole gesture.
       if (targetTrackId !== currentTrackId) {
-        moveClipBetweenTracks(currentTrackId, targetTrackId, trackClip.id, newPosition);
+        moveClipBetweenTracks(currentTrackId, targetTrackId, trackClip.id, newPosition, false);
         currentTrackId = targetTrackId;
       } else {
         // Same track - just update position
-        updateTrackClip(currentTrackId, trackClip.id, { position: newPosition });
+        updateTrackClip(currentTrackId, trackClip.id, { position: newPosition }, false);
       }
     };
 
@@ -256,15 +258,20 @@ export function TrackClipBlock({
       if (currentClip) {
         const finalPosition = currentClip.position;
 
-        // Add to undo history if position or track changed
-        if (
-          currentTrackId === startTrackId &&
-          Math.abs(finalPosition - dragStartPosRef.current) > 0.01
-        ) {
+        // One undo entry for the whole drag
+        if (currentTrackId !== startTrackId) {
+          // Ended on a different track
+          recordClipMovedBetweenTracks(
+            startTrackId,
+            currentTrackId,
+            trackClip.id,
+            dragStartPosRef.current,
+            finalPosition
+          );
+        } else if (Math.abs(finalPosition - dragStartPosRef.current) > 0.01) {
           // Same track, position changed
           moveTrackClip(currentTrackId, trackClip.id, dragStartPosRef.current, finalPosition);
         }
-        // TODO: Add undo support for cross-track moves
       }
 
       document.removeEventListener('mousemove', handleMouseMove);

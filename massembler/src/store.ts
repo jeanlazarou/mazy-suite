@@ -24,7 +24,12 @@ interface AppState {
   removeClipFromTrack: (trackId: string, trackClipId: string, addToHistory?: boolean) => void;
   updateTrackClip: (trackId: string, trackClipId: string, updates: Partial<TrackClip>, addToHistory?: boolean) => void;
   moveTrackClip: (trackId: string, trackClipId: string, oldPosition: number, newPosition: number) => void;
-  moveClipBetweenTracks: (sourceTrackId: string, targetTrackId: string, trackClipId: string, position: number) => void;
+  moveClipBetweenTracks: (sourceTrackId: string, targetTrackId: string, trackClipId: string, position: number, addToHistory?: boolean) => void;
+  /**
+   * Record a completed cross-track drag in the undo history. The clip has
+   * already been moved; this only files the action, mirroring moveTrackClip.
+   */
+  recordClipMovedBetweenTracks: (sourceTrackId: string, targetTrackId: string, trackClipId: string, oldPosition: number, newPosition: number) => void;
 
   // Playback
   playbackState: PlaybackState;
@@ -52,6 +57,15 @@ interface AppState {
   redo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
+  /**
+   * Whether anything is on the stacks, mirrored into the store.
+   *
+   * canUndo/canRedo read stacks held outside it, so calling them during
+   * render gives an answer nothing re-renders on. Anything displaying
+   * availability should read these instead.
+   */
+  undoAvailable: boolean;
+  redoAvailable: boolean;
 
   // Project management
   projectName: string;
@@ -289,6 +303,22 @@ export const useStore = create<AppState>((set, get) => ({
         ),
       };
     }),
+  recordClipMovedBetweenTracks: (
+    sourceTrackId,
+    targetTrackId,
+    trackClipId,
+    oldPosition,
+    newPosition
+  ) => {
+    undoManager.addAction({
+      type: 'MOVE_CLIP_BETWEEN_TRACKS',
+      sourceTrackId,
+      targetTrackId,
+      trackClipId,
+      oldPosition,
+      newPosition,
+    });
+  },
   moveTrackClip: (trackId, trackClipId, oldPosition, newPosition) => {
     // Only record the undo action - position is already updated by updateTrackClip
     const state = useStore.getState();
@@ -305,7 +335,7 @@ export const useStore = create<AppState>((set, get) => ({
       });
     }
   },
-  moveClipBetweenTracks: (sourceTrackId, targetTrackId, trackClipId, position) => {
+  moveClipBetweenTracks: (sourceTrackId, targetTrackId, trackClipId, position, addToHistory = true) => {
     const state = get();
     // Find the clip to move
     const sourceTrack = state.tracks.find((t) => t.id === sourceTrackId);
@@ -335,15 +365,18 @@ export const useStore = create<AppState>((set, get) => ({
 
       if (!trackClip) return state;
 
-      // Record to undo history
-      undoManager.addAction({
-        type: 'MOVE_CLIP_BETWEEN_TRACKS',
-        sourceTrackId,
-        targetTrackId,
-        trackClipId,
-        oldPosition: trackClip.position,
-        newPosition: position,
-      });
+      // A drag crosses tracks repeatedly, so the caller suppresses this and
+      // files one action for the whole gesture when the mouse is released.
+      if (addToHistory) {
+        undoManager.addAction({
+          type: 'MOVE_CLIP_BETWEEN_TRACKS',
+          sourceTrackId,
+          targetTrackId,
+          trackClipId,
+          oldPosition: trackClip.position,
+          newPosition: position,
+        });
+      }
 
       // Remove from source track and add to target track
       return {
@@ -674,6 +707,8 @@ export const useStore = create<AppState>((set, get) => ({
   },
   canUndo: () => undoManager.canUndo(),
   canRedo: () => undoManager.canRedo(),
+  undoAvailable: false,
+  redoAvailable: false,
 
   // Project management
   projectName: 'Untitled Project',
@@ -739,3 +774,15 @@ export const useStore = create<AppState>((set, get) => ({
       toasts: state.toasts.filter((t) => t.id !== id),
     })),
 }));
+
+// Make history changes visible to the UI. Queued as a microtask because
+// actions are usually recorded from inside a set() updater, and updating the
+// store again mid-update is asking for trouble.
+undoManager.onChange = () => {
+  queueMicrotask(() => {
+    useStore.setState({
+      undoAvailable: undoManager.canUndo(),
+      redoAvailable: undoManager.canRedo(),
+    });
+  });
+};

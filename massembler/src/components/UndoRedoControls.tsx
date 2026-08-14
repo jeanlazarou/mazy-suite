@@ -2,7 +2,10 @@ import { useEffect } from 'react';
 import { useStore } from '../store';
 
 export function UndoRedoControls() {
-  const { undo, redo, canUndo, canRedo } = useStore();
+  // undoAvailable/redoAvailable are state, so the buttons update when the
+  // history changes. canUndo/canRedo are called at keypress time, where
+  // reading the stacks directly is what we want.
+  const { undo, redo, canUndo, canRedo, undoAvailable, redoAvailable } = useStore();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -39,7 +42,7 @@ export function UndoRedoControls() {
     <div className="flex items-center gap-2">
       <button
         onClick={undo}
-        disabled={!canUndo()}
+        disabled={!undoAvailable}
         className="px-3 py-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 disabled:cursor-not-allowed rounded text-sm transition-colors"
         title="Undo (Ctrl+Z)"
       >
@@ -47,7 +50,7 @@ export function UndoRedoControls() {
       </button>
       <button
         onClick={redo}
-        disabled={!canRedo()}
+        disabled={!redoAvailable}
         className="px-3 py-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 disabled:cursor-not-allowed rounded text-sm transition-colors"
         title="Redo (Ctrl+Shift+Z)"
       >
