@@ -18,6 +18,7 @@ export function Timeline() {
   const playheadHeaderRef = useRef<HTMLDivElement>(null);
 
   const [follow, setFollow] = useState(true);
+  const [viewportWidth, setViewportWidth] = useState(0);
   const followRef = useRef(follow);
   followRef.current = follow;
   // Scroll events we caused ourselves, which must not count as the user
@@ -27,6 +28,12 @@ export function Timeline() {
 
   // Calculate maximum duration (minimum 30 seconds)
   const maxDuration = getProjectDuration(tracks, clips, 30);
+
+  // Following can only ever do something if playback travels past the point
+  // where the view starts scrolling. When the whole arrangement fits before
+  // that, the checkbox would silently do nothing, so say so instead.
+  const arrangementWidth = getProjectDuration(tracks, clips) * pixelsPerSecond;
+  const followCanApply = arrangementWidth > viewportWidth * FOLLOW_TRAIL;
 
   // Generate time markers - major every 5 seconds, minor every 1 second
   const majorMarkers = [];
@@ -91,6 +98,17 @@ export function Timeline() {
       headerScroll.removeEventListener('scroll', handleHeaderScroll);
       controlsScroll.removeEventListener('scroll', handleControlsScroll);
     };
+  }, []);
+
+  // Track how wide the visible timeline is, to know whether following applies.
+  useEffect(() => {
+    const view = tracksScrollRef.current;
+    if (!view) return;
+
+    setViewportWidth(view.clientWidth);
+    const observer = new ResizeObserver(() => setViewportWidth(view.clientWidth));
+    observer.observe(view);
+    return () => observer.disconnect();
   }, []);
 
   // Playhead position and follow-scrolling.
@@ -202,15 +220,24 @@ export function Timeline() {
         <span className="text-xs">{pixelsPerSecond}px/s</span>
 
         <label
-          className="ml-4 flex items-center gap-1.5 text-xs cursor-pointer select-none"
-          title="Scroll the timeline to keep the playhead in view while playing"
+          className={`ml-4 flex items-center gap-1.5 text-xs select-none ${
+            followCanApply ? 'cursor-pointer' : 'text-gray-500 cursor-default'
+          }`}
+          title={
+            followCanApply
+              ? 'While playing, scroll the timeline to keep the playhead in view'
+              : 'Not needed yet: the whole arrangement already fits on screen. ' +
+                'Zoom in, or arrange past the right edge, and this will scroll to follow playback.'
+          }
         >
           <input
             type="checkbox"
             checked={follow}
+            disabled={!followCanApply}
             onChange={(e) => setFollow(e.target.checked)}
           />
           Follow playhead
+          {!followCanApply && <span className="text-gray-600">(not needed)</span>}
         </label>
       </div>
 
