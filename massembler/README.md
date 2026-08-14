@@ -60,13 +60,23 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - Keyboard shortcuts (Ctrl+Z / Cmd+Z for undo, Ctrl+Shift+Z / Cmd+Shift+Z for redo)
 
 ### Track Controls
-- **Volume Knob**: Rotary volume control with centered value display
+- **Volume Knob**: Rotary control with an arc and centred value
+  - Drag up/down to turn it — grabbing it never jumps the value
+  - Mouse wheel, and arrow / Page / Home / End keys when focused
+  - Hold `Shift` for fine adjustment, double-click to restore the default
 - **Mute/Unmute**: Toggle with visual icons (speaker with/without X)
 - **Add/Remove Tracks**: Flexible track management
 - **Rename Tracks**: Click track name to edit
 
 ### Playback
 - **Play, Pause, Stop**: Full playback controls
+- **Playhead**: A line across the ruler and every track showing where playback
+  has reached
+- **Follow Playhead**: Optionally scrolls the timeline to keep the playhead in
+  view, jumping a page at a time so waveforms stay readable
+  - Scrolling by hand while playing turns following off, so it never fights you
+  - Disabled, and marked *(not needed)*, while the whole arrangement already
+    fits on screen
 - **Timeline Scrubbing**: Jump to any position
 - **Real-time Progress**: Visual playback position display
 - **Timeline Zoom**: Adjust scale for precision editing
@@ -112,6 +122,8 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - 🎵 Export Mix
 - **Collapsible Quick Clip Definition**: Save space in sidebar when not needed
 - **Editable Project Name**: Click title in header to rename project
+- **Version in the header**: Shows which build is running, so a stale cached
+  page is easy to spot
 - **Progress Indicators**: All long-running operations show progress bars with percentages
 - **Toast Notifications**: Failures and confirmations appear as dismissible toasts
   rather than blocking browser dialogs; failures stay until dismissed so their
@@ -211,6 +223,12 @@ only the name can be edited. The row tells you which case applies.
 - **Stop**: Stop playback and return to the beginning
 - **Seek**: Drag the timeline scrubber to jump to a specific position
 - **Zoom**: Adjust the timeline zoom level for better precision
+- **Follow the playhead**: A red line tracks playback across the ruler and
+  tracks. Tick **Follow playhead** (next to the zoom slider) and the view
+  scrolls to keep it visible once it would otherwise run off the right-hand
+  edge. On a short arrangement the playhead never leaves the screen, so the
+  option stays disabled and marked *(not needed)* until you zoom in or arrange
+  further along.
 
 ### 6. Undo/Redo
 
