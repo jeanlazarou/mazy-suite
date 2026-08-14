@@ -2,6 +2,7 @@ import { Track as TrackType } from '../types';
 import { useStore } from '../store';
 import { TrackClipBlock } from './TrackClipBlock';
 import { VolumeKnob } from './VolumeKnob';
+import { isSilencedBySolo } from '../utils/trackAudibility';
 
 interface TrackProps {
   track: TrackType;
@@ -11,7 +12,11 @@ interface TrackProps {
 }
 
 export function Track({ track, pixelsPerSecond, maxDuration, renderMode = 'both' }: TrackProps) {
-  const { updateTrack, removeTrack, addClipToTrack } = useStore();
+  const { updateTrack, removeTrack, addClipToTrack, tracks } = useStore();
+
+  // Not muted, but inaudible because something else is soloed. Shown dimmed so
+  // a silent track never looks like a broken one.
+  const silencedBySolo = isSilencedBySolo(track, tracks);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -37,6 +42,10 @@ export function Track({ track, pixelsPerSecond, maxDuration, renderMode = 'both'
     updateTrack(track.id, { volume: value });
   };
 
+  const handleSoloToggle = () => {
+    updateTrack(track.id, { solo: !track.solo });
+  };
+
   const handleMuteToggle = () => {
     updateTrack(track.id, { muted: !track.muted });
   };
@@ -48,7 +57,12 @@ export function Track({ track, pixelsPerSecond, maxDuration, renderMode = 'both'
   // Render only controls
   if (renderMode === 'controls') {
     return (
-      <div className="p-2 border-b border-gray-700 h-[6.3rem] flex flex-col gap-2">
+      <div
+        className={`p-2 border-b border-gray-700 h-[6.3rem] flex flex-col gap-2 ${
+          silencedBySolo ? 'opacity-50' : ''
+        }`}
+        title={silencedBySolo ? 'Silent while another track is soloed' : undefined}
+      >
         <input
           type="text"
           value={track.name}
@@ -57,6 +71,22 @@ export function Track({ track, pixelsPerSecond, maxDuration, renderMode = 'both'
         />
 
         <div className="flex items-center gap-2 justify-between">
+          <button
+            onClick={handleSoloToggle}
+            className={`px-2 py-1 rounded text-xs font-bold w-7 ${
+              track.solo
+                ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-400'
+                : 'bg-gray-700 hover:bg-gray-600'
+            }`}
+            title={
+              track.solo
+                ? 'Un-solo this track'
+                : 'Solo: hear only this track (and any others soloed)'
+            }
+          >
+            S
+          </button>
+
           <button
             onClick={handleMuteToggle}
             className={`px-2 py-1 rounded text-xs font-semibold ${
@@ -137,7 +167,9 @@ export function Track({ track, pixelsPerSecond, maxDuration, renderMode = 'both'
   if (renderMode === 'timeline') {
     return (
       <div
-        className="relative h-[6.3rem] bg-gray-900 border-b border-gray-700"
+        className={`relative h-[6.3rem] bg-gray-900 border-b border-gray-700 ${
+          silencedBySolo ? 'opacity-40' : ''
+        }`}
         data-track-id={track.id}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -168,6 +200,22 @@ export function Track({ track, pixelsPerSecond, maxDuration, renderMode = 'both'
         />
 
         <div className="flex items-center gap-2 justify-between">
+          <button
+            onClick={handleSoloToggle}
+            className={`px-2 py-1 rounded text-xs font-bold w-7 ${
+              track.solo
+                ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-400'
+                : 'bg-gray-700 hover:bg-gray-600'
+            }`}
+            title={
+              track.solo
+                ? 'Un-solo this track'
+                : 'Solo: hear only this track (and any others soloed)'
+            }
+          >
+            S
+          </button>
+
           <button
             onClick={handleMuteToggle}
             className={`px-2 py-1 rounded text-xs font-semibold ${

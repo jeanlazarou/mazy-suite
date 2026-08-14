@@ -68,6 +68,13 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - Mouse wheel, and arrow / Page / Home / End keys when focused
   - Hold `Shift` for fine adjustment, double-click to restore the default
 - **Mute/Unmute**: Toggle with visual icons (speaker with/without X)
+- **Solo**: Hear only the tracks you are working on
+  - Additive: solo as many tracks as you like and hear that group together
+  - Tracks silenced by someone else's solo are dimmed, so a quiet track never
+    looks like a broken one
+  - Mute wins over solo, so soloing a group never resurrects a track you had
+    deliberately taken out
+  - Applies to Export Mix too: what you hear is what gets rendered
 - **Add/Remove Tracks**: Flexible track management
 - **Rename Tracks**: Click track name to edit
 
@@ -220,6 +227,10 @@ only the name can be edited. The row tells you which case applies.
 
 - **Volume**: Rotate the volume knob (shows value in center)
 - **Mute**: Click the speaker icon to mute/unmute a track
+- **Solo**: Click **S** to hear only that track. Solo several tracks to hear
+  just that group — the rest dim to show they are being held silent. Click **S**
+  again to release. Solo state is saved with the project, so a project saved
+  while soloing reopens that way.
 - **Rename**: Click on the track name to edit it
 - **Add Track**: Click the "+ Track" button to add a new track
 - **Remove Track**: Click the trash icon to remove a track

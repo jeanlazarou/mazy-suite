@@ -75,6 +75,8 @@ export interface Track {
   clips: TrackClip[];
   volume: number;    // 0 to 1
   muted: boolean;
+  /** Several tracks may be soloed at once; see isTrackAudible. */
+  solo?: boolean;
 }
 
 export interface PlaybackState {

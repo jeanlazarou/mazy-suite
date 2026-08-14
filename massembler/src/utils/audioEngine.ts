@@ -6,6 +6,7 @@ import {
   resolveClipOffset,
   resolveClipPlaybackRate,
 } from './clipEffects';
+import { isTrackAudible } from './trackAudibility';
 
 export class AudioEngine {
   private audioContext: AudioContext;
@@ -28,7 +29,7 @@ export class AudioEngine {
     this.startTime = this.audioContext.currentTime - startFrom;
 
     tracks.forEach((track) => {
-      if (track.muted) return;
+      if (!isTrackAudible(track, tracks)) return;
 
       const trackGain = this.audioContext.createGain();
       trackGain.gain.value = track.volume;

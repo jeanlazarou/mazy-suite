@@ -8,6 +8,7 @@ import {
   resolveClipPlaybackRate,
 } from './clipEffects';
 import { getTrackClipEnd } from './clipTiming';
+import { isTrackAudible } from './trackAudibility';
 
 /**
  * Version of the .mass container format.
@@ -84,7 +85,8 @@ export async function exportMix(
 
   // Render each track
   tracks.forEach((track, trackIndex) => {
-    if (track.muted) return;
+    // Solo affects the export too: what you hear is what gets rendered.
+    if (!isTrackAudible(track, tracks)) return;
 
     const trackGain = offlineContext.createGain();
     trackGain.gain.value = track.volume;
