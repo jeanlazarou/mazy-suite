@@ -714,6 +714,12 @@ export const useStore = create<AppState>((set, get) => ({
   projectName: 'Untitled Project',
   setProjectName: (name) => set({ projectName: name }),
   loadProjectState: (tracks, clips, audioFiles, pixelsPerSecond, projectName) => {
+    // History belongs to the project that was open. Track and track-clip ids
+    // are sequential counters, so every project reuses the same id space and
+    // a leftover action would resolve against whatever the loaded project
+    // happens to have under that id - silently editing the wrong clip.
+    undoManager.clear();
+
     // Update ID counters to prevent collisions
     tracks.forEach((track) => {
       const trackIdNum = parseInt(track.id.replace('track-', ''));
@@ -741,7 +747,11 @@ export const useStore = create<AppState>((set, get) => ({
       },
     });
   },
-  clearProject: () =>
+  clearProject: () => {
+    // Same reasoning as loadProjectState: nothing the history refers to
+    // survives, and the ids it names will be handed out again.
+    undoManager.clear();
+
     set({
       tracks: [],
       clips: [],
@@ -753,7 +763,8 @@ export const useStore = create<AppState>((set, get) => ({
         duration: 0,
       },
       selectedClipId: null,
-    }),
+    });
+  },
 
   // Toast notifications
   toasts: [],
