@@ -28,7 +28,13 @@ export function PlaybackControls() {
       const currentTime = audioEngineRef.current.getCurrentTime();
       setPlaybackState({ currentTime });
 
-      if (currentTime < playbackState.duration) {
+      // Read the duration live rather than from this callback's closure. The
+      // loop re-schedules itself, so it kept whatever value was current when
+      // play started - which on the very first play is still the initial 0,
+      // ending playback on the first frame.
+      const { duration } = useStore.getState().playbackState;
+
+      if (currentTime < duration) {
         animationFrameRef.current = requestAnimationFrame(updatePlaybackTime);
       } else {
         handleStop();
