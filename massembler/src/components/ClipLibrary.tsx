@@ -4,6 +4,14 @@ import { AudioClip } from '../types';
 import { Waveform, WaveformSelection } from './Waveform';
 import { WaveformEditorModal } from './WaveformEditorModal';
 
+/**
+ * Unique clip id. Includes a random suffix rather than the timestamp alone:
+ * duplicating twice in quick succession lands in the same millisecond.
+ */
+function createClipId(): string {
+  return `clip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export function ClipLibrary() {
   const { audioFiles, clips, tracks, addClip, updateClip, removeClip, showToast } =
     useStore();
@@ -32,7 +40,7 @@ export function ClipLibrary() {
     }
 
     addClip({
-      id: `clip-${Date.now()}`,
+      id: createClipId(),
       name: clipName,
       audioFileId: selectedFileId,
       startTime: selection.start,
@@ -61,7 +69,7 @@ export function ClipLibrary() {
     if (!selectedFileId) return;
 
     addClip({
-      id: `clip-${Date.now()}`,
+      id: createClipId(),
       name,
       audioFileId: selectedFileId,
       startTime: start,
@@ -73,6 +81,27 @@ export function ClipLibrary() {
   const handleEditClip = (clip: AudioClip) => {
     setEditingClip(clip);
     setShowModal(true);
+  };
+
+  /** "name copy", then "name copy 2" and so on, so names stay distinguishable. */
+  const copyNameFor = (name: string) => {
+    const taken = new Set(clips.map((c) => c.name));
+    let candidate = `${name} copy`;
+    let suffix = 2;
+    while (taken.has(candidate)) {
+      candidate = `${name} copy ${suffix}`;
+      suffix += 1;
+    }
+    return candidate;
+  };
+
+  // Copies the definition only: track placements belong to the original.
+  const handleDuplicateClip = (clip: AudioClip) => {
+    const name = copyNameFor(clip.name);
+    addClip({ ...clip, id: createClipId(), name });
+    // Names the copy rather than the original: the list scrolls, so this is
+    // what tells you which row to look for.
+    showToast(`Created "${name}"`, 'success');
   };
 
   const closeModal = () => {
@@ -256,6 +285,13 @@ export function ClipLibrary() {
                       className="text-blue-400 hover:text-blue-300 text-xs"
                     >
                       Edit
+                    </button>
+                    <button
+                      onClick={() => handleDuplicateClip(clip)}
+                      className="text-blue-400 hover:text-blue-300 text-xs"
+                      title="Create another clip with the same region"
+                    >
+                      Duplicate
                     </button>
                     <button
                       onClick={() => removeClip(clip.id)}

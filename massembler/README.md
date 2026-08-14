@@ -24,6 +24,9 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - A clip already placed on a track has its region locked (changing it would
     shift audio arranged on the timeline) and only its name can change
   - The library row shows how many track clips use it
+- **Duplicate Clips**: Copy a clip's region into a new library entry, named
+  `<name> copy`, as a starting point for a variation. Track placements stay
+  with the original.
 - **Multi-Track Timeline**: Arrange clips across multiple tracks
 - **Drag & Drop**:
   - Easy placement of clips from library to tracks
@@ -184,6 +187,11 @@ Click the **Speed Dial** button (the blue **+** at the bottom-right) → **Uploa
 7. Click "Create Clip"
 
 ### 2b. Edit a Clip
+
+Click **Duplicate** on a clip to copy its region into a new library entry —
+useful as a starting point when you want a variation on a region you already
+found. The copy is independent: it can be edited freely, and the original keeps
+its track placements.
 
 Click **Edit** on any clip in the library. If nothing references the clip yet you
 can change its region and its name. Once it has been placed on a track the region
