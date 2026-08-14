@@ -24,7 +24,11 @@ function App() {
               placeholder="Project Name"
             />
             <p className="text-sm text-gray-400">
-              Multi-Track Audio Sequencer • Use Speed Dial (bottom-right) for upload, save, load, and export
+              Multi-Track Audio Sequencer{' '}
+              <span className="text-gray-500" title="Application version">
+                v{__APP_VERSION__}
+              </span>{' '}
+              • Use Speed Dial (bottom-right) for upload, save, load, and export
             </p>
           </div>
           <UndoRedoControls />
