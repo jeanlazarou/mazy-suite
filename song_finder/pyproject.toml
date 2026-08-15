@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "song-finder"
+version = "1.0.0"
+description = "Find mazy_suite songs by title, original collaboration name, author or lyrics"
+authors = ["Jean Lazarou <jean.lazarou@gmail.com>"]
+readme = "README.md"
+packages = [{include = "song_finder", from = "."}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+textual = "^6.0"
+rich = "^13.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+black = "^23.7.0"
+isort = "^5.12.0"
+mypy = "^1.5.1"
+
+[tool.poetry.scripts]
+song-finder = "song_finder.cli:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+
+[tool.isort]
+profile = "black"
+line_length = 100
