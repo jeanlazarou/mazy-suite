@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- A lyric line bursting into animated shards on a dark stage -->
+  <rect width="64" height="64" rx="14" fill="#0D0D14"/>
+  <g stroke-linecap="round" stroke-width="3.5">
+    <line x1="32" y1="32" x2="17" y2="14" stroke="#FF6B9D"/>
+    <line x1="32" y1="32" x2="32" y2="10" stroke="#FFD166"/>
+    <line x1="32" y1="32" x2="47" y2="14" stroke="#8B7CFF"/>
+    <line x1="32" y1="32" x2="14" y2="32" stroke="#4CC9F0"/>
+    <line x1="32" y1="32" x2="50" y2="32" stroke="#FF6B9D"/>
+  </g>
+  <circle cx="32" cy="32" r="7" fill="#F4F4F8"/>
+  <rect x="14" y="46" width="9" height="6" rx="1.5" fill="#8B7CFF"/>
+  <rect x="27.5" y="46" width="9" height="6" rx="1.5" fill="#4CC9F0"/>
+  <rect x="41" y="46" width="9" height="6" rx="1.5" fill="#FFD166"/>
+</svg>

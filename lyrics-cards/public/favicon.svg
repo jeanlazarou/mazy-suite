@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- A fanned stack of lyric cards -->
+  <rect width="64" height="64" rx="14" fill="#F4F6F8"/>
+  <g>
+    <rect x="16" y="14" width="26" height="34" rx="4" fill="#DCE4EC" stroke="#B9C6D3" stroke-width="1" transform="rotate(-9 29 31)"/>
+    <rect x="20" y="12" width="26" height="34" rx="4" fill="#EAF0F6" stroke="#B9C6D3" stroke-width="1" transform="rotate(6 33 29)"/>
+    <rect x="19" y="13" width="26" height="34" rx="4" fill="#FFFFFF" stroke="#3498DB" stroke-width="1.5"/>
+    <line x1="24" y1="23" x2="40" y2="23" stroke="#3498DB" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="24" y1="30" x2="40" y2="30" stroke="#9FB3C4" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="24" y1="37" x2="34" y2="37" stroke="#9FB3C4" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+</svg>
