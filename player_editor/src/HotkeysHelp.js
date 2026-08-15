@@ -14,8 +14,8 @@ function isMacOS() {
   return /Macintosh/.test(userAgent);
 }
 
-const CTRL = isMacOS ? "⌃" : "Ctrl";
-const SHIFT = isMacOS ? "⇧" : "Shift";
+const CTRL = isMacOS() ? "⌃" : "Ctrl";
+const SHIFT = isMacOS() ? "⇧" : "Shift";
 
 const simpleKey = (command, ...keys) => {
   return { command, aliases: [keys] }
@@ -46,12 +46,12 @@ const groups = [{
   title: "Region", items: [
     simpleKey("Accept change", "Enter"),
     simpleKey("Hide (cancel change)", "Esc"),
-    simpleKey("Decrease lower ", SHIFT, "DownArrow"),
+    simpleKey("Decrease lower", SHIFT, "DownArrow"),
     simpleKey("Decrease upper", "DownArrow"),
     simpleKey("Drop (while playing)", CTRL, "I"),
     simpleKey("Duplicate", CTRL, "D"),
     simpleKey("Increase upper", "UpArrow"),
-    simpleKey("Increase lower", SHIFT, "DownArrow"),
+    simpleKey("Increase lower", SHIFT, "UpArrow"),
     aliasesKeys("Insert", ["Insert"], ["I"]),
     simpleKey("Move to the left", SHIFT, "LeftArrow"),
     simpleKey("Move to the right", SHIFT, "RightArrow"),
