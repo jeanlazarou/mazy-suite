@@ -37,6 +37,7 @@ player, loaded with the demo album.
 | [srt_generator](srt_generator/) | Python CLI that drafts an SRT lyrics file from a song (Demucs vocal separation + forced alignment), to be finished in player_editor |
 | [music_cache_updater](music_cache_updater/) | Python CLI that maintains the JSON metadata cache (id, duration, last modified) the player uses to start fast |
 | [mp3-playlist-manager](mp3-playlist-manager/) | Python CLI that writes the playlist JSON metadata into the MP3 files themselves — titles, authors, and embedded cover art |
+| [song_finder](song_finder/) | Python TUI + CLI that finds a song by any name it answers to — song title, original collaboration file, author, kompoz id or lyrics — then copies the results out, renamed to the song title |
 
 ## How the tools work together
 
@@ -50,7 +51,9 @@ The suite revolves around a shared **data folder** and simple, open formats:
 A typical flow: rip or record a song → tag it with **cover_ed** → draft its lyric
 timings with **srt_generator** → fine-tune them in **player_editor** → enjoy it in
 **player**, prompt it live with **live_prompter**, or turn it into visuals with
-**gig_anim**.
+**gig_anim**. Months later, when the song title is all you remember and the file
+is still called whatever the collaboration was named, **song_finder** takes you
+back to it.
 
 All formats are documented in [docs/data-formats.md](docs/data-formats.md), and
 a real **demo album** ships in [examples/](examples/) — three original songs
