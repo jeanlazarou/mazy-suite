@@ -23,6 +23,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { Album, Track } from '../types';
+import { API_BASE_URL } from '../api/endpoints';
 import { fetchAlbumTracks } from '../api/endpoints';
 
 const ScrollableSection = styled(Box)({
@@ -216,7 +217,7 @@ export const AlbumSelectionDialog: React.FC<AlbumSelectionDialogProps> = ({
                                             <CardMedia
                                                 component="img"
                                                 height="140"
-                                                image={`/data/${album.coverImage}`}
+                                                image={`${API_BASE_URL}/${album.coverImage}`}
                                                 alt={album.name}
                                             />
                                             <CardContent>

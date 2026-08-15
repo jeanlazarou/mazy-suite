@@ -12,8 +12,9 @@ apps, up front. **Deploying an app means adding its name to `APPS`** in the
 workflow, which only works once the app can actually run from a subpath
 instead of the domain root. That's the part that needs per-app checking.
 
-This was done for `player`, `massembler`, `mix-mastering` and (below) surveyed
-for the rest. Use this doc to bring the remaining ones online.
+This was done for `player`, `massembler`, `mix-mastering`, `gig_anim`,
+`lyrics-cards` and `player_editor`, and (below) surveyed for the rest. Use
+this doc to bring the remaining ones online.
 
 ## Why a subpath breaks apps that weren't built for it
 
@@ -88,6 +89,16 @@ Don't assume a hit is a real problem without reading it — e.g. an endpoint
 like `/__suite/list` may be a dev-only local API middleware that isn't part
 of the built app at all. Confirm before "fixing" something that doesn't
 need it.
+
+**Once you find one absolute-path constant, grep for the raw string too, not
+just its definition.** gig_anim had `const API_BASE_URL = "/data"` in one
+file — the audit regex above catches `fetch('/data/...')`, so that one spot
+looked like the whole fix. But eight components elsewhere built their own
+`` `/data/${album.coverImage}` `` image URLs directly, inline, never going
+through the constant. `grep -rn '\`/data/\|"/data/' <app>/src` (the raw
+substring, not just inside `fetch(...)`) after fixing the "obvious" spot is
+what actually finds the rest. The fix was to export the constant and import
+it everywhere instead of leaving the literal scattered.
 
 ### 2. Handle a non-standard build, if the app has one
 
@@ -226,13 +237,25 @@ proves what GitHub actually serves.
 | player | `./` | — | **deployed** |
 | massembler | `./` | absolute favicon in `index.html` | **deployed**; the hit was outside `src/`, see step 1 |
 | mix-mastering | `./` | — | **deployed** (special-cased Go/WASM build) |
-| gig_anim | `./` | none found | base already correct; re-check for demo-data fetches if it uses any |
-| lyrics-cards | `./` | `fetch('/data/albums.json')` ×2 in `DataPathHelper.ts` | base already correct; fix the data path per step 1 |
-| player_editor | default (`/`) | none found | needs `base: './'` |
+| gig_anim | `./` | `API_BASE_URL = "/data"` in `endpoints.ts`, plus the same literal inline in 8 components | **deployed**; needed the demo `default_performance.json` file too (see below), the app has no album-browsing mode, only a performance-file mode |
+| lyrics-cards | `./` | `fetch('/data/albums.json')` ×2 in `DataPathHelper.ts` | **deployed**; no source fix needed — those are self-probing fallback attempts in an existing `../data`-first detection hook, confirmed by watching actual network requests rather than trusting the static grep |
+| player_editor | `./` (in `vite.config.js`, a `.js` file — the earlier survey only grepped `.ts` and missed it) | absolute favicon/apple-touch-icon/manifest in `index.html` | **deployed**; same class of fix as massembler, base was already fine |
 | live_prompter | default (`/`) | `fetch('/data/albums.json')` in `App.tsx` | needs both fixes |
 | track_mixer | default (`/`) | `fetch('/__suite/list')` in `api.js` | needs base fix; confirm the `/__suite/list` call is dev-only before touching it |
 | groove_lab | default (`/`) | none found | needs `base: './'` |
 | sequence-builder | default (`/`) | none found | needs `base: './'` |
+
+gig_anim needed one more thing beyond path fixes: it has no album-list browsing
+mode at all (`fetchAlbums`/`fetchAlbumDetails` in `endpoints.ts` are unused —
+dead code), only a "performance file" mode that always loads
+`data/default_performance.json` on start. The shared `examples/data` folder
+(built for `player`'s album-list format) has no such file, so a demo one was
+authored at `examples/data/default_performance.json`, reusing the same three
+tracks/audio files `player`'s demo album already ships — same underlying
+content, wrapped in the shape this particular app actually needs. Check
+what an app's default view actually requires before assuming "the shared
+demo data" is a drop-in fit; it's a fine goal, but the data shape isn't
+always the same as `player`'s.
 
 This table is a snapshot from one grep-based pass, not a guarantee — re-run
 the audit commands in step 1 on the actual app before trusting it, and treat

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lyric, Theme, Album } from '../types';
+import { API_BASE_URL } from '../api/endpoints';
 
 interface FadeAnimationProps {
     lyrics: Lyric[];
@@ -99,7 +100,7 @@ export const FadeAnimation: React.FC<FadeAnimationProps> = ({ lyrics, theme, alb
                     >
                         {item.isImage ? (
                             <img
-                                src={`/data/${item.content}`}
+                                src={`${API_BASE_URL}/${item.content}`}
                                 alt="Album Cover"
                                 style={{ width: '80px', height: '80px', objectFit: 'cover' }}
                             />

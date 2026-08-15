@@ -1,6 +1,7 @@
 import React, { useState, useLayoutEffect, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { Lyric, Theme, Album } from '../types';
+import { API_BASE_URL } from '../api/endpoints';
 
 interface TeletypeAnimationProps {
     lyrics: Lyric[];
@@ -146,7 +147,7 @@ export const TeletypeAnimation: React.FC<TeletypeAnimationProps> = ({ lyrics, th
                 }}
             >
                 <img
-                    src={`/data/${album.coverImage}`}
+                    src={`${API_BASE_URL}/${album.coverImage}`}
                     alt={album.title}
                     style={{
                         width: '300px',

@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, useAnimation } from 'framer-motion';
 import { Album } from '../types';
+import { API_BASE_URL } from '../api/endpoints';
 
 interface FloatingCoverProps {
   album: Album;
@@ -42,7 +43,7 @@ const FloatingCover: React.FC<FloatingCoverProps> = ({ album }) => {
         initial={{ opacity: 0, x: 0, y: 0 }}
       >
         <img
-          src={`/data/${album.coverImage}`}
+          src={`${API_BASE_URL}/${album.coverImage}`}
           alt="Album Cover"
           width="35%"
           className="w-40 h-40 rounded"

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lyric, Theme, Album } from '../types';
+import { API_BASE_URL } from '../api/endpoints';
 
 interface FallingAnimationProps {
     lyrics: Lyric[];
@@ -75,7 +76,7 @@ export const FallingAnimation: React.FC<FallingAnimationProps> = ({ lyrics, them
                     >
                         {item.isImage ? (
                             <img
-                                src={`/data/${item.content}`}
+                                src={`${API_BASE_URL}/${item.content}`}
                                 alt="Album Cover"
                                 style={{ width: '173px', objectFit: 'cover' }}
                             />

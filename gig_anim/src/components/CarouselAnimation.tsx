@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lyric, Theme, Album } from '../types';
+import { API_BASE_URL } from '../api/endpoints';
 
 interface CarouselAnimationProps {
     lyrics: Lyric[];
@@ -73,7 +74,7 @@ export const CarouselAnimation: React.FC<CarouselAnimationProps> = ({ lyrics, th
                 </motion.div>
             </AnimatePresence>
             <motion.img
-                src={`/data/${album.coverImage}`}
+                src={`${API_BASE_URL}/${album.coverImage}`}
                 alt="Album Cover"
                 animate={coverPosition}
                 transition={{ duration: 3, ease: "easeInOut" }}

@@ -2,7 +2,11 @@ import { PerformanceData, Lyric, Album, Track } from "../types";
 import { fileFromTitle } from "../utils/fileUtils";
 import { parseSRT } from "../utils/lyricsUtils";
 
-const API_BASE_URL = "/data";
+// Relative so the app also works one level deep, as on the portal site
+// (`../data` resolves the same as `/data` when served at the domain root,
+// since a browser clamps `..` at the origin). Exported because several
+// components build their own `/data/...` image URLs directly.
+export const API_BASE_URL = "../data";
 
 export const fetchPerformanceData = async (
   performanceFile: string

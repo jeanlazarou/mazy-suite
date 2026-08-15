@@ -32,6 +32,9 @@ jobs:
             player/pnpm-lock.yaml
             massembler/pnpm-lock.yaml
             mix-mastering/web/pnpm-lock.yaml
+            gig_anim/pnpm-lock.yaml
+            lyrics-cards/pnpm-lock.yaml
+            player_editor/pnpm-lock.yaml
 
       - uses: actions/setup-go@v5
         with:
@@ -40,7 +43,7 @@ jobs:
       - name: Build site
         run: bash scripts/build_site.sh
         env:
-          APPS: player massembler mix-mastering
+          APPS: player massembler mix-mastering gig_anim lyrics-cards player_editor
 
       - uses: actions/upload-pages-artifact@v3
         with:

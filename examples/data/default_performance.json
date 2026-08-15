@@ -1,0 +1,50 @@
+{
+  "title": "Back to Normal — Gig Anim Demo",
+  "date": "2020-05-04",
+  "albums": [
+    {
+      "id": "back-to-normal",
+      "name": "back-to-normal",
+      "title": "Back to Normal",
+      "coverImage": "back-to-normal-500.png"
+    }
+  ],
+  "tracks": [
+    {
+      "id": "back-to-normal-big-three",
+      "albumId": "back-to-normal",
+      "url": "/music/files/Back to Normal/Big Three.mp3",
+      "title": "Big Three",
+      "creationDate": "2017-09-10",
+      "authors": ["Jean Lazarou"],
+      "volume": 89,
+      "theme": "cool",
+      "animationDelay": 500,
+      "animationType": "wall"
+    },
+    {
+      "id": "back-to-normal-born-to-die",
+      "albumId": "back-to-normal",
+      "url": "/music/files/Back to Normal/Born to Die.mp3",
+      "title": "Born to Die",
+      "creationDate": "2017-08-12",
+      "authors": ["Jean Lazarou"],
+      "volume": 85,
+      "theme": "reds",
+      "animationDelay": 0,
+      "animationType": "spiral"
+    },
+    {
+      "id": "back-to-normal-against-myself",
+      "albumId": "back-to-normal",
+      "url": "/music/files/Back to Normal/Against Myself.mp3",
+      "title": "Against Myself",
+      "creationDate": "2018-06-09",
+      "authors": ["Jean Lazarou"],
+      "volume": 85,
+      "theme": "autumn",
+      "animationDelay": 250,
+      "animationType": "default"
+    }
+  ]
+}

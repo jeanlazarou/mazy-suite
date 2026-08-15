@@ -4,6 +4,7 @@ import { Lyric, PerformanceData, Track } from '../types';
 import { AnimatedElement } from './AnimatedElement';
 import { themes } from '../themes';
 import { shuffleArray } from '../utils/arrayUtils';
+import { API_BASE_URL } from '../api/endpoints';
 import { fetchLyrics } from '../api/endpoints';
 import { GridAnimation } from './GridAnimation';
 import { TeletypeAnimation } from './TeletypeAnimation';
@@ -62,7 +63,7 @@ export const LyricDisplay: React.FC<LyricDisplayProps> = ({ performanceData, cur
 
     const displayedElements = useMemo(() => {
         const allElements = [
-            { content: `/data/${currentAlbum?.coverImage}`, isImage: true, isHighlighted: false },
+            { content: `${API_BASE_URL}/${currentAlbum?.coverImage}`, isImage: true, isHighlighted: false },
             { content: performanceData.title },
             { content: currentTrack.title },
             { content: currentAlbum?.title || 'Unknown Album' },

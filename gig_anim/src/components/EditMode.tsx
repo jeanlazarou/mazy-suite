@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import { LyricDisplay } from './LyricDisplay';
 import { PerformanceData, Track, Album, AnimationType } from '../types';
-import { fetchPerformanceData, savePerformanceData, fetchAlbums } from '../api/endpoints';
+import { fetchPerformanceData, savePerformanceData, fetchAlbums, API_BASE_URL } from '../api/endpoints';
 import { defaultTheme, themes } from '../themes';
 import { AlbumSelectionDialog } from './AlbumSelectionDialog';
 import { useExternalCommands } from '../context/ExternalCommandsContext';
@@ -197,7 +197,7 @@ export const EditMode: React.FC<EditModeProps> = ({
                             <MenuItem key={track.id} value={index}>
                                 <Box display="flex" alignItems="center">
                                     <img
-                                        src={`/data/${albums.find(a => a.id === track.albumId)?.coverImage}`}
+                                        src={`${API_BASE_URL}/${albums.find(a => a.id === track.albumId)?.coverImage}`}
                                         alt={track.albumId}
                                         style={{ width: 30, height: 30, marginRight: 10 }}
                                     />
