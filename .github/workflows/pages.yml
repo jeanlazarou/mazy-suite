@@ -31,11 +31,16 @@ jobs:
           cache-dependency-path: |
             player/pnpm-lock.yaml
             massembler/pnpm-lock.yaml
+            mix-mastering/web/pnpm-lock.yaml
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: mix-mastering/go.mod
 
       - name: Build site
         run: bash scripts/build_site.sh
         env:
-          APPS: player massembler
+          APPS: player massembler mix-mastering
 
       - uses: actions/upload-pages-artifact@v3
         with:

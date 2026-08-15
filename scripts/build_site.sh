@@ -34,6 +34,19 @@ done
 
 for app in $APPS; do
   echo "=== building $app"
+  if [ "$app" = "mix-mastering" ]; then
+    # Go project: the frontend lives in web/ and needs the WASM engine
+    # built first (requires the Go toolchain on PATH).
+    (cd "$app" && \
+      mkdir -p web/public && \
+      GOOS=js GOARCH=wasm go build -o web/public/engine.wasm ./cmd/wasm/ && \
+      GOROOT=$(go env GOROOT) && \
+      { cp "$GOROOT/lib/wasm/wasm_exec.js" web/public/ 2>/dev/null || \
+        cp "$GOROOT/misc/wasm/wasm_exec.js" web/public/; })
+    (cd "$app/web" && pnpm install --frozen-lockfile && pnpm build)
+    cp -R "$app/web/dist" "$SITE/$app"
+    continue
+  fi
   (cd "$app" && pnpm install --frozen-lockfile && pnpm build)
   if [ -d "$app/build" ]; then
     cp -R "$app/build" "$SITE/$app"
