@@ -130,6 +130,9 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - 💾 Save Project
   - 🗜️ Optimize Project
   - 🎵 Export Mix
+- **Collapsible Clip Library**: Hide the whole sidebar down to a narrow rail
+  when you are arranging rather than defining clips, giving the timeline the
+  space back. The rail keeps the clip count in view and reopens on a click.
 - **Collapsible Quick Clip Definition**: Save space in sidebar when not needed
 - **Editable Project Name**: Click title in header to rename project
 - **Version in the header**: Shows which build is running, so a stale cached
@@ -192,6 +195,10 @@ Click the **Speed Dial** button (the blue **+** at the bottom-right) → **Uploa
 5. Click "Play Selection" to preview your selection
 6. Enter a name for your clip
 7. Click "Create Clip"
+
+Once your clips are defined, collapse the library with the **«** button in its
+header — it shrinks to a rail on the left and hands the width to the timeline.
+Click the rail to bring it back.
 
 ### 2b. Edit a Clip
 

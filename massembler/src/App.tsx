@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ClipLibrary } from './components/ClipLibrary';
 import { Timeline } from './components/Timeline';
 import { PlaybackControls } from './components/PlaybackControls';
@@ -8,7 +9,8 @@ import { ClipPropertiesPanel } from './components/ClipPropertiesPanel';
 import { useStore } from './store';
 
 function App() {
-  const { projectName, setProjectName, selectedTrackClip } = useStore();
+  const { projectName, setProjectName, selectedTrackClip, clips } = useStore();
+  const [isLibraryOpen, setIsLibraryOpen] = useState(true);
 
   return (
     <div className="h-screen flex flex-col bg-gray-900 text-white">
@@ -38,10 +40,25 @@ function App() {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 flex overflow-hidden">
-          {/* Clip library sidebar */}
-          <div className="w-96">
-            <ClipLibrary />
-          </div>
+          {/* Clip library, collapsible to a rail to give the timeline room */}
+          {isLibraryOpen ? (
+            <div className="w-96 flex-shrink-0">
+              <ClipLibrary onCollapse={() => setIsLibraryOpen(false)} />
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsLibraryOpen(true)}
+              className="w-9 flex-shrink-0 border-r border-gray-700 bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white flex flex-col items-center gap-3 py-3 transition-colors"
+              title="Show the clip library"
+            >
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M6 5l7 7-7 7" />
+              </svg>
+              <span className="text-xs font-semibold tracking-wide [writing-mode:vertical-rl]">
+                Clip Library ({clips.length})
+              </span>
+            </button>
+          )}
 
           {/* Timeline */}
           <Timeline />

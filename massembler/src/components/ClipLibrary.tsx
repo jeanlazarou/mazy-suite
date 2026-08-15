@@ -12,7 +12,12 @@ function createClipId(): string {
   return `clip-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function ClipLibrary() {
+interface ClipLibraryProps {
+  /** Omitted when the library cannot be hidden. */
+  onCollapse?: () => void;
+}
+
+export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
   const { audioFiles, clips, tracks, addClip, updateClip, removeClip, showToast } =
     useStore();
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
@@ -174,8 +179,24 @@ export function ClipLibrary() {
   return (
     <div className="flex flex-col h-full border-r border-gray-700 bg-gray-900">
       <div className="border-b border-gray-700">
-        <div className="p-4">
+        <div className="p-4 flex items-center justify-between gap-2">
           <h2 className="text-lg font-bold">Clip Library</h2>
+          {onCollapse && (
+            <button
+              onClick={onCollapse}
+              className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-800"
+              title="Hide the clip library"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7M18 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Quick Clip Definition - Collapsible */}
