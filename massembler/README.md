@@ -4,6 +4,8 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
 
 **▶ [Try it live](https://jeanlazarou.github.io/mazy-suite/massembler/)** — part of the [Mazy Suite](https://jeanlazarou.github.io/mazy-suite/). Everything runs in the browser; no audio is uploaded anywhere.
 
+![The clip library beside a four-track arrangement: clips carry Telephone and Lo-fi effect badges, a repeated clip trails its phantom copies, and the red playhead sits mid-playback](docs/screenshots/main-view.png)
+
 ## 🎉 Major Features
 
 ### Core Editing Features
