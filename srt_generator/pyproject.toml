@@ -1,6 +1,7 @@
 [project]
 name = "srt-generator"
-version = "0.2.0"
+# single source of truth: src/srt_generator/__init__.py (see tool.hatch.version)
+dynamic = ["version"]
 description = "Generate draft SRT lyric timings from songs, to be finished in player_editor"
 requires-python = ">=3.12,<3.13"
 dependencies = [
@@ -25,6 +26,9 @@ dev = ["pytest>=8"]
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/srt_generator/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/srt_generator"]
