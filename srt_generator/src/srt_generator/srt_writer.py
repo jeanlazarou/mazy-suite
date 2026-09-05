@@ -8,15 +8,24 @@
 #   - blocks separated by a single blank line, "\n" line endings
 #
 
-EPSILON = 0.01
 
-
-def postprocess(segments, min_duration=0.2, min_gap=0.02):
+def postprocess(segments, min_duration=0.2, min_gap=0.02, max_duration=None):
     """Clean up (start, end, text) tuples so they satisfy the parser.
 
-    Aligners routinely emit zero-length or overlapping segments on fast
-    passages; this nudges them into a strictly increasing, non-degenerate
-    sequence while staying as close as possible to the original times.
+    Aligners routinely emit zero-length, overlapping or wildly stretched
+    segments on fast or repeated passages. A single forward pass turns
+    them into a sequence that is guaranteed to be
+
+      - non-overlapping, with at least min_gap between regions —
+        player_editor reads one flat list of alternating from/to timings,
+        so an overlap scrambles which line is highlighted;
+      - min_duration long or longer, with start < end;
+      - strictly increasing in both starts and ends;
+      - at most max_duration long, when one is given.
+
+    Regions are shaved from the end, which is the side aligners stretch;
+    a start is only pushed forward when the end cannot be shaved without
+    falling under min_duration.
     """
     cleaned = [
         (start, end, text.strip())
@@ -26,34 +35,28 @@ def postprocess(segments, min_duration=0.2, min_gap=0.02):
     cleaned.sort(key=lambda seg: seg[0])
 
     result = []
-    prev_start = None
     prev_end = None
 
-    for start, end, text in cleaned:
-        if start < 0:
-            start = 0.0
-        if prev_start is not None and start <= prev_start:
-            start = prev_start + EPSILON
-        if end < start + min_duration:
-            end = start + min_duration
-        if prev_end is not None and end <= prev_end:
-            end = prev_end + EPSILON
+    for i, (start, end, text) in enumerate(cleaned):
+        start = max(start, 0.0)
+
+        if prev_end is not None:
+            start = max(start, prev_end + min_gap)
+
+        if max_duration:
+            end = min(end, start + max_duration)
+
+        # shave against the *raw* next start: the following segment has
+        # not been placed yet, and it never moves earlier than that
+        if i + 1 < len(cleaned):
+            end = min(end, cleaned[i + 1][0] - min_gap)
+
+        # last resort, when the next line starts inside min_duration:
+        # keep the region legal and let the next start be pushed instead
+        end = max(end, start + min_duration)
 
         result.append((start, end, text))
-        prev_start, prev_end = start, end
-
-    for i in range(len(result) - 1):
-        start, end, text = result[i]
-        next_start = result[i + 1][0]
-
-        # shaving must not lower this end below the previous (possibly
-        # shaved) end, or the ends stop increasing
-        floor = start
-        if i > 0:
-            floor = max(floor, result[i - 1][1])
-
-        if end > next_start - min_gap and next_start - min_gap > floor:
-            result[i] = (start, next_start - min_gap, text)
+        prev_end = end
 
     return result
 

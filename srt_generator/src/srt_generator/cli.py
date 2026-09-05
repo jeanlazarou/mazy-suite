@@ -61,6 +61,18 @@ def build_parser():
         help="minimum segment duration in seconds (default: 0.2)",
     )
     parser.add_argument(
+        "--max-duration",
+        type=float,
+        default=5.0,
+        metavar="SECONDS",
+        help=(
+            "longest a region may last in seconds (default: 5, about a "
+            "sung line); an aligner that stretches a line to the next one "
+            "is cut back to the last singing within the cap, or to the cap "
+            "itself when nothing else bounds it. 0 disables the cap"
+        ),
+    )
+    parser.add_argument(
         "--no-trim",
         action="store_true",
         help="keep raw aligner edges instead of snapping them to silence",
@@ -125,6 +137,14 @@ def main(argv=None):
     if args.lyrics is not None and not args.lyrics.exists():
         sys.exit(f"Lyrics file not found: {args.lyrics}")
 
+    max_duration = args.max_duration if args.max_duration > 0 else None
+
+    if max_duration is not None and max_duration < args.min_duration:
+        sys.exit(
+            f"--max-duration ({max_duration}) is below --min-duration "
+            f"({args.min_duration})"
+        )
+
     output = args.output or args.audio.with_suffix(".srt")
     demucs_device, whisper_device = pick_devices(args.device)
 
@@ -157,9 +177,14 @@ def main(argv=None):
             threshold_db=args.trim_db,
             min_duration=args.min_duration,
             max_gap=args.max_gap,
+            max_duration=max_duration,
         )
 
-    segments = postprocess(segments, min_duration=args.min_duration)
+    segments = postprocess(
+        segments,
+        min_duration=args.min_duration,
+        max_duration=max_duration,
+    )
 
     if not segments:
         sys.exit("No segments produced; nothing to write")

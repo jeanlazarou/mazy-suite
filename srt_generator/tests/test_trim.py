@@ -92,6 +92,34 @@ def test_breath_pauses_shorter_than_max_gap_are_kept():
     assert end >= 3.5 - FRAME
 
 
+def test_max_duration_ends_at_the_last_singing_within_the_cap():
+    # singing runs 1.0-2.0, pauses, resumes at 8.0; the aligner stretched
+    # the region to 9.0. With a 5 s cap the region must close on the last
+    # voiced frame before 6.0, not be cut at exactly 6.0
+    voiced = voiced_between(10, [(1.0, 2.0), (8.0, 9.0)])
+
+    result = _trim_to_voiced(
+        voiced, [(1.0, 9.0, "line")], pad=0.0, min_duration=0.2,
+        max_duration=5.0,
+    )
+
+    _, end, _ = result[0]
+    assert end <= 2.0 + FRAME
+    assert end >= 2.0 - FRAME
+
+
+def test_max_duration_never_looks_past_the_cap():
+    voiced = voiced_between(20, [(1.0, 15.0)])
+
+    result = _trim_to_voiced(
+        voiced, [(1.0, 15.0, "line")], pad=0.12, min_duration=0.2,
+        max_duration=5.0,
+    )
+
+    start, end, _ = result[0]
+    assert end - start <= 5.0 + 1e-9
+
+
 def test_skips_trim_that_would_be_too_short():
     # only a single voiced blip inside a long segment
     voiced = voiced_between(10, [(2.0, 2.04)])

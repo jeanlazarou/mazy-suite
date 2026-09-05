@@ -45,21 +45,44 @@ uv run srt_generator song.mp3 -o song.srt --mix
 ```
 
 Useful options: `--language fr`, `--model medium` (faster, less accurate),
-`--device cpu`, `--min-duration 0.3`.
+`--device cpu`, `--min-duration 0.3`, `--max-duration 8`.
 
 ## Silence trimming
 
 Region edges are snapped back to the actually-voiced audio (RMS gate,
 `--trim-db`, default −40 dB; `--no-trim` disables). Edges only ever
-shrink — the tool deliberately errs on the side of over-long regions:
+shrink — within a region the tool errs on the side of keeping audio:
 dragging an edge in in player_editor takes seconds, while a region that
 skipped real singing is much harder to spot and repair.
 
 For the same reason `--max-gap SECONDS` (close a region at its first
 internal silence longer than that) is **off by default and experimental**:
 when the aligner slips on repeated lines it can cut on the wrong side of
-a silence and drop covered singing. Prefer fixing the occasional
-stretched region by hand.
+a silence and drop covered singing. Prefer the duration cap below, which
+cannot silently swallow a whole line.
+
+## Region length cap
+
+Aligners stretch a line's end towards wherever the next line starts, so
+a line before an instrumental break comes out tens of seconds long.
+`--max-duration` (default **5 s**, about one sung line; `0` disables)
+bounds that: a region only looks for singing within the cap and closes
+on the last voiced frame it finds there, falling back to a hard cut at
+the cap when nothing else bounds it.
+
+Raise it for songs with long held phrases; the cost of a cap that is
+too low is a region that ends early and needs its end dragged out again
+in player_editor.
+
+## Overlaps
+
+The final pass guarantees the timings player_editor expects: regions are
+strictly ordered, never overlap (it reads one flat list of alternating
+start/end timings — an overlap scrambles which line is highlighted), and
+every region is at least `--min-duration` long. Overlaps are resolved by
+shaving the earlier region's end, since that is the side the aligner
+stretched; a start is only pushed forward when the end cannot be shaved
+without collapsing the region.
 
 ## Lyrics file format
 
