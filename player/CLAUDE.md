@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 pnpm start          # Dev server (CRA, port 3000)
 pnpm build          # Production build
-pnpm test           # Jest test runner (interactive watch mode)
+pnpm test           # Vitest (single run)
 pnpm run format     # Prettier formatting
 ```
 
@@ -62,7 +62,15 @@ Sequencer state change → document.dispatchEvent(CustomEvent)
 
 ### Playlist Loading
 
-Query param `?list=name` loads `./data/{name}.json`. A sibling `.md` file is loaded for the description panel. Description markdown supports special tokens: `$T:song-title` (song marker), `$A` (authors), `$C` (creation date), `$AC` (authors + date), and inline `<style>` blocks.
+Query param `?list=name` loads `./data/{name}.json`. A sibling `.md` file is loaded for the description panel. Description markdown supports special tokens: `$T:song-title` (song marker), `$A` (authors), `$C` (creation date), `$AC` (authors + date), `$THEME:name` (rendering theme), and inline `<style>` blocks.
+
+### Description themes
+
+`$THEME:name` selects one of the themes listed in `descriptionThemes.js` and implemented in `DescriptionThemes.css`; the README documents them for description authors. `api.js` strips the marker in `preProcessDescription` and returns the theme alongside the rendered HTML; `DescriptionModal` turns it into `description-themed description-theme-{name}` classes on `#playlist-description`. The `default` theme deliberately adds **no** class — that is what keeps the app-wide dark-mode rule in `index.css` (`:not(.description-themed)`) in charge of unthemed descriptions, and keeps their rendering byte-identical to what it was before themes existed.
+
+Specificity is load-bearing here: per-album `<style>` blocks use `#playlist-description x` selectors and are meant to beat the theme rules, so theme rules never use `!important` and never raise specificity beyond `#playlist-description.description-theme-x`.
+
+Panel sizing matters for themes: a **markdown** description must keep `min-height: 100%` with no fixed height, so the element grows past the viewport and its background stays under the whole list (a fixed height leaves the overflow sitting on `.modal-content`'s own background — invisible with the default palette, obvious with a theme). Its bottom breathing room is padding, not margin, for the same reason. An **HTML** description is the exception: it keeps `height: 100%` so the iframe fills the panel and scrolls internally.
 
 ## Key Libraries
 

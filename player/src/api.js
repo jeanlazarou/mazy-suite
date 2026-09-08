@@ -2,6 +2,7 @@ import { Remarkable } from "remarkable";
 
 import { parseLyrics } from "./srt_parser";
 import { ALBUMS_FILE } from "./features";
+import { DEFAULT_THEME, normalizeTheme, themeMarker } from "./descriptionThemes";
 
 export const DATA = global.features.isolatedPlayer ? "./data" : "../data"
 
@@ -126,7 +127,7 @@ export async function loadPlaylistDescription(listURL, { playlist, htmlDescripti
       const htmlResponse = await fetch(htmlUrl);
       if (htmlResponse.ok) {
         const htmlContent = await htmlResponse.text();
-        return { content: htmlContent, isHtml: true };
+        return { content: htmlContent, isHtml: true, theme: DEFAULT_THEME };
       }
     } catch (error) {
       console.warn(`HTML description specified but file not found: ${htmlUrl}`);
@@ -141,16 +142,16 @@ export async function loadPlaylistDescription(listURL, { playlist, htmlDescripti
       return "No description";
     })
     .then((content) => {
-      const md = preProcessDescription(content, byTitle);
+      const { md, theme } = preProcessDescription(content, byTitle);
 
       var renderer = new Remarkable({html: true}).use(imageLinks).use(linksOpen);
 
       const description = renderer.render(md);
 
-      return { content: description, isHtml: false };
+      return { content: description, isHtml: false, theme };
     })
     .catch(() => {
-      return { content: "No description", isHtml: false };
+      return { content: "No description", isHtml: false, theme: DEFAULT_THEME };
     });
 }
 
@@ -180,6 +181,7 @@ function preProcessDescription(content, byTitle) {
   let current = null;
   let styles = [];
   let consumingStyles = false;
+  let theme = null;
 
   const processed = content
     .split("\n")
@@ -202,31 +204,43 @@ function preProcessDescription(content, byTitle) {
         return "";
       }
 
-      let match = line.match(/\$T:(.*)/);
+      const marker = themeMarker(line);
+
+      if (marker !== null) {
+        // the first marker wins, the line itself never reaches the renderer
+        if (theme === null) theme = marker;
+
+        return "";
+      }
+
+      const match = line.match(/\$T:(.*)/);
 
       if (match) {
         const title = match[1].replace("\\*", "*");
 
         current = byTitle[title];
 
-        return line.replace(/\$T:/, "");
+        // wrapped so that themes can style the song title on its own
+        return line.replace(
+          /\$T:(.*)/,
+          '<span class="description-song-title">$1</span>'
+        );
       }
 
-      match = line.match(/\$AC/);
+      // $AC first in the alternation, so it is never read as $A followed by C
+      return line.replace(/\$AC|\$A|\$C/g, (token) => {
+        if (!current) return "";
 
-      if (match) {
-        const value = current ? current.ac : "";
+        if (token === "$AC") return current.ac;
 
-        return line.replace(/\$AC/, value);
-      }
-
-      return line;
+        return (token === "$A" ? current.a : current.c) ?? "";
+      });
     })
     .join("\n");
 
   setStyles(styles.join("\n"));
 
-  return processed;
+  return { md: processed, theme: normalizeTheme(theme) };
 }
 
 function setStyles(styles) {

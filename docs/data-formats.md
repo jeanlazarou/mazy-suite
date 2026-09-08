@@ -72,18 +72,23 @@ tools strip it when resolving the lyrics file name.
 
 ## `<name>.md` — the album description
 
-Regular Markdown, rendered by the player next to the cover, with two
-substitution markers that pull data from the playlist:
+Regular Markdown, rendered by the player next to the cover, with substitution
+markers that pull data from the playlist:
 
 - a line containing `$T:<track title>` names a track (the marker is removed,
   the title must match a playlist `title`; escape a literal `*` as `\*`)
-- `$AC` on a following line expands to that track's `authors - creationDate`
+- on the lines that follow, `$A` expands to that track's `authors`, `$C` to its
+  `creationDate`, and `$AC` to `authors - creationDate`
 
 ```markdown
 1. $T:Big Three
 
    - $AC
 ```
+
+A `$THEME:<name>` line anywhere in the file picks how the player renders the
+description — `default`, `sleeve`, `liner`, `minimal` or `neon`. The player's
+own README documents what each one looks like.
 
 An optional `<style>…</style>` block anywhere in the file is extracted and
 applied to the rendered description.

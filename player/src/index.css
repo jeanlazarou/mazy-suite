@@ -1194,7 +1194,10 @@ body.dark #dark-mode-toggle {
 
 #playlist-description {
   background-color: white;
-  height: 100%;
+  /* min-height, not height: the panel fills the modal when the description is
+     short, and grows with it when it is long — a fixed height would leave the
+     overflowing part sitting on the modal's own background */
+  min-height: 100%;
   /* semantic's base font size; the description was written for it */
   font-size: 14px;
 }
@@ -1204,7 +1207,8 @@ body.dark #dark-mode-toggle {
 }
 
 .player-modal-dark #mobile-transport,
-.player-modal-dark #playlist-description {
+/* themed descriptions carry their own dark palette, see DescriptionThemes.css */
+.player-modal-dark #playlist-description:not(.description-themed) {
   color: #77abb7;
   background-color: #1b1c1d !important;
 }

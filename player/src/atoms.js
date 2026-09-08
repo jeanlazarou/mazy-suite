@@ -12,6 +12,7 @@ import defaultPlaylist from "./data/playlist.json";
 import { trackTitle } from "./utils";
 import { applyFilter, factoryFilter } from "./filter";
 import { loadAlbumsCache } from "./cache";
+import { DEFAULT_THEME } from "./descriptionThemes";
 
 export const playlist = atom([]);
 
@@ -89,7 +90,7 @@ export const playlistLoader = atom(async (get) => {
 
   let definition;
 
-  let description = { content: "", isHtml: false };
+  let description = { content: "", isHtml: false, theme: DEFAULT_THEME };
 
   const url = get(currentPlaylistUrl);
 
@@ -112,7 +113,7 @@ export const playlistLoader = atom(async (get) => {
 
 export const requestedTrack = atom(null);
 
-export const songsMetadata = atom({ description: { content: "", isHtml: false }, trackImage: null });
+export const songsMetadata = atom({ description: { content: "", isHtml: false, theme: DEFAULT_THEME }, trackImage: null });
 
 export const viewingDescription = atom(false);
 

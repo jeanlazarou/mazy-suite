@@ -1,0 +1,401 @@
+/* Description themes.
+
+   A playlist markdown file selects one with a `$THEME:<name>` line; the name
+   ends up as a `description-theme-<name>` class on `#playlist-description`.
+   Every theme is documented in README.md.
+
+   Each theme only declares a handful of custom properties (plus its own type
+   choices); the shared rules below turn those into the actual layout, and the
+   `.player-modal-dark` blocks re-declare the same properties for dark mode.
+
+   Specificity note: the per-album `<style>` blocks use `#playlist-description x`
+   selectors, which beat the theme rules on purpose — an album can always
+   override the theme it picked. */
+
+/* ------------------------------------------------------------------ *
+ * shared: default list markup (used by every description, themed or not)
+ * ------------------------------------------------------------------ */
+
+.description-body .description-list {
+  list-style-position: inside;
+  padding-left: 0;
+}
+
+.description-body .description-sublist {
+  list-style-type: none;
+  margin-left: -2.2rem;
+}
+
+/* ------------------------------------------------------------------ *
+ * shared: skeleton every theme builds on
+ * ------------------------------------------------------------------ */
+
+#playlist-description.description-themed {
+  background-color: var(--desc-bg);
+  background-image: var(--desc-bg-image, none);
+  color: var(--desc-fg);
+}
+
+.description-themed .description-body {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1rem 0 2rem;
+  line-height: 1.6;
+}
+
+.description-themed .description-body h1,
+.description-themed .description-body h2,
+.description-themed .description-body h3 {
+  color: var(--desc-heading);
+  margin: 0 0 0.6rem;
+}
+
+.description-themed .description-body h1 {
+  font-size: 2.4rem;
+  line-height: 1.15;
+}
+
+/* the `_(year)_` line, either straight under the title or under the cover
+   image; any other emphasised paragraph stays ordinary italic prose */
+.description-themed .description-body > h1 + p > em:only-child,
+.description-themed .description-body > h1 + p:has(img) + p > em:only-child {
+  color: var(--desc-muted);
+  font-style: normal;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+.description-themed .description-body a {
+  color: var(--desc-link);
+  border-bottom: 1px solid transparent;
+}
+
+.description-themed .description-body a:hover {
+  color: var(--desc-link);
+  border-bottom-color: var(--desc-link);
+}
+
+.description-themed .description-body img {
+  display: block;
+  width: 220px;
+  max-width: 100%;
+  height: auto;
+}
+
+/* numbered song list */
+.description-themed .description-body .description-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 1.6rem 0 0;
+  counter-reset: song;
+}
+
+.description-themed .description-body .description-list > li {
+  counter-increment: song;
+  position: relative;
+  padding: 0.7rem 0 0.7rem 2.8rem;
+  border-top: 1px solid var(--desc-rule);
+}
+
+.description-themed .description-body .description-list > li:first-child {
+  border-top: none;
+}
+
+.description-themed .description-body .description-list > li::before {
+  content: counter(song, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 0.75rem;
+  color: var(--desc-accent);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+
+.description-themed .description-body .description-song-title {
+  color: var(--desc-heading);
+  font-weight: 600;
+}
+
+/* the `$AC`, links and free notes under a song */
+.description-themed .description-body .description-sublist {
+  list-style: none;
+  margin: 0.15rem 0 0;
+  padding: 0;
+  color: var(--desc-muted);
+  font-size: 0.85rem;
+}
+
+.description-themed .description-body .description-sublist > li {
+  margin: 0.1rem 0;
+}
+
+@media (max-width: 768px) {
+  .description-themed .description-body h1 {
+    font-size: 1.8rem;
+  }
+
+  .description-themed .description-body img {
+    width: 160px;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * sleeve — a record sleeve: warm paper, serif type, framed cover
+ * ------------------------------------------------------------------ */
+
+#playlist-description.description-theme-sleeve {
+  --desc-bg: #f4ece0;
+  --desc-bg-image: radial-gradient(
+    circle at 20% 0%,
+    rgba(255, 255, 255, 0.75),
+    rgba(255, 255, 255, 0) 60%
+  );
+  --desc-fg: #4b3d30;
+  --desc-heading: #2c211a;
+  --desc-accent: #a4571f;
+  --desc-muted: #8b7963;
+  --desc-rule: rgba(75, 61, 48, 0.16);
+  --desc-link: #8a4718;
+  font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+}
+
+.description-theme-sleeve .description-body h1 {
+  font-weight: normal;
+  letter-spacing: 0.02em;
+}
+
+.description-theme-sleeve .description-body img {
+  width: 260px;
+  padding: 8px;
+  background: #fffdf8;
+  box-shadow: 0 10px 26px rgba(60, 44, 30, 0.28);
+  margin: 1.2rem 0;
+}
+
+.description-theme-sleeve .description-body .description-list > li::before {
+  font-size: 1rem;
+  font-style: italic;
+}
+
+.description-theme-sleeve .description-body .description-song-title {
+  font-size: 1.1rem;
+  font-weight: normal;
+  letter-spacing: 0.01em;
+}
+
+.player-modal-dark #playlist-description.description-theme-sleeve {
+  --desc-bg: #221a14;
+  --desc-bg-image: radial-gradient(
+    circle at 20% 0%,
+    rgba(255, 226, 186, 0.08),
+    rgba(0, 0, 0, 0) 60%
+  );
+  --desc-fg: #d9c8b4;
+  --desc-heading: #f2e3d0;
+  --desc-accent: #d38a45;
+  --desc-muted: #a08f7c;
+  --desc-rule: rgba(217, 200, 180, 0.18);
+  --desc-link: #e0a367;
+}
+
+.player-modal-dark .description-theme-sleeve .description-body img {
+  background: #3a2c21;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.55);
+}
+
+/* ------------------------------------------------------------------ *
+ * liner — printed liner notes: small dense type, cover beside the list
+ * ------------------------------------------------------------------ */
+
+#playlist-description.description-theme-liner {
+  --desc-bg: #fbfaf7;
+  --desc-fg: #3d3d38;
+  --desc-heading: #16160f;
+  --desc-accent: #9a9a8e;
+  --desc-muted: #77776c;
+  --desc-rule: rgba(22, 22, 15, 0.1);
+  --desc-link: #45608c;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.description-theme-liner .description-body {
+  max-width: 52rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.description-theme-liner .description-body h1 {
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  border-bottom: 3px solid var(--desc-heading);
+  padding-bottom: 0.5rem;
+}
+
+.description-theme-liner .description-body img {
+  float: right;
+  width: 190px;
+  margin: 0 0 1rem 1.5rem;
+  border: 1px solid var(--desc-rule);
+}
+
+.description-theme-liner .description-body .description-list > li {
+  border-top: none;
+  padding: 0.45rem 0 0.45rem 2.4rem;
+  break-inside: avoid;
+}
+
+.description-theme-liner .description-body .description-list > li::before {
+  top: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.description-theme-liner .description-body .description-song-title {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.85rem;
+}
+
+.description-theme-liner .description-body .description-sublist {
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+/* two columns once the cover no longer crowds the list */
+@media (min-width: 900px) {
+  .description-theme-liner .description-body .description-list {
+    column-count: 2;
+    column-gap: 2.5rem;
+    column-rule: 1px solid var(--desc-rule);
+  }
+}
+
+.player-modal-dark #playlist-description.description-theme-liner {
+  --desc-bg: #16171a;
+  --desc-fg: #c4c6c2;
+  --desc-heading: #f0f1ee;
+  --desc-accent: #7d8079;
+  --desc-muted: #8e918a;
+  --desc-rule: rgba(240, 241, 238, 0.14);
+  --desc-link: #8fb2e0;
+}
+
+/* ------------------------------------------------------------------ *
+ * neon — always dark, glowing accents
+ * ------------------------------------------------------------------ */
+
+#playlist-description.description-theme-neon,
+.player-modal-dark #playlist-description.description-theme-neon {
+  --desc-bg: #0a0b16;
+  --desc-bg-image: radial-gradient(
+      ellipse at 15% -10%,
+      rgba(120, 60, 220, 0.35),
+      rgba(0, 0, 0, 0) 55%
+    ),
+    radial-gradient(
+      ellipse at 90% 10%,
+      rgba(0, 200, 220, 0.22),
+      rgba(0, 0, 0, 0) 50%
+    );
+  --desc-fg: #b9c2ee;
+  --desc-heading: #f2f4ff;
+  --desc-accent: #34e7e0;
+  --desc-muted: #7f86bb;
+  --desc-rule: rgba(120, 130, 220, 0.22);
+  --desc-link: #ff77d0;
+  font-family: "Avenir Next", "Segoe UI", Roboto, sans-serif;
+}
+
+.description-theme-neon .description-body h1 {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  text-shadow: 0 0 18px rgba(120, 90, 255, 0.7),
+    0 0 40px rgba(0, 200, 220, 0.35);
+}
+
+.description-theme-neon .description-body img {
+  width: 240px;
+  margin: 1.2rem 0;
+  border: 1px solid rgba(120, 130, 220, 0.4);
+  box-shadow: 0 0 30px rgba(90, 60, 200, 0.45);
+}
+
+.description-theme-neon .description-body .description-list > li::before {
+  font-family: "SF Mono", "Roboto Mono", Menlo, monospace;
+  text-shadow: 0 0 10px rgba(52, 231, 224, 0.7);
+}
+
+.description-theme-neon .description-body .description-song-title {
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 14px rgba(160, 180, 255, 0.35);
+}
+
+.description-theme-neon .description-body .description-list > li:hover {
+  background: rgba(120, 130, 220, 0.08);
+}
+
+/* ------------------------------------------------------------------ *
+ * minimal — quiet typography, plenty of air
+ * ------------------------------------------------------------------ */
+
+#playlist-description.description-theme-minimal {
+  --desc-bg: #ffffff;
+  --desc-fg: #4a4a4a;
+  --desc-heading: #111111;
+  --desc-accent: #b8b8b8;
+  --desc-muted: #909090;
+  --desc-rule: rgba(0, 0, 0, 0.08);
+  --desc-link: #111111;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+}
+
+.description-theme-minimal .description-body {
+  max-width: 38rem;
+  line-height: 1.75;
+}
+
+.description-theme-minimal .description-body h1 {
+  font-size: 1.7rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.2rem;
+}
+
+.description-theme-minimal .description-body img {
+  width: 150px;
+  margin: 1.5rem 0 2rem;
+}
+
+.description-theme-minimal .description-body .description-list > li {
+  padding: 1rem 0 1rem 2.8rem;
+}
+
+.description-theme-minimal .description-body .description-list > li::before {
+  content: counter(song);
+  top: 1.05rem;
+  font-size: 0.75rem;
+}
+
+.description-theme-minimal .description-body .description-song-title {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.description-theme-minimal .description-body .description-sublist {
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+}
+
+.player-modal-dark #playlist-description.description-theme-minimal {
+  --desc-bg: #141414;
+  --desc-fg: #b5b5b5;
+  --desc-heading: #f5f5f5;
+  --desc-accent: #5e5e5e;
+  --desc-muted: #8a8a8a;
+  --desc-rule: rgba(255, 255, 255, 0.1);
+  --desc-link: #f5f5f5;
+}

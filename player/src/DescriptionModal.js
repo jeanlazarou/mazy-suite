@@ -12,6 +12,8 @@ import {
 } from "./CommandsStream";
 
 import { PlayerModal } from "./PlayerModal";
+import { DEFAULT_THEME, themeClassNames } from "./descriptionThemes";
+import "./DescriptionThemes.css";
 import { mobileHeight } from "./MobileToolbar";
 import { useIsMobile } from "./utils";
 import { Timeline } from "./Timeline";
@@ -27,18 +29,15 @@ const descriptionCommands$ = commands$.stream.filter(({ action }) =>
     ].includes(action)
 );
 
+// Collapses the renderer's line breaks (a space, so that a hard-wrapped
+// paragraph keeps the word gap), unwraps the paragraph a loose list item puts
+// around the song title, and classes the lists so that themes can restyle them.
 function formatDescription(html) {
   return html
-    .replaceAll("\n", "")
-    .replace(/<li><p>/g, "<li>")
-    .replace(
-      /<ol>/g,
-      "<ol style='list-style-position: inside; padding-left: 0;'>"
-    )
-    .replace(
-      /<\/p><ul>/g,
-      "<ul style='list-style-type: none;margin-left: -2.2rem;'>"
-    );
+    .replaceAll("\n", " ")
+    .replace(/<li>\s*<p>/g, "<li>")
+    .replace(/<ol>/g, "<ol class='description-list'>")
+    .replace(/<\/p>\s*<ul>/g, "<ul class='description-sublist'>");
 }
 
 function Content() {
@@ -49,8 +48,11 @@ function Content() {
   // Ensure description has the expected structure
   const safeDescription = {
     content: description?.content ?? "",
-    isHtml: description?.isHtml ?? false
+    isHtml: description?.isHtml ?? false,
+    theme: description?.theme ?? DEFAULT_THEME
   };
+
+  const themeClasses = themeClassNames(safeDescription.theme);
 
   const renderDescription = () => {
     if (safeDescription.isHtml) {
@@ -69,22 +71,27 @@ function Content() {
     }
 
     return (
-      <div style={{ width: "100%" }}>
-        <div
-          dangerouslySetInnerHTML={{ __html: formatDescription(safeDescription.content) }}
-        />
-      </div>
+      <div
+        className="description-body"
+        style={{ width: "100%" }}
+        dangerouslySetInnerHTML={{ __html: formatDescription(safeDescription.content) }}
+      />
     );
   };
 
   return (
     <div
       id="playlist-description"
+      className={themeClasses}
       style={{
-        padding: safeDescription.isHtml ? 0 : 20,
+        // the tail room is padding, not margin, so the background reaches the
+        // bottom of the panel instead of stopping 3rem short of it
+        padding: safeDescription.isHtml ? 0 : "20px 20px 3rem",
         minHeight: "100%",
-        marginBottom: safeDescription.isHtml ? 0 : "3rem",
-        height: isMobileDevice ? "100%" : undefined,
+        // an HTML description fills the panel and scrolls inside its iframe, so
+        // it needs a definite height; a markdown one grows with its content
+        // instead, which is what keeps its background under the whole list
+        height: safeDescription.isHtml ? "100%" : undefined,
         animation: "fade-in-up 800ms cubic-bezier(0.19, 1, 0.22, 1) forwards",
       }}
     >
