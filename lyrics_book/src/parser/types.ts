@@ -78,6 +78,12 @@ export interface Song {
 export interface Album {
   title: string
   songs: Song[]
+  /**
+   * The album's running order, when it was written down as a numbered list
+   * under the heading. The songs below it are not in that order — the file is
+   * a notebook, not a track listing — so this is the only record of it.
+   */
+  listing: string[]
   line: number
 }
 
@@ -97,6 +103,7 @@ export interface Anomaly {
     | 'authors-missing'
     | 'repeated-separator'
     | 'duplicate-title'
+    | 'listing-mismatch'
   line: number
   message: string
   /** A short excerpt, so the report reads without opening the file. */

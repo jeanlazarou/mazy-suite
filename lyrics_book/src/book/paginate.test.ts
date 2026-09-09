@@ -43,7 +43,7 @@ function heightsFor(songs: Song[], albums: number): Heights {
 }
 
 function setup(songs: Song[]): { albums: Album[]; indexOf: Map<Song, number>; heights: Heights } {
-  const albums: Album[] = [{ title: 'A', songs, line: 1 }]
+  const albums: Album[] = [{ title: 'A', songs, listing: [], line: 1 }]
   const indexOf = new Map(songs.map((entry, index) => [entry, index]))
   return { albums, indexOf, heights: heightsFor(songs, 1) }
 }

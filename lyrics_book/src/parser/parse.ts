@@ -40,6 +40,12 @@ const PROVENANCE_LINE = /^Lyrics\s+(?:from|of)\b\s*(.+?)\s*$/i
 /** A heading that is one character repeated is a divider, not an album. */
 const DIVIDER_HEADING = /^(\S)\1{4,}$/
 
+/**
+ * A numbered line under an album heading is its running order. Only collected
+ * before the album's first song, so a lyric that opens with a number is safe.
+ */
+const LISTING_ENTRY = /^\d+\.\s+(\S.*?)\s*$/
+
 const EMPHASIS_LINE = /^_.+_$/
 
 /** Lowercase, unaccented, single-spaced — for comparing titles only. */
@@ -321,7 +327,7 @@ export function parseLyricsDocument(source: string): LyricsDocument {
         return
       }
 
-      album = { title, songs: [], line: lineNumber }
+      album = { title, songs: [], listing: [], line: lineNumber }
       albums.push(album)
       sawSeparatorSinceAlbum = false
       return
@@ -332,11 +338,51 @@ export function parseLyricsDocument(source: string): LyricsDocument {
       return
     }
 
+    // Between an album heading and its first song, a numbered line is the
+    // album's running order rather than stray text.
+    if (album && !album.songs.length) {
+      const entry = LISTING_ENTRY.exec(text)
+      if (entry) {
+        album.listing.push(entry[1])
+        return
+      }
+    }
+
     loose.push({ line: lineNumber, text: raw })
   })
 
   closeSong()
   flushLoose()
+
+  // A written running order is a second opinion about what the album holds, so
+  // it is worth checking against the songs that actually follow it.
+  albums.forEach((entry) => {
+    if (!entry.listing.length) return
+    const present = new Set(entry.songs.map((item) => normalizeTitle(item.name)))
+    const listed = new Set(entry.listing.map(normalizeTitle))
+
+    const missing = entry.listing.filter((title) => !present.has(normalizeTitle(title)))
+    const unlisted = entry.songs.filter((item) => !listed.has(normalizeTitle(item.name)))
+
+    if (missing.length) {
+      anomalies.push({
+        kind: 'listing-mismatch',
+        line: entry.line,
+        message: `"${entry.title}" lists ${missing.length} song${
+          missing.length === 1 ? '' : 's'
+        } with no lyrics below: ${missing.join(', ')}`,
+      })
+    }
+    if (unlisted.length) {
+      anomalies.push({
+        kind: 'listing-mismatch',
+        line: entry.line,
+        message: `"${entry.title}" has ${unlisted.length} song${
+          unlisted.length === 1 ? '' : 's'
+        } missing from its running order: ${unlisted.map((item) => item.name).join(', ')}`,
+      })
+    }
+  })
 
   // A title reused across albums makes a bare `Lyrics from <title>` line
   // ambiguous, which is exactly what the quoted-album form exists to fix.

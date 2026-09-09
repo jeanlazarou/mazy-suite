@@ -110,6 +110,23 @@ and sometimes with blank lines among it:
 Collection stops at the first line that is none of these, so a lyric beginning
 with the word `Original` stays a lyric.
 
+**A running order** may be written as a numbered list under an album heading,
+before its first song:
+
+```
+# Letter 45
+
+1.  Inside Conversations
+2.  Day 7
+3.  3 AM
+```
+
+The songs below it are *not* in that order — the file is a notebook, not a
+track listing — so where this appears it is the only record of the album's
+running order. It is only collected before the album's first song, so a lyric
+that opens with a number stays a lyric. Where a listing exists it is checked
+against the songs that follow, in both directions.
+
 ### Two kinds of reuse
 
 Reworking old words into new songs is not new here — *Nothing New* is the
@@ -140,9 +157,14 @@ date?*, *Hidden Rhythms date?*) are all found automatically, along with a
 number that were not written down.
 
 What it reports: songs with no date or a partial one, songs with no authors,
-titles used twice, a song that follows a separator with no album heading, a
-heading that is really a divider, two separators in a row, and any text sitting
-outside a song.
+titles used twice, an album whose running order disagrees with the songs below
+it, a song that follows a separator with no album heading, a heading that is
+really a divider, two separators in a row, and any text sitting outside a song.
+
+The structural checks currently find nothing — the file was tidied in September
+2026 and now has no divider headings, orphan songs or doubled separators. They
+are kept anyway: `lyrics.md` is hand-maintained and still being added to, so
+they are what catches the next drift instead of silently misfiling a song.
 
 ## Tests
 

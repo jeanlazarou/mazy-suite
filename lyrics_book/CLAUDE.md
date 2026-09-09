@@ -44,9 +44,16 @@ emphasis whether or not that was meant, and a `#` inside a lyric into a
 heading. Only `# `, `## ` and the `====` separators carry structure; everything
 else is text shown exactly as typed.
 
-**The parser must never throw.** A reader that refuses to open a 339-song file
+**The parser must never throw.** A reader that refuses to open a 337-song file
 over one malformed heading is useless. Anything surprising becomes an `Anomaly`
 and the scan carries on.
+
+**Do not delete the structural checks because they currently find nothing.**
+The file was tidied in September 2026, so the divider-heading, orphan-song,
+repeated-separator and loose-text checks all come back clean. They are the net
+that catches the next drift in a file that is hand-maintained and still growing;
+without them a stray song is silently filed under the wrong album. The heading
+grammar below is where the real complexity lives, and none of it went away.
 
 ## Architecture
 

@@ -56,9 +56,16 @@ const DOCUMENT = [
   '',
   '# Third Album',
   '',
+  '1.  Undated',
+  '2.  Never Written',
+  '',
   '## Undated by Martina Venkova',
   '',
   'No date in the heading',
+  '',
+  '## 7 Days Later (2021-02-02) by Someone, Jean Lazarou',
+  '',
+  '3 in the morning',
   '',
 ].join('\n')
 
@@ -73,7 +80,7 @@ describe('parseLyricsDocument', () => {
       'Second Album',
       'Third Album',
     ])
-    expect(parsed.songs).toHaveLength(5)
+    expect(parsed.songs).toHaveLength(6)
   })
 
   it('reads the metadata block whatever its order', () => {
@@ -122,6 +129,25 @@ describe('parseLyricsDocument', () => {
     const missing = kinds('date-missing')
     expect(missing).toHaveLength(1)
     expect(missing[0].message).toContain('Undated')
+  })
+
+  it('reads a numbered list under an album as its running order', () => {
+    const third = parsed.albums[2]
+    expect(third.listing).toEqual(['Undated', 'Never Written'])
+    // The listing is data, not a problem.
+    expect(kinds('loose-text').some((entry) => entry.line > third.line)).toBe(false)
+  })
+
+  it('does not mistake a lyric starting with a number for a listing entry', () => {
+    // "3 in the morning" sits inside a song, so it stays a lyric.
+    expect(parsed.albums[2].listing).not.toContain('in the morning')
+    expect(find('7 Days Later').stanzas[0].lines[0].text).toBe('3 in the morning')
+  })
+
+  it('checks the running order against the songs that follow', () => {
+    const listing = kinds('listing-mismatch')
+    expect(listing.some((entry) => entry.message.includes('Never Written'))).toBe(true)
+    expect(listing.some((entry) => entry.message.includes('7 Days Later'))).toBe(true)
   })
 
   it('never throws on an empty or headingless file', () => {
