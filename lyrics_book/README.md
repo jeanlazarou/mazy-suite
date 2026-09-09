@@ -122,10 +122,14 @@ before its first song:
 ```
 
 The songs below it are *not* in that order — the file is a notebook, not a
-track listing — so where this appears it is the only record of the album's
-running order. It is only collected before the album's first song, so a lyric
-that opens with a number stays a lyric. Where a listing exists it is checked
-against the songs that follow, in both directions.
+track listing. It is only collected before the album's first song, so a lyric
+that opens with a number stays a lyric.
+
+**This does not affect reading order, deliberately.** Only one album has such a
+list, it long predates this tool, and ordering the book by it was considered and
+turned down. It is parsed so that it is not mistaken for stray text, and checked
+against the songs that follow — which is worth something in one direction: a
+listed song with no lyrics below it means the words were never written down.
 
 ### Two kinds of reuse
 
