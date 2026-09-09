@@ -10,18 +10,50 @@ have already been carried into a new song.
 
 It reads `lyrics.md` and never writes to it.
 
-## Status
-
-Phase 1 — the parser and the problems report. The book itself comes next.
+## Running it
 
 ```
 pnpm install
+pnpm dev             # the book — 534 pages across 31 albums
 pnpm report          # read ../lyrics.md and print what it makes of it
 pnpm test
 pnpm typecheck
 ```
 
-`pnpm report` takes an optional path if your `lyrics.md` lives elsewhere.
+`pnpm dev` reads `lyrics.md` from the suite root; set `LYRICS_FILE` to point
+somewhere else, or use the file picker the app offers when it cannot find it.
+`pnpm report` takes the path as an argument.
+
+## Reading
+
+Two pages at a time on a wide window, one on a narrow one. Albums open on their
+own title page; a song starts on a fresh page, except that a short song may
+share with the one before it, since songs here average twenty-odd lines. A long
+song continues onto the next page.
+
+| Key | |
+|---|---|
+| `←` `→`, `PgUp` `PgDn`, `Space` | turn the page |
+| `Home` `End` | first and last page |
+| `/` | search |
+| `Esc` | close the panel |
+
+The strip along the bottom is every album in proportion; click to jump.
+
+## Searching
+
+Searches words, titles, albums, authors and the `Original` title at once, and
+ranks a phrase found in the lyrics above an incidental match — because the
+question while reworking is usually "where did I write that line?". Narrow with
+`by:`, `album:`, `words:`, `year:`, `orig:`, the same vocabulary `song_finder`
+uses. Picking a result turns to that page with the words highlighted.
+
+## Tracking what has been reused
+
+A song that borrowed words is badged with where they came from, and the song
+they came from is badged with how many later songs took from it. Both
+directions are resolved from the provenance lines, so leafing answers the
+question that matters while writing: have I already used this one?
 
 ## Why the file is parsed rather than rendered
 

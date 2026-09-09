@@ -1,0 +1,533 @@
+/*
+ * A book on a desk.
+ *
+ * The page is the fixed thing: a constant size with generous margins, so that
+ * turning to a page puts the words where they were last time. Everything else
+ * — the bar, the panels — stays out of the way and off the paper.
+ */
+
+:root {
+  --desk: #322c26;
+  --paper: #faf7f0;
+  --paper-edge: #e6dfd1;
+  --ink: #241f1a;
+  --ink-soft: #6d6357;
+  --ink-faint: #9c9284;
+  --rule: #ddd3c2;
+  --accent: #8a5a2b;
+  --highlight: #ffe9a8;
+
+  --page-width: 30rem;
+  --page-height: 40rem;
+  --page-padding: 3.25rem 3rem;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--desk);
+  color: var(--paper);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------- the shell */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: rgba(0, 0, 0, 0.22);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  flex: none;
+}
+
+.bar__title {
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.bar__search {
+  flex: 1;
+  max-width: 30rem;
+  position: relative;
+}
+
+.bar__search input {
+  width: 100%;
+  padding: 0.42rem 0.7rem;
+  font: inherit;
+  color: var(--paper);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+
+.bar__search input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.bar__spacer {
+  flex: 1;
+}
+
+.bar button {
+  padding: 0.35rem 0.6rem;
+  border-radius: 4px;
+  color: var(--ink-faint);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.bar button:hover {
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.bar button[aria-pressed='true'] {
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ----------------------------------------------------------------- the book */
+
+.book {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 1.25rem;
+  min-height: 0;
+  position: relative;
+}
+
+.page {
+  width: var(--page-width);
+  height: var(--page-height);
+  padding: var(--page-padding);
+  background: var(--paper);
+  color: var(--ink);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  box-shadow: 0 1.25rem 2.5rem rgba(0, 0, 0, 0.45);
+}
+
+/* The gutter: pages of a spread lean away from the fold. */
+.page--left {
+  border-radius: 3px 0 0 3px;
+  background-image: linear-gradient(to right, var(--paper) 88%, var(--paper-edge));
+}
+
+.page--right {
+  border-radius: 0 3px 3px 0;
+  background-image: linear-gradient(to left, var(--paper) 88%, var(--paper-edge));
+}
+
+.page--single {
+  border-radius: 3px;
+  background-image: none;
+}
+
+/*
+ * Spacing is done with flex gaps, never margins.
+ *
+ * Pagination adds up measured block heights, and a measured height excludes
+ * margins — so margins here would silently overflow the page by however many
+ * stanzas it holds. A gap is a number the pagination can be told about.
+ */
+.page__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.page__folio {
+  flex: none;
+  padding-top: 0.9rem;
+  font-size: 0.68rem;
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+  display: flex;
+  justify-content: space-between;
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+.page--blank {
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/*
+ * A page that is always in the document, purely to be measured. Page geometry
+ * has to come from somewhere before there are any pages to look at, and taking
+ * it from a real `.page` would deadlock: no height, so no pages, so no page to
+ * measure. Keeping the CSS as the one source of the page's size is worth this.
+ */
+.page--ruler {
+  position: absolute;
+  top: 0;
+  left: -9999px;
+  visibility: hidden;
+  pointer-events: none;
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------- page content */
+
+.album-plate {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1rem;
+}
+
+.album-plate__eyebrow {
+  font-size: 0.65rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+.album-plate__title {
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.album-plate__rule {
+  width: 3rem;
+  height: 1px;
+  background: var(--accent);
+}
+
+.album-plate__count {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+.song {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.song + .song {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rule);
+}
+
+.song__heading {
+  margin-bottom: 0;
+}
+
+.song__title {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.song__variant {
+  color: var(--accent);
+}
+
+.song__meta {
+  margin-top: 0.25rem;
+  font-size: 0.74rem;
+  color: var(--ink-soft);
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+.song__continued {
+  font-size: 0.7rem;
+  font-style: italic;
+  color: var(--ink-faint);
+  margin: 0;
+}
+
+.song__tag {
+  display: inline-block;
+  margin-top: 0.3rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.68rem;
+  border-radius: 3px;
+  background: rgba(138, 90, 43, 0.12);
+  color: var(--accent);
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+.stanza {
+  margin: 0;
+}
+
+.line {
+  margin: 0;
+  line-height: 1.55;
+  /* Long lines wrap under themselves, the way a printed lyric does. */
+  padding-left: 1.1rem;
+  text-indent: -1.1rem;
+}
+
+.line--emphasis {
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.line--indented {
+  padding-left: 2.6rem;
+  text-indent: -1.1rem;
+}
+
+.line mark {
+  background: var(--highlight);
+  color: inherit;
+  border-radius: 2px;
+}
+
+/* ------------------------------------------------------------- the measurer */
+
+/*
+ * Off-screen twin of a page, used to measure real heights before paginating.
+ * It must match `.page` typography exactly or the breaks will be wrong.
+ */
+.measurer {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  top: 0;
+  left: -9999px;
+  width: var(--page-width);
+  padding: var(--page-padding);
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  color: var(--ink);
+}
+
+/* ----------------------------------------------------------------- controls */
+
+.turn {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 12%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: transparent;
+  font-size: 1.6rem;
+}
+
+.turn:hover {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.turn--back {
+  left: 0;
+}
+
+.turn--forward {
+  right: 0;
+}
+
+.turn:disabled {
+  cursor: default;
+  color: transparent;
+}
+
+.scrubber {
+  flex: none;
+  display: flex;
+  gap: 1px;
+  padding: 0 1rem 0.9rem;
+  height: 2.1rem;
+  align-items: stretch;
+}
+
+.scrubber__album {
+  position: relative;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  min-width: 2px;
+  transition: background 0.12s;
+}
+
+.scrubber__album:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.scrubber__album--current {
+  background: var(--accent);
+}
+
+.scrubber__album span {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 0.3rem;
+  padding: 0.2rem 0.45rem;
+  background: #000;
+  color: var(--paper);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  border-radius: 3px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+  z-index: 5;
+}
+
+.scrubber__album:hover span {
+  opacity: 1;
+}
+
+/* ------------------------------------------------------------------ panels */
+
+.panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 26rem;
+  max-width: 90vw;
+  background: #211d19;
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+  overflow-y: auto;
+  padding: 1rem 1.15rem 2rem;
+  z-index: 10;
+}
+
+.panel h2 {
+  margin: 0 0 0.15rem;
+  font-size: 0.95rem;
+}
+
+.panel__hint {
+  margin: 0 0 1rem;
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  line-height: 1.5;
+}
+
+.result {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-radius: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.result:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.result__title {
+  font-size: 0.86rem;
+}
+
+.result__where {
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  margin-top: 0.1rem;
+}
+
+.result__line {
+  font-size: 0.78rem;
+  color: #cbbfa9;
+  font-style: italic;
+  margin-top: 0.2rem;
+}
+
+.result mark {
+  background: rgba(255, 233, 168, 0.28);
+  color: #fff;
+  border-radius: 2px;
+}
+
+.problem {
+  padding: 0.45rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.problem__kind {
+  display: inline-block;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.1rem;
+}
+
+.problem__line {
+  color: var(--ink-faint);
+  font-size: 0.72rem;
+}
+
+.notice {
+  margin: auto;
+  max-width: 30rem;
+  padding: 2rem;
+  text-align: center;
+  color: var(--ink-faint);
+  line-height: 1.6;
+}
+
+.notice code {
+  color: var(--paper);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}
+
+.notice label {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: var(--paper);
+  cursor: pointer;
+}
+
+.notice input {
+  display: none;
+}
