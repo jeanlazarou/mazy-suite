@@ -11,6 +11,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { parseLyricsDocument } from '../src/parser/parse'
+import { resolveReuse } from '../src/reuse'
 import type { Anomaly } from '../src/parser/types'
 
 const path = resolve(process.argv[2] ?? '../lyrics.md')
@@ -65,15 +66,22 @@ for (const [kind, entries] of ordered) {
   console.log()
 }
 
+const reuse = resolveReuse({ albums, songs, anomalies })
+
 if (withProvenance.length) {
   console.log('  lyrics carried over from an earlier song\n')
-  for (const song of withProvenance) {
-    const { provenance } = song
-    const from = [provenance!.title, provenance!.album && `in "${provenance!.album}"`]
-      .filter(Boolean)
-      .join(' ')
-    console.log(`    ${song.name} (${song.albumTitle}) <- ${from}`)
-    console.log(`      as written: ${provenance!.raw}`)
-  }
+  songs.forEach((song, index) => {
+    const link = reuse.borrowed.get(index)
+    if (!link) return
+    if (link.to) {
+      console.log(`    ${song.name} (${song.albumTitle}) <- ${link.to.name} (${link.to.albumTitle})`)
+    } else {
+      // Worth shouting about: the book can show the borrowing song either way,
+      // so an unmatched line is invisible unless it is called out here.
+      const why = link.ambiguous ? 'title used by several songs' : 'no song of that title'
+      console.log(`    ${song.name} (${song.albumTitle}) <- NOT MATCHED: ${link.wanted} (${why})`)
+      console.log(`      as written: ${song.provenance!.raw}`)
+    }
+  })
   console.log()
 }

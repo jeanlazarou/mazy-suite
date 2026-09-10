@@ -22,6 +22,7 @@
  */
 
 import { parseDateGroup, type SongDate } from './dates'
+import { unescapeMarkers } from './text'
 
 export interface ParsedHeading {
   name: string
@@ -32,9 +33,6 @@ export interface ParsedHeading {
   authors: string[]
   raw: string
 }
-
-/** `\*` and `\+` in the file are escaped Markdown, not emphasis. */
-const unescapeMarkers = (text: string) => text.replace(/\\([*+])/g, '$1')
 
 const PARENTHETICAL = /\(([^()]*)\)/g
 const TRAILING_PARENTHETICAL = /\s*\(([^()]*)\)\s*$/

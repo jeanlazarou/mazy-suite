@@ -12,7 +12,19 @@
  */
 
 import { normalizeTitle } from './parser/parse'
+import { stripVariantMarker } from './parser/text'
 import type { LyricsDocument, Song } from './parser/types'
+
+/**
+ * The key two titles are compared on.
+ *
+ * A provenance line quotes a title as it appears in its heading, marker and
+ * all — `Lyrics of "Hand in the Air*"` — while a song's name has the marker
+ * taken off. Without stripping it here the two ends of a reuse link never
+ * meet, and the borrowing song quietly falls back to echoing the raw text,
+ * which looks like it worked.
+ */
+const matchKey = (title: string) => normalizeTitle(stripVariantMarker(title))
 
 export interface ReuseLink {
   /** The new song, the one doing the borrowing. */
@@ -39,7 +51,7 @@ export interface Reuse {
 export function resolveReuse(document: LyricsDocument): Reuse {
   const byTitle = new Map<string, number[]>()
   document.songs.forEach((song, index) => {
-    const key = normalizeTitle(song.name)
+    const key = matchKey(song.name)
     if (!key) return
     const bucket = byTitle.get(key)
     if (bucket) bucket.push(index)
@@ -54,7 +66,7 @@ export function resolveReuse(document: LyricsDocument): Reuse {
     const { provenance } = song
     if (!provenance) return
 
-    const candidates = byTitle.get(normalizeTitle(provenance.title)) ?? []
+    const candidates = byTitle.get(matchKey(provenance.title)) ?? []
 
     // The album named on the line is what makes a duplicate title resolvable.
     const narrowed = provenance.album

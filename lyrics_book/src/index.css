@@ -293,6 +293,12 @@ button {
   font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
+/* A provenance line pointing at a song that is not there. */
+.song__tag--unresolved {
+  background: rgba(150, 60, 40, 0.12);
+  color: #8c3b26;
+}
+
 .stanza {
   margin: 0;
 }

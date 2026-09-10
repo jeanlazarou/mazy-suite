@@ -39,6 +39,7 @@ export function PageView({ page, side, reuse, term, total }: PageViewProps) {
                 <SongHeading
                   song={item.song}
                   borrowedFrom={borrowed?.to ? borrowed.to.name : borrowed?.wanted ?? null}
+                  borrowedResolved={!borrowed || borrowed.to !== null}
                   lentToCount={lent?.length ?? 0}
                 />
               ) : (

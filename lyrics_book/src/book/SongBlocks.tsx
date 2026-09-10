@@ -60,10 +60,17 @@ export function StanzaBlock({ stanza, term }: { stanza: Stanza; term?: string })
 export function SongHeading({
   song,
   borrowedFrom,
+  borrowedResolved = true,
   lentToCount,
 }: {
   song: Song
   borrowedFrom?: string | null
+  /**
+   * False when the provenance line names a song that could not be found. Shown
+   * differently on purpose: an unresolved link that merely echoes what was
+   * typed looks exactly like a working one, which is how a real bug hid.
+   */
+  borrowedResolved?: boolean
   lentToCount?: number
 }) {
   const dates = song.dates.map((date) => date.raw).join(' / ')
@@ -84,7 +91,12 @@ export function SongHeading({
           {song.reference.year ? ` (${song.reference.year})` : ''}
         </div>
       )}
-      {borrowedFrom && <div className="song__tag">words from {borrowedFrom}</div>}
+      {borrowedFrom && (
+        <div className={`song__tag${borrowedResolved ? '' : ' song__tag--unresolved'}`}>
+          words from {borrowedFrom}
+          {borrowedResolved ? '' : ' — not found'}
+        </div>
+      )}
       {!!lentToCount && (
         <div className="song__tag">
           reused in {lentToCount} later song{lentToCount === 1 ? '' : 's'}
