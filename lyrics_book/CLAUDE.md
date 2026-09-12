@@ -38,6 +38,12 @@ message or a doc.** Test fixtures are *invented* — they copy the file's gramma
 with made-up titles, names and words, the same way `player_editor/test/*.srt`
 does. This is the one rule that must not be broken.
 
+The single deliberate exception is `pnpm build`, which writes the lyrics into
+`dist/` so the built book can be published. That is the point of the build.
+`dist/` is gitignored and so is any file named `lyrics.md`, so it cannot be
+committed — but never move that copy into `public/`, and never add a build step
+that stages it. `LYRICS_EMBED=0` builds without it.
+
 **Never render the file as Markdown.** It looks like Markdown and is not.
 A Markdown renderer turns an indented lyric into a code block, `_words_` into
 emphasis whether or not that was meant, and a `#` inside a lyric into a

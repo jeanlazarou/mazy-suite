@@ -24,6 +24,29 @@ pnpm typecheck
 somewhere else, or use the file picker the app offers when it cannot find it.
 `pnpm report` takes the path as an argument.
 
+## Publishing a copy
+
+`pnpm build` writes the current contents of `lyrics.md` into `dist/`, so the
+built book is self-contained: copy `dist/` anywhere that serves static files
+and it opens with the lyrics already in it. The build says which file it took
+and when that file was last edited —
+
+```
+lyrics.md embedded from /Users/lab/projects/mazy_suite/lyrics.md — last edited 2026-09-12 09:40
+```
+
+— so a stale copy is visible at the moment it would go out. Rebuild to publish
+a newer version; there is nothing else to sync.
+
+`LYRICS_EMBED=0 pnpm build` leaves the lyrics out and ships the book on its
+own, which still works: it asks for a file. Use that for anywhere the words
+themselves should not go.
+
+The lyrics are only ever written to `dist/`, never to `public/`. `dist/` is
+gitignored, and so is any file named `lyrics.md`, so a built copy cannot be
+committed by accident — but it *is* a full copy of the lyrics, so treat
+`dist/` as publishable material rather than as build litter.
+
 ## Reading
 
 Two pages at a time on a wide window, one on a narrow one. Albums open on their
