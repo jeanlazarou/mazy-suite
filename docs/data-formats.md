@@ -123,6 +123,55 @@ maintained by **music_cache_updater**.
 }
 ```
 
+## `lyrics.md` — the master lyrics document
+
+Everything above describes a *recorded* album: audio, timings, covers. Songs
+exist before that, and some never get past it — so the words also live in a
+single hand-written file at the suite root: every lyric of every album, as
+written rather than as sung, without the repeats. For an album with no SRT
+files it is the only place the words exist at all.
+
+It is not Markdown, despite the name, and must not be rendered as such. Only
+`# `, `## ` and the `====` separators carry structure; everything else is text
+shown exactly as typed — an indented lyric is not a code block, and `_words_`
+are not emphasis.
+
+```
+=============================================
+
+# Letter to Nowhere
+
+## Paper Boats (2012-04-15) by Alex Rowe, Jean Lazarou
+https://www.kompoz.com/music/collaboration/1234
+Original Rowing Song
+
+Everything I meant to keep
+went out on paper boats
+```
+
+(invented, like the parser's test fixtures — the real file is personal data)
+
+| Line | Means |
+|---|---|
+| `# <album>` | an album |
+| `## <title> (<date>) by <authors>` | a song; a trailing `*` on the title marks a variant |
+| a kompoz URL | the collaboration the song came from |
+| `Original <title>` | the title the music's composer gave the instrumental |
+| `Lyrics from "<title>" (<date>) in "<album>"` | words carried over from an earlier song of your own |
+| `"<title>" by <artist> / <year>` | words reused from another band's song |
+| anything else | the lyrics |
+
+Only the structure is fixed; the rest is forgiving by design, because the file
+it was built for was typed by hand over fifteen years. The credit is written
+five different ways, dates range from `2012-04-15` to `June 2010` to
+`2014-**-**` when only the year was remembered, and metadata lines come in any
+order. [lyrics_book](../lyrics_book/) reads all of it and documents the full
+grammar in its README; its `pnpm report` lists what a human should look at —
+missing dates, missing authors, titles used twice.
+
+[`examples/lyrics.md`](../examples/lyrics.md) is a working sample: the twelve
+songs of the demo album, as written.
+
 ## Tool-specific formats
 
 - **gig_anim** performance definitions: see [gig_anim/README.md](../gig_anim/README.md)

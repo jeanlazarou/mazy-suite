@@ -15,7 +15,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 APPS=${APPS:-player}
-ALL_WEB_APPS="player player_editor live_prompter gig_anim track_mixer groove_lab massembler sequence-builder lyrics-cards mix-mastering"
+ALL_WEB_APPS="player player_editor live_prompter gig_anim track_mixer groove_lab massembler sequence-builder lyrics-cards mix-mastering lyrics_book"
 REPO_URL="https://github.com/jeanlazarou/mazy-suite"
 SITE=_site
 
@@ -45,6 +45,16 @@ for app in $APPS; do
         cp "$GOROOT/misc/wasm/wasm_exec.js" web/public/; })
     (cd "$app/web" && pnpm install --frozen-lockfile && pnpm build)
     cp -R "$app/web/dist" "$SITE/$app"
+    continue
+  fi
+  if [ "$app" = "lyrics_book" ]; then
+    # The book embeds a lyrics file at build time and defaults to the real
+    # lyrics.md at the suite root — personal data, gitignored, and absent on
+    # CI. Point it at the demo album's lyrics instead, the same "Back to
+    # Normal" whose audio and covers this site already serves.
+    (cd "$app" && pnpm install --frozen-lockfile && \
+      LYRICS_FILE=../examples/lyrics.md pnpm build)
+    cp -R "$app/dist" "$SITE/$app"
     continue
   fi
   (cd "$app" && pnpm install --frozen-lockfile && pnpm build)

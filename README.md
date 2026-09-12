@@ -27,6 +27,7 @@ player, loaded with the demo album.
 | [massembler](massembler/) | Multi-track audio sequencer: cut clips from audio files, arrange them across tracks, play back and export |
 | [sequence-builder](sequence-builder/) | Track transition tester for playlist curation: listen to endings against beginnings without loading whole files |
 | [lyrics-cards](lyrics-cards/) | Browse albums and read each track's lyrics presented as cards (TypeScript) |
+| [lyrics_book](lyrics_book/) | Reads a master lyrics file — every lyric of every album, as written rather than as sung — and pages it like a book: search across words, titles and authors, and a trail of which lines were reused where (TypeScript) |
 | [mix-mastering](mix-mastering/) | Audio mastering studio in Go: DSP chain (EQ, compression, limiting, stereo), CLI **and** a React/WebAssembly web UI |
 
 ### Desktop & command line
@@ -48,6 +49,11 @@ The suite revolves around a shared **data folder** and simple, open formats:
 - **lyrics**: standard SRT subtitle files, one per track
 - **metadata cache**: a JSON file with per-track id/duration/modification time
 
+Alongside them sits **`lyrics.md`**, a single hand-written document holding the
+words of every song as they were *written* rather than as they are sung —
+without the repeats, and often before any recording exists. For most albums it
+is the only place the words live at all. **lyrics_book** is its reader.
+
 A typical flow: rip or record a song → tag it with **cover_ed** → draft its lyric
 timings with **srt_generator** → fine-tune them in **player_editor** → enjoy it in
 **player**, prompt it live with **live_prompter**, or turn it into visuals with
@@ -58,7 +64,9 @@ back to it.
 All formats are documented in [docs/data-formats.md](docs/data-formats.md), and
 a real **demo album** ships in [examples/](examples/) — three original songs
 ("Back to Normal", © Jean Lazarou, published here on purpose) with covers,
-playlist JSON, metadata cache and synchronized SRT lyrics.
+playlist JSON, metadata cache and synchronized SRT lyrics — plus
+[`examples/lyrics.md`](examples/lyrics.md), that same album's twelve songs as
+written, which is the book the published lyrics_book opens on.
 
 Every web app reads its albums from `public/data/` and its audio from
 `public/music/files/`. [scripts/link_data.sh](scripts/link_data.sh) makes those

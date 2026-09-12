@@ -36,13 +36,29 @@ pnpm build
 content into the repo, never paste lyrics into a test, a fixture, a commit
 message or a doc.** Test fixtures are *invented* — they copy the file's grammar
 with made-up titles, names and words, the same way `player_editor/test/*.srt`
-does. This is the one rule that must not be broken.
+does. This is the rule that must not be broken.
 
-The single deliberate exception is `pnpm build`, which writes the lyrics into
-`dist/` so the built book can be published. That is the point of the build.
-`dist/` is gitignored and so is any file named `lyrics.md`, so it cannot be
-committed — but never move that copy into `public/`, and never add a build step
-that stages it. `LYRICS_EMBED=0` builds without it.
+It has exactly one sanctioned exception, and it is a named file rather than a
+judgement call: **`examples/lyrics.md`** — the `# Back to Normal` section of
+`lyrics.md`, twelve songs, the same album whose audio, covers and SRT files
+already ship in `examples/` as published sample data. It is what the demo
+site's book is built from. `.gitignore` names that one path explicitly, so no
+other file called `lyrics.md` can follow it in. Adding a second one is Jean's
+decision to make, not a precedent this one sets.
+
+It is a plain extraction of one album section — the `====` before the heading
+through the `====` after the album's last song — so it can be redone by hand
+whenever the album changes. Nothing generates it at build time, deliberately:
+a generator pointed at `lyrics.md` is one bad default away from writing the
+whole file into the repo.
+
+`pnpm build` is the other place the lyrics leave the machine: it writes them
+into `dist/` so the built book is self-contained. That is the point of the
+build. `dist/` is gitignored and so is any file named `lyrics.md` — but never
+move that copy into `public/`, and never add a build step that stages it.
+`LYRICS_EMBED=0` builds without it, and `LYRICS_FILE` picks a different source:
+that is how `scripts/build_site.sh` points the published book at
+`examples/lyrics.md` instead of the real file.
 
 **Never render the file as Markdown.** It looks like Markdown and is not.
 A Markdown renderer turns an indented lyric into a code block, `_words_` into

@@ -50,6 +50,10 @@ lyrics.md
 !examples/data/**
 !examples/music/
 !examples/music/**
+# the lyrics of that same album, as written — the book lyrics_book demoes.
+# The only sanctioned copy of lyrics.md content in the repo; see
+# lyrics_book/CLAUDE.md.
+!examples/lyrics.md
 # ...but not the OS noise those two exceptions would let back in
 examples/**/.DS_Store
 
