@@ -58,21 +58,28 @@ back to it.
 All formats are documented in [docs/data-formats.md](docs/data-formats.md), and
 a real **demo album** ships in [examples/](examples/) — three original songs
 ("Back to Normal", © Jean Lazarou, published here on purpose) with covers,
-playlist JSON, metadata cache and synchronized SRT lyrics. Copy
-`examples/data` and `examples/music` into any web app's `public/` folder and it
-runs out of the box:
+playlist JSON, metadata cache and synchronized SRT lyrics.
+
+Every web app reads its albums from `public/data/` and its audio from
+`public/music/files/`. [scripts/link_data.sh](scripts/link_data.sh) makes those
+two symlinks and points them at either the demo album or your own collection:
 
 ```bash
-cd player
-cp -r ../examples/data public/data
-cp -r ../examples/music public/music
-pnpm install && pnpm dev
+./scripts/link_data.sh demo       # every app plays the demo album
+./scripts/link_data.sh library    # every app plays your collection
+./scripts/link_data.sh            # show what each app points at
+
+cd player && pnpm install && pnpm dev
 ```
 
+Nothing is moved or copied, so switching back and forth cannot lose anything,
+and either mode can be set one app at a time (`link_data.sh demo player`).
+Your collection is found the way [song_finder](song_finder/) finds it:
+`$MAZY_DATA_DIR` and `$MAZY_MUSIC_DIR`, else `~/.config/mazy/song_finder.json`,
+else `data/` here and `~/Music/projects`.
+
 **No other music is included** (and none can be committed by accident — the
-root `.gitignore` blocks audio, lyrics and the data folder). Point the apps at
-your own library the same way: fill `public/data/` and `public/music/` with
-copies or symlinks to your collection.
+root `.gitignore` blocks audio, lyrics, the data folder and those links).
 
 ## Getting started
 

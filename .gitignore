@@ -28,11 +28,13 @@ mix-mastering/bin/
 # --- personal music data: never commit audio, lyrics or the shared data folder.
 # The apps read these from symlinks or local copies you provide yourself.
 # (anchored to the repo root: apps may have legit source dirs named data/)
+# No trailing slash on the three below: git sees a symlink as a file, so a
+# dir-only pattern would not match the links scripts/link_data.sh writes.
 /data/
 lyrics.md
-*/public/data/
-*/public/music/
-*/public/colors/music/
+*/public/data
+*/public/music
+*/public/colors/music
 *.mp3
 *.wav
 *.flac
@@ -48,6 +50,8 @@ lyrics.md
 !examples/data/**
 !examples/music/
 !examples/music/**
+# ...but not the OS noise those two exceptions would let back in
+examples/**/.DS_Store
 
 # --- deliberate exception: hand-written SRT fixtures for the player_editor
 # parser tests (no song lyrics, invented content)

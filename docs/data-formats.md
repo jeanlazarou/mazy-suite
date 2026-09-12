@@ -7,7 +7,7 @@ A complete working example — a real three-track album — ships in
 
 ```
 examples/
-├── data/                        # → copy (or symlink) to <app>/public/data/
+├── data/                        # → linked as <app>/public/data/
 │   ├── albums.json              # list of available albums
 │   ├── albums_cache.json        # per-track metadata cache
 │   ├── back-to-normal.json      # one album (playlist) definition
@@ -16,8 +16,8 @@ examples/
 │   ├── back-to-normal-500.png   # album cover, 500×500
 │   └── lyrics/
 │       └── <Track Title>.srt    # one SRT file per track
-└── music/                       # → copy (or symlink) to <app>/public/music/
-    └── files/
+└── music/
+    └── files/                   # → linked as <app>/public/music/files/
         └── Back to Normal/
             └── <Track Title>.mp3
 ```
@@ -130,14 +130,21 @@ maintained by **music_cache_updater**.
 
 ## Trying it out
 
-From a web app's folder (e.g. `player/`):
+[`scripts/link_data.sh`](../scripts/link_data.sh) points every web app at a set
+of albums by symlinking `<app>/public/data` and `<app>/public/music/files`:
 
 ```bash
-cp -r ../examples/data public/data
-cp -r ../examples/music public/music
-pnpm install && pnpm dev
+./scripts/link_data.sh demo          # the album in examples/
+./scripts/link_data.sh library       # your own collection
+./scripts/link_data.sh               # what each app points at right now
+./scripts/link_data.sh unlink        # remove the links again
+
+cd player && pnpm install && pnpm dev
 ```
 
-Then replace the demo files with your own library, keeping the same layout —
-`public/data` and `public/music` are gitignored, so your music never ends up
-in a commit.
+Your collection is found through `$MAZY_DATA_DIR` / `$MAZY_MUSIC_DIR`, else
+`~/.config/mazy/song_finder.json`, else the repo's own `data/` and
+`~/Music/projects` — the same lookup [song_finder](../song_finder/) uses. Any
+other layout works too, as long as the two folders hold what is described
+above; the links are gitignored either way, so your music never ends up in a
+commit.

@@ -175,9 +175,12 @@ public/
 ```
 
 [examples/data](../examples/data) holds a working sample of that layout, used to
-build the demo site. Audio under `public/music/` is deliberately left out of the
-production build (`vite.config.js`) — the collection is gigabytes and lives on
-the server; `pnpm preview` still serves it locally.
+build the demo site. `../scripts/link_data.sh demo player_editor` symlinks
+`public/data` and `public/music/files` to it, and `link_data.sh library
+player_editor` points the same two links at your own collection. Audio under
+`public/music/` is deliberately left out of the production build
+(`vite.config.js`) — the collection is gigabytes and lives on the server;
+`pnpm preview` still serves it locally.
 
 In development an extra **Test Album** appears with a single *Metronome* track
 and generated timings, handy for checking region behaviour against a steady
