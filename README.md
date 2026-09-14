@@ -29,6 +29,7 @@ player, loaded with the demo album.
 | [lyrics-cards](lyrics-cards/) | Browse albums and read each track's lyrics presented as cards (TypeScript) |
 | [lyrics_book](lyrics_book/) | Reads a master lyrics file — every lyric of every album, as written rather than as sung — and pages it like a book: search across words, titles and authors, and a trail of which lines were reused where (TypeScript) |
 | [mix-mastering](mix-mastering/) | Audio mastering studio in Go: DSP chain (EQ, compression, limiting, stereo), CLI **and** a React/WebAssembly web UI |
+| [twin_diff](twin_diff/) | Two recordings of one song side by side, the way a text diff shows two versions of a file: vertical waveforms, time downward, with what stayed, changed, was added or dropped marked and lined up |
 
 ### Desktop & command line
 

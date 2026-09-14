@@ -23,12 +23,12 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
-ALL_APPS="player player_editor live_prompter gig_anim lyrics-cards sequence-builder"
+ALL_APPS="player player_editor live_prompter gig_anim lyrics-cards sequence-builder twin_diff"
 
 # What each app serves. Apps absent from this list need neither.
 app_needs() {
   case $1 in
-    player | player_editor | live_prompter | gig_anim) echo "data music" ;;
+    player | player_editor | live_prompter | gig_anim | twin_diff) echo "data music" ;;
     lyrics-cards) echo "data" ;;
     sequence-builder) echo "music" ;;
     *) return 1 ;;

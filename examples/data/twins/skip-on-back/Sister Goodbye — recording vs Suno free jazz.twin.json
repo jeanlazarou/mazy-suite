@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "title": "Sister Goodbye",
+  "sides": {
+    "a": {
+      "label": "recording",
+      "url": "/music/files/Skip On Back/Sister Goodbye.mp3",
+      "srt": "/data/lyrics/Sister Goodbye.srt",
+      "album": "skip-on-back",
+      "track": "Sister Goodbye",
+      "ai": false
+    },
+    "b": {
+      "label": "Suno free jazz",
+      "url": "/music/files/Suno reworks/Sister Goodbye (Free Jazz).mp3",
+      "srt": "/data/lyrics/Sister Goodbye (Free Jazz).srt",
+      "ai": true
+    }
+  },
+  "segments": [
+    {
+      "kind": "changed",
+      "a": [
+        2.86,
+        86.1
+      ],
+      "b": [
+        30.38,
+        99.1
+      ]
+    },
+    {
+      "kind": "removed",
+      "a": [
+        108.54,
+        126.3804081632653
+      ],
+      "b": null
+    },
+    {
+      "kind": "added",
+      "a": null,
+      "b": [
+        99.1,
+        209.2759410430839
+      ]
+    }
+  ],
+  "seededFrom": "lyrics"
+}

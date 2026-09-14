@@ -1,0 +1,719 @@
+:root {
+  --bg: #14181e;
+  --bg-raised: #1b212a;
+  --line: #2a323e;
+  --text: #e6eaf0;
+  --muted: #8e9aab;
+  --same: #7f93ad;
+  --changed: #e0a43c;
+  --added: #5cb37a;
+  --removed: #d1636a;
+  --unknown: #5f6b7d;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* --- transport ------------------------------------------------------- */
+
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 12px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--line);
+}
+
+.transport-left,
+.transport-middle,
+.transport-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.transport-middle {
+  margin: 0 auto;
+}
+
+button {
+  background: #232b36;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 4px 9px;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: #3b4757;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button.primary {
+  background: #2f6f4f;
+  border-color: #37805c;
+  min-width: 38px;
+}
+
+button.is-on {
+  background: #34506f;
+  border-color: #436a88;
+}
+
+.hear {
+  display: flex;
+  gap: 2px;
+}
+
+.label,
+.of,
+.sep,
+.side-meta {
+  color: var(--muted);
+}
+
+.sep {
+  margin: 0 6px;
+}
+
+.position {
+  font-variant-numeric: tabular-nums;
+  margin-left: 6px;
+}
+
+.warn {
+  color: var(--changed);
+  border: 1px solid rgba(224, 164, 60, 0.4);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 11px;
+}
+
+/* --- side headers ---------------------------------------------------- */
+
+.side-headers {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--line);
+  background: #171d25;
+}
+
+.side-header {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 12px;
+  min-width: 0;
+}
+
+.side-header.side-b {
+  justify-content: flex-end;
+}
+
+.side-header.is-audible .side-label {
+  color: var(--text);
+}
+
+.side-label {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ai-badge {
+  color: var(--changed);
+  font-size: 11px;
+  border: 1px solid rgba(224, 164, 60, 0.45);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.side-headers-gutter {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  padding: 0 2px;
+  overflow: hidden;
+}
+
+/* --- the two strips -------------------------------------------------- */
+
+.work {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.twin-view {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.twin-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.twin-scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.twin-spacer {
+  position: relative;
+}
+
+/* --- lyrics ---------------------------------------------------------- */
+
+.lyrics-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* a bar along the outer edge spans the sung line at its true timing */
+.cue-bar {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.cue-bar-a {
+  border-left: 2px solid rgba(233, 238, 245, 0.35);
+}
+
+.cue-bar-b {
+  border-right: 2px solid rgba(233, 238, 245, 0.35);
+}
+
+/* the text, clear of the band's timestamp */
+.cue-line {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.cue-line-a {
+  padding-left: 58px;
+}
+
+.cue-line-b {
+  padding-right: 58px;
+  text-align: right;
+}
+
+.cue-text {
+  display: inline-block;
+  max-width: 100%;
+  margin-top: -1px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(15, 19, 25, 0.78);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cue-word-changed {
+  color: #f2c26b;
+  text-decoration: underline;
+  text-decoration-color: rgba(242, 194, 107, 0.6);
+  text-underline-offset: 2px;
+}
+
+.lyrics-button {
+  padding: 1px 7px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.lyrics-button.has-lyrics {
+  color: var(--text);
+}
+
+.seed-button {
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+/* Labels live in viewport coordinates, above the canvas and under the
+   (transparent) scroller, because in the true layout each side's labels move
+   with that side, not with one shared scroll. */
+.band-label-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.band-label {
+  position: absolute;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.band-time-a {
+  left: 8px;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.band-time-b {
+  right: 8px;
+}
+
+.band-gutter-label {
+  left: calc(50% - 39px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  line-height: 1.2;
+}
+
+.band-kind {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 9px;
+}
+
+.kind-same .band-kind { color: var(--same); }
+.kind-changed .band-kind { color: var(--changed); }
+.kind-added .band-kind { color: var(--added); }
+.kind-removed .band-kind { color: var(--removed); }
+.kind-unknown .band-kind { color: var(--unknown); }
+
+.band-name {
+  color: var(--text);
+  font-size: 10px;
+  text-align: center;
+}
+
+.band-scale {
+  font-size: 9px;
+  opacity: 0.8;
+}
+
+/* The note sits beside the A timestamp, not across the gutter: the gutter
+   already carries the kind, the name and the scale. */
+.band-note {
+  max-width: 30vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-style: italic;
+  color: var(--text);
+  opacity: 0.75;
+}
+
+/* --- band list ------------------------------------------------------- */
+
+.band-list {
+  flex: 0 0 246px;
+  border-left: 1px solid var(--line);
+  background: #171d25;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+.band-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+
+.band-list ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.band-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid rgba(42, 50, 62, 0.6);
+  border-radius: 0;
+  padding: 5px 10px;
+  text-align: left;
+  color: var(--muted);
+}
+
+.band-row:hover {
+  background: #1e2631;
+}
+
+.band-row.is-selected {
+  background: #232d3a;
+  color: var(--text);
+}
+
+.band-row .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--unknown);
+}
+
+.band-row.kind-same .dot { background: var(--same); }
+.band-row.kind-changed .dot { background: var(--changed); }
+.band-row.kind-added .dot { background: var(--added); }
+.band-row.kind-removed .dot { background: var(--removed); }
+
+.row-kind {
+  width: 58px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.row-label {
+  flex: 1;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-times {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+
+.gap-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px 4px 24px;
+  border-bottom: 1px solid rgba(42, 50, 62, 0.6);
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.gap-actions button {
+  padding: 0 7px;
+  font-size: 10px;
+}
+
+.kind-button.kind-same {
+  background: rgba(127, 147, 173, 0.16);
+  border-color: rgba(127, 147, 173, 0.55);
+}
+
+.kind-button.kind-changed {
+  background: rgba(224, 164, 60, 0.16);
+  border-color: rgba(224, 164, 60, 0.55);
+}
+
+.join-seam {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 2px 10px 3px 24px;
+  border: 0;
+  border-bottom: 1px solid rgba(42, 50, 62, 0.6);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--muted);
+  font-size: 10px;
+  text-align: left;
+}
+
+.join-seam:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.problems {
+  margin: 12px 10px 0;
+  border: 1px solid rgba(224, 164, 60, 0.35);
+  border-radius: 5px;
+  padding: 7px 9px;
+  font-size: 11px;
+}
+
+.problems-head {
+  color: var(--changed);
+  margin-bottom: 4px;
+}
+
+.problems ul {
+  margin: 0;
+  padding-left: 16px;
+}
+
+/* --- dialogs and placeholder ----------------------------------------- */
+
+.placeholder {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.placeholder .error {
+  color: var(--removed);
+  max-width: 60ch;
+  text-align: center;
+}
+
+dialog {
+  background: var(--bg-raised);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px 18px;
+  min-width: 340px;
+  max-width: 520px;
+}
+
+dialog::backdrop {
+  background: rgba(8, 10, 14, 0.6);
+}
+
+dialog h2 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+dialog h3 {
+  margin: 14px 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+dialog footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.unsaved {
+  margin: 0 0 10px;
+  padding: 6px 9px;
+  border: 1px solid rgba(224, 164, 60, 0.35);
+  border-radius: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.unsaved.is-warned {
+  color: var(--changed);
+  border-color: rgba(224, 164, 60, 0.7);
+}
+
+.local-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 10px 0;
+  padding: 5px 8px;
+  border: 1px solid rgba(224, 164, 60, 0.35);
+  border-radius: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.local-copy button {
+  white-space: nowrap;
+}
+
+.twin-index .kept {
+  color: var(--muted);
+}
+
+.set-stepper {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.set-stepper .place {
+  padding: 0 6px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.twin-index {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.twin-index button {
+  width: 100%;
+  text-align: left;
+}
+
+.file-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.file-rows label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-rows span {
+  width: 18px;
+  color: var(--muted);
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.pending-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 6px 12px;
+  background: #1f2833;
+  border-bottom: 1px solid var(--line);
+}
+
+.pending-b {
+  justify-content: flex-end;
+}
+
+.pending-then,
+.pending-or {
+  color: var(--muted);
+}
+
+.kind-button.kind-added {
+  background: rgba(92, 179, 122, 0.18);
+  border-color: rgba(92, 179, 122, 0.6);
+}
+
+.kind-button.kind-removed {
+  background: rgba(209, 99, 106, 0.18);
+  border-color: rgba(209, 99, 106, 0.6);
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  background: #232d3a;
+  border: 1px solid #3b4757;
+  border-radius: 6px;
+  padding: 7px 14px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  max-width: 70ch;
+}
+
+.text-dialog {
+  width: min(460px, 90vw);
+}
+
+.text-dialog input {
+  width: 100%;
+  background: #141a21;
+  color: var(--text);
+  border: 1px solid #3b4757;
+  border-radius: 5px;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 14px;
+}
+
+.text-dialog input:focus {
+  outline: none;
+  border-color: #5a7a9c;
+}
+
+.text-dialog footer {
+  gap: 6px;
+}
+
+.kind-tag {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+  margin-right: 4px;
+}
+
+.kind-tag.kind-same { color: var(--same); }
+.kind-tag.kind-changed { color: var(--changed); }
+.kind-tag.kind-added { color: var(--added); }
+.kind-tag.kind-removed { color: var(--removed); }
+
+.help-box table {
+  border-collapse: collapse;
+}
+
+.help-box th {
+  vertical-align: baseline;
+}
+
+.help-box th {
+  text-align: left;
+  padding: 2px 14px 2px 0;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.help-box td {
+  color: var(--muted);
+  padding: 2px 0;
+}

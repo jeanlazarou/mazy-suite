@@ -176,6 +176,9 @@ songs of the demo album, as written.
 
 - **gig_anim** performance definitions: see [gig_anim/README.md](../gig_anim/README.md)
 - **track_mixer** mix documents: see [track_mixer/SPECIFICATION.md](../track_mixer/SPECIFICATION.md)
+- **twin_diff** twin documents — two renditions of one song and what differs
+  between them, in `data/twins/` with a `twins.json` index: see
+  [twin_diff/SPECIFICATION.md](../twin_diff/SPECIFICATION.md)
 
 ## Trying it out
 

@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "title": "Sister Goodbye",
+  "sides": {
+    "a": {
+      "label": "recording",
+      "url": "/music/files/Skip On Back/Sister Goodbye.mp3",
+      "srt": "/data/lyrics/Sister Goodbye.srt",
+      "album": "skip-on-back",
+      "track": "Sister Goodbye",
+      "ai": false
+    },
+    "b": {
+      "label": "Suno same style",
+      "url": "/music/files/Suno reworks/Sister Goodbye (Same Style).mp3",
+      "srt": "/data/lyrics/Sister Goodbye (Same Style).srt",
+      "ai": true
+    }
+  },
+  "segments": [
+    {
+      "kind": "changed",
+      "a": [
+        0,
+        2.859
+      ],
+      "b": [
+        0,
+        1.962
+      ],
+      "label": "Intro"
+    },
+    {
+      "kind": "same",
+      "a": [
+        2.859,
+        89.574
+      ],
+      "b": [
+        1.962,
+        86.933
+      ]
+    },
+    {
+      "kind": "added",
+      "a": null,
+      "b": [
+        86.933,
+        130.489
+      ],
+      "label": "Solo"
+    },
+    {
+      "kind": "added",
+      "a": null,
+      "b": [
+        130.489,
+        157.454
+      ]
+    },
+    {
+      "kind": "changed",
+      "a": [
+        89.574,
+        126.3804081632653
+      ],
+      "b": [
+        157.454,
+        176.73403628117913
+      ],
+      "label": "Outro"
+    }
+  ],
+  "seededFrom": "lyrics"
+}
