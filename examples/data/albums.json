@@ -2,5 +2,8 @@
   {
     "name": "back-to-normal",
     "image": "png"
+  },
+  {
+    "name": "skip-on-back"
   }
 ]
