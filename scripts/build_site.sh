@@ -15,7 +15,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 APPS=${APPS:-player}
-ALL_WEB_APPS="player player_editor live_prompter gig_anim track_mixer groove_lab massembler sequence-builder lyrics-cards mix-mastering lyrics_book"
+ALL_WEB_APPS="player player_editor live_prompter gig_anim track_mixer groove_lab massembler sequence-builder lyrics-cards mix-mastering lyrics_book twin_diff"
 REPO_URL="https://github.com/jeanlazarou/mazy-suite"
 SITE=_site
 
@@ -55,6 +55,15 @@ for app in $APPS; do
     (cd "$app" && pnpm install --frozen-lockfile && \
       LYRICS_FILE=../examples/lyrics.md pnpm build)
     cp -R "$app/dist" "$SITE/$app"
+    continue
+  fi
+  if [ "$app" = "twin_diff" ]; then
+    # Twin Diff reads the site's shared /data and /music (at ../ from its
+    # page). A local build copies whatever link_data.sh linked into public/;
+    # drop it, so the site is the same as one built on CI.
+    (cd "$app" && pnpm install --frozen-lockfile && pnpm build)
+    cp -R "$app/dist" "$SITE/$app"
+    rm -rf "$SITE/$app/data" "$SITE/$app/music"
     continue
   fi
   (cd "$app" && pnpm install --frozen-lockfile && pnpm build)
