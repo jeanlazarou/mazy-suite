@@ -1,135 +1,132 @@
-.timeline-container {
-    position: relative;
-    padding: 20px;
-    max-width: 600px;
-    margin: 0 auto;
-    overflow-y: auto;
+/* The timeline lives inside #playlist-description, so it reads the palette of
+   whatever theme the album picked (`--desc-*`) and falls back to its own
+   colours for the plain rendering. That is the whole reason it no longer has
+   a fixed white-card look: it has to sit next to `neon` and `dossier` too. */
+
+.timeline {
+  --tl-indent: 1.6rem;
+  --tl-rail: 0.3rem;
+
+  --tl-heading: var(--desc-heading, #14161c);
+  --tl-muted: var(--desc-muted, #7b8190);
+  --tl-accent: var(--desc-accent, #3f7d78);
+  --tl-rule: var(--desc-rule, rgba(20, 22, 28, 0.16));
+
+  position: relative;
+  max-width: 32rem;
+  margin: 0;
+  padding: 0.4rem 0 0.4rem var(--tl-indent);
+  list-style: none;
 }
 
-.timeline-line {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    top: 40px;
-    bottom: 20px;
-    width: 2px;
-    background: linear-gradient(to bottom, #e5e5e5, #d0d0d0);
-    border-radius: 1px;
+/* the rail */
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: var(--tl-rail);
+  top: 0.9rem;
+  bottom: 0.9rem;
+  width: 1px;
+  background: var(--tl-rule);
 }
 
-.timeline-track {
-    position: relative;
-    display: flex;
-    align-items: flex-start;
-    margin: 20px 0;
-    transition: all 0.3s ease;
-    width: 100%;
+.timeline-year {
+  position: relative;
+  margin: 1.6rem 0 0.7rem;
+  color: var(--tl-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
 }
 
-.timeline-track.left {
-    justify-content: flex-end;
-    padding-right: calc(50% + 30px);
+.timeline-year:first-child {
+  margin-top: 0;
 }
 
-.timeline-track.right {
-    justify-content: flex-start;
-    padding-left: calc(50% + 30px);
+/* a diamond on the rail, so a new year reads as a stop rather than a track */
+.timeline-year::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--tl-rail) - var(--tl-indent) - 3px);
+  top: 0.3em;
+  width: 7px;
+  height: 7px;
+  background: var(--tl-accent);
+  transform: rotate(45deg);
 }
 
-.timeline-dot {
-    position: absolute;
-    left: 50%;
-    top: 8px;
-    width: 18px;
-    height: 18px;
-    background: #fff;
-    border: 3px solid #d0d0d0;
-    border-radius: 50%;
-    transition: all 0.3s ease;
-    z-index: 2;
-    transform: translateX(-50%);
+.timeline-entry {
+  position: relative;
+  margin: 0 0 0.9rem;
 }
 
-.timeline-track.playing .timeline-dot {
-    border-color: #4ade80;
-    background: #4ade80;
-    box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.2);
+.timeline-entry::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--tl-rail) - var(--tl-indent) - 2.5px);
+  top: 0.45rem;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tl-rule);
+  transition: background 200ms ease, box-shadow 200ms ease;
 }
 
-.timeline-content {
-    background: #fff;
-    padding: 16px 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    border: 1px solid #e5e5e5;
-    width: 100%;
-    max-width: 300px;
-    transition: all 0.3s ease;
+.timeline-entry.playing::before {
+  background: var(--tl-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--tl-accent) 25%, transparent);
 }
 
-.timeline-track.left .timeline-content:hover {
-    transform: translateX(-5px);
+.timeline-title {
+  margin: 0;
+  color: var(--tl-heading);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
-.timeline-track.right .timeline-content:hover {
-    transform: translateX(5px);
+.timeline-entry.playing .timeline-title {
+  color: var(--tl-accent);
 }
 
-.timeline-track.playing .timeline-content {
-    background: #f0fdf4;
-    border-color: #4ade80;
-    box-shadow: 0 4px 16px rgba(74, 222, 128, 0.15);
-    transform: translateY(-2px);
+.timeline-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  /* no separator character between the date and the authors: in a narrow
+     column the authors wrap, and it would orphan onto the next line */
+  gap: 0.15rem 0.6rem;
+  margin: 0.1rem 0 0;
+  color: var(--tl-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
 }
 
-.timeline-track:hover .timeline-content {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    transform: translateY(-2px);
+.timeline-date {
+  font-size: 0.71rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
 }
 
-.track-title {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 4px;
-    line-height: 1.3;
+.timeline-empty {
+  margin: 0;
+  padding: 2rem 0;
+  color: var(--desc-muted, #7b8190);
+  font-style: italic;
 }
 
-.timeline-track.playing .track-title {
-    color: #059669;
+/* the plain rendering has no `--desc-*` palette to borrow in dark mode */
+.player-modal-dark #playlist-description:not(.description-themed) .timeline {
+  --tl-heading: #eef1f6;
+  --tl-muted: #878d9b;
+  --tl-accent: #6ec3bb;
+  --tl-rule: rgba(238, 241, 246, 0.18);
 }
 
-.track-artists {
-    font-size: 14px;
-    color: #6b7280;
-    margin-bottom: 8px;
-    font-weight: 400;
-}
-
-.timeline-track.playing .track-artists {
-    color: #047857;
-}
-
-.track-date {
-    font-size: 12px;
-    color: #9ca3af;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 4px 8px;
-    background: #f9fafb;
-    border-radius: 6px;
-    display: inline-block;
-}
-
-.timeline-track.playing .track-date {
-    background: #d1fae5;
-    color: #047857;
-}
-
-.no-tracks {
-    text-align: center;
-    color: #6b7280;
-    padding: 40px;
-    font-size: 16px;
-    font-style: italic;
+@media (prefers-reduced-motion: reduce) {
+  .timeline-entry::before {
+    transition: none;
+  }
 }

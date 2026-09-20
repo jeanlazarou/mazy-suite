@@ -86,9 +86,24 @@ markers that pull data from the playlist:
    - $AC
 ```
 
+Three further markers, written as bullets under a song, say where it comes
+from — `$KIND:` what it is (a rework, a remix, an AI-generated version),
+`$FROM:` when the material it is built on was written, and `$NOTE:` a free
+sentence. Any of them may be left out; together they render as one element.
+
+```markdown
+1. $T:Glass Door*
+
+   - $AC
+   - $KIND:AI rework
+   - $FROM:1992
+   - $NOTE:Rebuilt from my four-track demo
+```
+
 A `$THEME:<name>` line anywhere in the file picks how the player renders the
-description — `default`, `sleeve`, `liner`, `minimal` or `neon`. The player's
-own README documents what each one looks like.
+description — `default`, `sleeve`, `liner`, `minimal`, `neon`, `dossier`,
+`lineage`, `prism` or `orbit`. The player's own README documents what each one
+looks like and which of them show the `$KIND`/`$FROM`/`$NOTE` element.
 
 An optional `<style>…</style>` block anywhere in the file is extracted and
 applied to the rendered description.

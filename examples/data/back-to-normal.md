@@ -4,6 +4,8 @@
 
 _(2017-2020)_
 
+$THEME:liner
+
 _Demo excerpt: three tracks from the album, shared as sample data for the
 Mazy Suite._
 

@@ -8,6 +8,7 @@
 - [x] description markdown (links open in a new window)
   - [x] include optional timeline of compositions
   - [x] selectable rendering theme (`$THEME:name`)
+  - [x] per-song origin: rework/remix/AI, and when the original was written
 - [x] save playlist
 - [x] save to clipboard
 - [x] show song loading
@@ -51,6 +52,7 @@ The file can contain some specific things:
   - every `$C` string is replace with the creation date found in the JSON file
   - every `$AC` string is replace with the author list and the creation date found in the JSON file
   - a token before the first `$T:`, or one with no matching song in the JSON file, is replaced with nothing
+- say where a song comes from with `$KIND:`, `$FROM:` and `$NOTE:` (see [Where a song comes from](#where-a-song-comes-from))
 - pick a rendering theme with a `$THEME:name` line (see [Description themes](#description-themes))
 - the content of blocks starting with `<style>` and ending with a matching `</style>` is added as CSS style
 
@@ -77,11 +79,56 @@ You can add styles like:
 }
 ```
 
+## Where a song comes from
+
+Some songs are not new work: a rework, a remix, a version generated from an
+older piece. Three markers, written as ordinary bullets under a song, record
+that — what the track is, when the material it is built on was written, and a
+free note about it:
+
+```markdown
+1. $T:Glass Door*
+
+   - $AC
+   - $KIND:AI rework
+   - $FROM:1992
+   - $NOTE:Rebuilt from my four-track demo, vocals generated with Suno
+```
+
+- `$KIND:` — free text, shown as a short label (`AI rework`, `remix`, `cover`…)
+- `$FROM:` — when the original was written; a year, a `year/month`, or a full date
+- `$NOTE:` — a sentence about it; ordinary markdown, so links work
+
+Write only the ones you have, in any order; a song with none of them renders
+exactly as before. `$A`, `$C` and `$AC` are expanded inside the values, so a
+note can quote the song's own credits.
+
+The three are collected per song and rendered as **one** element, in place of
+the first of them:
+
+```html
+<span class="description-origin">
+  <span class="description-origin-kind">AI rework</span>
+  <span class="description-origin-from">1992</span>
+  <span class="description-origin-note">Rebuilt from my four-track demo…</span>
+</span>
+```
+
+Markers written before the first `$T:` belong to no song and are rendered where
+they stand, which is a way to say the same thing about a whole album.
+
+The `default` rendering and the `dossier`, `lineage`, `prism` and `orbit` themes
+show this element (`orbit` in the list under its ring, not on the ring itself).
+`sleeve`, `liner`, `minimal` and `neon` were designed before it existed and
+deliberately leave it out — a theme opts in by overriding the `display: none`
+set on `.description-themed .description-origin`.
+
 ## Description themes
 
-Without a theme the description is rendered plainly, as it always was. A
-description file can pick a different rendering by putting a `$THEME:name` line
-anywhere in the file (usually the first line):
+Without a theme the description gets the plain rendering: no art direction, just
+readable spacing and hierarchy, and your own `<style>` block still overrides all
+of it. A description file can pick a different rendering by putting a
+`$THEME:name` line anywhere in the file (usually the first line):
 
 ```markdown
 $THEME:sleeve
@@ -100,15 +147,32 @@ The line itself is removed before the markdown is rendered, the name is not
 case sensitive, and an unknown name falls back to `default` (with a warning in
 the console). If the file has more than one marker, the first one wins.
 
-| Theme     | Looks like                                                                                   |
-| --------- | -------------------------------------------------------------------------------------------- |
-| `default` | no theme: the plain rendering, styled only by the app's dark mode and your own `<style>` block |
-| `sleeve`  | a record sleeve — warm paper, serif type, framed cover, numbered track list                    |
-| `liner`   | printed liner notes — small dense type, cover floated to the right, two columns on wide screens |
-| `minimal` | quiet typography — plenty of white space, hairline rules, muted metadata                       |
-| `neon`    | always dark — purple/cyan glow, monospace track numbers, magenta links                         |
+| Theme     | Looks like                                                                                     | Shows `$KIND`/`$FROM`/`$NOTE` |
+| --------- | ---------------------------------------------------------------------------------------------- | :---------------------------: |
+| `default` | no theme: the plain rendering — quiet typography, your own `<style>` block still on top of it   |              yes              |
+| `sleeve`  | a record sleeve — warm paper, serif type, framed cover, numbered track list                      |              no               |
+| `liner`   | printed liner notes — small dense type, cover floated to the right, two columns on wide screens   |              no               |
+| `minimal` | quiet typography — plenty of white space, hairline rules, muted metadata                         |              no               |
+| `neon`    | always dark — purple/cyan glow, monospace track numbers, magenta links                           |              no               |
+| `dossier` | a case file — manila paper, typewriter type, each origin boxed and stamped with what it is       |              yes              |
+| `lineage` | a line of descent — the year the material was written, an arrow, then what the track became      |              yes              |
+| `prism`   | one hue per track, spread around the colour wheel — coloured bar, number, badge and origin block |              yes              |
+| `orbit`   | the track titles on a ring around a circular cover, with the full list under it                  |              yes              |
 
-Every theme except `neon` follows the app's dark mode; `neon` is dark in both.
+Every theme except `neon` and `orbit` follows the app's dark mode; those two are
+dark in both.
+
+`orbit` shows the numbers and titles on the ring — authors, links and notes
+would collide with it — and then repeats the album under the ring as an ordinary
+list with everything in it. The copy is made by `DescriptionModal`, which clones
+the song list and appends it; the ring rules only match the list that is a direct
+child of the description body, so the copy renders as a plain stacked list. The
+ring widens with the track count, and below 820px wide the ring is dropped
+altogether and the list is shown once.
+
+`prism` and `orbit` position songs by their place in the list, so
+`DescriptionModal` puts `--song-index` on every song and `--song-count` on the
+list — CSS cannot count siblings. Any theme can use them.
 Themes are implemented in [`src/DescriptionThemes.css`](src/DescriptionThemes.css)
 and listed in [`src/descriptionThemes.js`](src/descriptionThemes.js) — add a
 name to that list and a matching `#playlist-description.description-theme-<name>`

@@ -49,6 +49,8 @@ Sequencer state change → document.dispatchEvent(CustomEvent)
 
 - **BuffersLoader.js** — Validates audio files by reading byte signatures (MP3/OGG magic bytes) via HTTP Range requests. Decodes audio via `AudioContext.decodeAudioData()` to extract metadata (duration) and provide AudioBuffer for in-memory playback. The decoded buffer is converted to a WAV Blob URL by Sequencer for instant seeking without buffering delays.
 
+- **Timeline.js** — Optional chronology, oldest first, grouped by year. It sits in a narrow column to the right of the description when there is room and stacks under it otherwise (`.description-layout` / `.description-layout-split` in `DescriptionThemes.css`). It reads the current theme's `--desc-*` custom properties, falling back to its own palette for the plain rendering, so it belongs to whichever theme the album picked. Its class names are all `timeline-*` prefixed: the old `.track-title` / `.track-date` / `.track-artists` were bare selectors that also landed on the playlist cards (see the note at the end of `index.css`).
+
 - **LyricsSubtitle.js** — Synchronized lyrics display. `LyricVerse` listens directly for `sequencer:position` document events (NOT via Recoil) and uses `sortedIndexBy` binary search on SRT-parsed timings to find the current verse. Lyrics are loaded from `./data/lyrics/{title}.srt` via a Recoil `selectorFamily`.
 
 ### Persistence
@@ -62,13 +64,27 @@ Sequencer state change → document.dispatchEvent(CustomEvent)
 
 ### Playlist Loading
 
-Query param `?list=name` loads `./data/{name}.json`. A sibling `.md` file is loaded for the description panel. Description markdown supports special tokens: `$T:song-title` (song marker), `$A` (authors), `$C` (creation date), `$AC` (authors + date), `$THEME:name` (rendering theme), and inline `<style>` blocks.
+Query param `?list=name` loads `./data/{name}.json`. A sibling `.md` file is loaded for the description panel. Description markdown supports special tokens: `$T:song-title` (song marker), `$A` (authors), `$C` (creation date), `$AC` (authors + date), `$KIND:`/`$FROM:`/`$NOTE:` (where a song comes from), `$THEME:name` (rendering theme), and inline `<style>` blocks.
+
+### Song origin markers
+
+`$KIND:`, `$FROM:` and `$NOTE:` are parsed by `descriptionOrigin.js` and are the one part of the preprocessing that is **not** a per-line substitution: they are collected per song (keyed by the song's index, `-1` before the first `$T:`), their lines are dropped from the markdown, and the group is re-emitted as a single `<span class="description-origin">` in place of the first marker of the group. The emitted markup is inline spans, not a `<div>` — the block sits inside a list item, and inline HTML is what Remarkable passes through untouched; the stylesheet gives the outer span `display: block`. Dropping the consumed lines (rather than blanking them) matters: a blank line inside a list would turn the tight list loose.
+
+Themes **opt in** to the origin block — `DescriptionThemes.css` sets `display: none` on `.description-themed .description-origin`, and `dossier` and `lineage` turn it back on. `sleeve`, `liner`, `minimal` and `neon` predate the marker and deliberately leave it out. The base (unthemed) styling of the block, including its dark-mode rules, is scoped with `:not(.description-themed)` so those id-level rules cannot outrank a theme's.
 
 ### Description themes
 
-`$THEME:name` selects one of the themes listed in `descriptionThemes.js` and implemented in `DescriptionThemes.css`; the README documents them for description authors. `api.js` strips the marker in `preProcessDescription` and returns the theme alongside the rendered HTML; `DescriptionModal` turns it into `description-themed description-theme-{name}` classes on `#playlist-description`. The `default` theme deliberately adds **no** class — that is what keeps the app-wide dark-mode rule in `index.css` (`:not(.description-themed)`) in charge of unthemed descriptions, and keeps their rendering byte-identical to what it was before themes existed.
+`$THEME:name` selects one of the themes listed in `descriptionThemes.js` and implemented in `DescriptionThemes.css`; the README documents them for description authors. `api.js` strips the marker in `preProcessDescription` and returns the theme alongside the rendered HTML; `DescriptionModal` turns it into `description-themed description-theme-{name}` classes on `#playlist-description`. The `default` gets `description-plain` instead — **not** `description-themed`, which is what keeps the app-wide dark-mode rule in `index.css` (`:not(.description-themed)`) in charge of it, while giving its own styling a class to hang off.
 
-Specificity is load-bearing here: per-album `<style>` blocks use `#playlist-description x` selectors and are meant to beat the theme rules, so theme rules never use `!important` and never raise specificity beyond `#playlist-description.description-theme-x`.
+Specificity is load-bearing here: per-album `<style>` blocks use `#playlist-description x` selectors and are meant to beat both the theme rules and the plain ones, so neither ever uses `!important` and neither raises specificity beyond `#playlist-description.description-theme-x`. In particular the plain rules are written `.description-plain .description-body x` (class-level) rather than off the id.
+
+`prism` and `orbit` lay songs out by position — a hue per track, a ring around the cover — so `DescriptionModal`'s `numberSongs` sets `--song-index` on every song and `--song-count` on the list (and on the body, which the cover image needs and cannot inherit from the list). CSS has no sibling count, hence the layout effect; it re-runs on content change.
+
+**The `dangerouslySetInnerHTML` prop object must be memoised.** React 19 re-applies it whenever the *prop object* identity changes, not when the HTML string does — so a fresh `{ __html: … }` literal on every render re-parses the whole description and wipes everything `decorateBody` added to it. `Content` builds it with `useMemo` keyed on the content; without that, any re-render (toggling the timeline, a viewport change, any atom update) silently resets the description. The layout effect keys off that memoised object for the same reason.
+
+Two other things keep the decorations alive: `Content` renders **one tree shape** whether or not the timeline is showing (a `description-layout` wrapper, the timeline a conditional child in a fixed slot) so the body is never remounted by the toggle, and the body carries a callback ref so a genuine remount re-decorates it.
+
+`orbit` also needs the songs twice: titles on the ring, full details under it. `copySongDetails` clones the song list into a `.description-details` wrapper appended to the body, and **every** orbit ring rule is written `.description-body > .description-list …` so it matches only the original — the copy falls through to the theme skeleton's ordinary stacked list. The function removes any previous copy before adding one: the effect re-runs, and `index.js` renders under `React.StrictMode`, which invokes effects twice in development. Below 820px the ring is abandoned for a stacked list and the copy is hidden, so the album is never listed twice.
 
 Panel sizing matters for themes: a **markdown** description must keep `min-height: 100%` with no fixed height, so the element grows past the viewport and its background stays under the whole list (a fixed height leaves the overflow sitting on `.modal-content`'s own background — invisible with the default palette, obvious with a theme). Its bottom breathing room is padding, not margin, for the same reason. An **HTML** description is the exception: it keeps `height: 100%` so the iframe fills the panel and scrolls internally.
 

@@ -3,6 +3,7 @@ import { Remarkable } from "remarkable";
 import { parseLyrics } from "./srt_parser";
 import { ALBUMS_FILE } from "./features";
 import { DEFAULT_THEME, normalizeTheme, themeMarker } from "./descriptionThemes";
+import { originMarker, renderOrigin } from "./descriptionOrigin";
 
 export const DATA = global.features.isolatedPlayer ? "./data" : "../data"
 
@@ -177,15 +178,31 @@ export async function loadLyrics(songTitle) {
     });
 }
 
+// $AC first in the alternation, so it is never read as $A followed by C
+function expandTokens(text, current) {
+  return text.replace(/\$AC|\$A|\$C/g, (token) => {
+    if (!current) return "";
+
+    if (token === "$AC") return current.ac;
+
+    return (token === "$A" ? current.a : current.c) ?? "";
+  });
+}
+
 function preProcessDescription(content, byTitle) {
   let current = null;
   let styles = [];
   let consumingStyles = false;
   let theme = null;
 
-  const processed = content
+  // one entry per song carrying an origin marker, keyed by its position in the
+  // file (-1 for markers written before the first song)
+  let songIndex = -1;
+  const origins = new Map();
+
+  const lines = content
     .split("\n")
-    .map((line) => {
+    .map((line, index) => {
       const startOfStyles = line.match(/<style>/);
       consumingStyles = consumingStyles || startOfStyles;
 
@@ -219,6 +236,7 @@ function preProcessDescription(content, byTitle) {
         const title = match[1].replace("\\*", "*");
 
         current = byTitle[title];
+        songIndex += 1;
 
         // wrapped so that themes can style the song title on its own
         return line.replace(
@@ -227,20 +245,39 @@ function preProcessDescription(content, byTitle) {
         );
       }
 
-      // $AC first in the alternation, so it is never read as $A followed by C
-      return line.replace(/\$AC|\$A|\$C/g, (token) => {
-        if (!current) return "";
+      const origin = originMarker(line);
 
-        if (token === "$AC") return current.ac;
+      if (origin) {
+        const entry = origins.get(songIndex) ?? {
+          prefix: origin.prefix,
+          fields: {},
+          at: [],
+        };
 
-        return (token === "$A" ? current.a : current.c) ?? "";
-      });
-    })
-    .join("\n");
+        entry.fields[origin.field] = expandTokens(origin.value, current);
+        entry.at.push(index);
+
+        origins.set(songIndex, entry);
+
+        // dropped for now; the group is rendered in place of its first marker
+        return null;
+      }
+
+      return expandTokens(line, current);
+    });
+
+  origins.forEach(({ prefix, fields, at }) => {
+    const html = renderOrigin(fields);
+
+    lines[at[0]] = html === null ? null : `${prefix}${html}`;
+  });
 
   setStyles(styles.join("\n"));
 
-  return { md: processed, theme: normalizeTheme(theme) };
+  return {
+    md: lines.filter((line) => line !== null).join("\n"),
+    theme: normalizeTheme(theme),
+  };
 }
 
 function setStyles(styles) {

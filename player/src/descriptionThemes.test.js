@@ -40,8 +40,8 @@ describe("normalizeTheme", () => {
 });
 
 describe("themeClassNames", () => {
-  it("leaves the default theme unclassed", () => {
-    expect(themeClassNames(DEFAULT_THEME)).toBe("");
+  it("marks the default as plain, not themed", () => {
+    expect(themeClassNames(DEFAULT_THEME)).toBe("description-plain");
   });
 
   it("marks a themed description", () => {

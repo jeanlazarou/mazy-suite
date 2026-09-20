@@ -1763,3 +1763,14 @@ svg.icon.loading {
   color: rgba(0, 0, 0, 0.5);
   margin-top: 0.15em;
 }
+
+/* Timeline.css used to define a bare `.track-title` rule, which also landed on
+   the playlist cards and, loading after this file, beat every `.track-title`
+   size above — 1.05em / 1em / 0.95em have never actually rendered; 16px has.
+   The timeline now uses its own class names, so this keeps the cards exactly
+   as they look today. Worth revisiting deliberately rather than by accident. */
+.track-title {
+  font-size: 16px;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}

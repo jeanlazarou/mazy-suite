@@ -7,6 +7,12 @@ export const DESCRIPTION_THEMES = [
   "liner",
   "neon",
   "minimal",
+  // these show the origin block ($KIND / $FROM / $NOTE); the four above
+  // predate it and leave it out
+  "dossier",
+  "lineage",
+  "prism",
+  "orbit",
 ];
 
 // `$THEME:name` on a line of its own, returns the raw name or null
@@ -30,11 +36,14 @@ export function normalizeTheme(name) {
   return DEFAULT_THEME;
 }
 
-// The default theme keeps the plain markup, so the app's dark mode styles it
+// The default is marked `description-plain` rather than `description-themed`:
+// it gets its own (light) styling, while the app's dark mode and the per-album
+// `<style>` blocks stay in charge of it, both of which key off the absence of
+// `description-themed`.
 export function themeClassNames(name) {
   const theme = normalizeTheme(name);
 
-  if (theme === DEFAULT_THEME) return "";
+  if (theme === DEFAULT_THEME) return "description-plain";
 
   return `description-themed description-theme-${theme}`;
 }

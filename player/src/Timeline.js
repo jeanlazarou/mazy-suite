@@ -1,73 +1,80 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useMemo } from "react";
 import { currentPlaylist } from "./atoms";
 import { playingTrack } from "./Sequencer";
 import { useAtomValue } from "jotai";
 
 import "./Timeline.css";
 
+function formatDate(value) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function yearOf(value) {
+  const year = new Date(value).getFullYear();
+
+  return Number.isNaN(year) ? null : year;
+}
+
 export const Timeline = () => {
-  const trackId = useRef(null);
   const playlist = useAtomValue(currentPlaylist);
   const currentTrack = useAtomValue(playingTrack);
 
-  const sortedTracks = useMemo(() => {
-    return [...playlist].sort(
+  // oldest first, and marked wherever the year changes so the rail can carry
+  // the years as headings rather than repeating them on every track
+  const rows = useMemo(() => {
+    const sorted = [...playlist].sort(
       (a, b) => new Date(a.creationDate) - new Date(b.creationDate)
     );
+
+    let previous = null;
+
+    return sorted.map((track) => {
+      const year = yearOf(track.creationDate);
+      const startsYear = year !== null && year !== previous;
+
+      previous = year ?? previous;
+
+      return { track, year, startsYear };
+    });
   }, [playlist]);
 
-  useEffect(() => {
-    if (trackId.current !== currentTrack?.url) {
-      const doneTrack = document.querySelector(".timeline-track.playing");
-      if (doneTrack) {
-        doneTrack.classList.remove("playing");
-      }
-
-      const index = sortedTracks.findIndex((t) => t.url === currentTrack?.url);
-      const newTrack = document.querySelector(
-        `.timeline-track[data-index='${index}']`
-      );
-
-      if (newTrack) {
-        newTrack.classList.add("playing");
-      }
-
-      trackId.current = currentTrack?.url;
-    }
-  }, [sortedTracks, currentTrack?.url]);
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
-  if (!playlist || playlist.length === 0) {
-    return <div className="no-tracks">No tracks available</div>;
+  if (rows.length === 0) {
+    return <p className="timeline-empty">No tracks available</p>;
   }
 
   return (
-    <div className="timeline-container">
-      <div className="timeline-line"></div>
-      {sortedTracks.map((track, index) => (
-        <div
-          key={track.url}
-          className={`timeline-track ${index % 2 === 1 ? "right" : "left"} ${
-            track.url === currentTrack?.url ? "playing" : ""
-          }`}
-          data-index={index}
-        >
-          <div className="timeline-dot"></div>
-          <div className="timeline-content">
-            <div className="track-title">{track.title}</div>
-            <div className="track-artists">{track.authors.join(", ")}</div>
-            <div className="track-date">{formatDate(track.creationDate)}</div>
-          </div>
-        </div>
+    <ol className="timeline">
+      {rows.map(({ track, year, startsYear }) => (
+        <React.Fragment key={track.url}>
+          {startsYear ? (
+            <li className="timeline-year">
+              <span>{year}</span>
+            </li>
+          ) : null}
+
+          <li
+            className={`timeline-entry${
+              track.url === currentTrack?.url ? " playing" : ""
+            }`}
+          >
+            <p className="timeline-title">{track.title}</p>
+            <p className="timeline-meta">
+              {formatDate(track.creationDate) ? (
+                <span className="timeline-date">
+                  {formatDate(track.creationDate)}
+                </span>
+              ) : null}
+              <span className="timeline-authors">
+                {track.authors.join(", ")}
+              </span>
+            </p>
+          </li>
+        </React.Fragment>
       ))}
-    </div>
+    </ol>
   );
 };
