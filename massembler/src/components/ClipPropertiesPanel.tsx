@@ -8,16 +8,21 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
+import LinkIcon from '@mui/icons-material/Link';
+import LinkOffIcon from '@mui/icons-material/LinkOff';
 
 export function ClipPropertiesPanel() {
   const {
     selectedTrackClip,
+    selectedTrackClips,
     setSelectedTrackClip,
     tracks,
     clips,
     audioFiles,
     updateTrackClip,
-    removeClipFromTrack,
+    removeTrackClipGroup,
+    linkTrackClips,
+    unlinkTrackClips,
   } = useStore();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -41,6 +46,14 @@ export function ClipPropertiesPanel() {
   const trackClip = track?.clips.find((tc) => tc.id === selectedTrackClip?.trackClipId);
   const clip = trackClip ? clips.find((c) => c.id === trackClip.clipId) : undefined;
   const audioFile = clip ? audioFiles.find((f) => f.id === clip.audioFileId) : undefined;
+
+  const groupSize = trackClip?.linkId
+    ? tracks.reduce(
+        (count, t) =>
+          count + t.clips.filter((tc) => tc.linkId === trackClip.linkId).length,
+        0
+      )
+    : 0;
 
   const effectiveStartTime = trackClip?.trimStart ?? clip?.startTime ?? 0;
   const effectiveEndTime = trackClip?.trimEnd ?? clip?.endTime ?? 0;
@@ -281,9 +294,21 @@ export function ClipPropertiesPanel() {
     setSelectedTrackClip(null);
   };
 
+  // Deleting a linked clip takes its group with it. Unlink first to keep the
+  // others.
   const handleDelete = () => {
-    removeClipFromTrack(selectedTrackClip.trackId, selectedTrackClip.trackClipId);
+    removeTrackClipGroup(selectedTrackClip.trackId, selectedTrackClip.trackClipId);
     setSelectedTrackClip(null);
+  };
+
+  const handleLink = () => {
+    linkTrackClips(selectedTrackClips);
+  };
+
+  const handleUnlink = () => {
+    unlinkTrackClips(
+      selectedTrackClips.length > 1 ? selectedTrackClips : [selectedTrackClip]
+    );
   };
 
   const handleFadeInChange = (value: number) => {
@@ -326,15 +351,47 @@ export function ClipPropertiesPanel() {
   return (
     <div className="bg-gray-800 border-t border-gray-700 p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-white">Clip Properties: {clip.name}</h3>
+        <div className="flex items-center gap-3">
+          <h3 className="text-lg font-semibold text-white">Clip Properties: {clip.name}</h3>
+          {groupSize > 0 && (
+            <span className="text-xs text-gray-400">
+              Linked · {groupSize} clips move and trim together
+            </span>
+          )}
+          {groupSize === 0 && selectedTrackClips.length < 2 && (
+            <span className="text-xs text-gray-500">
+              Ctrl/⌘-click other clips to link them
+            </span>
+          )}
+        </div>
         <div className="flex gap-2">
+          {selectedTrackClips.length > 1 && (
+            <Button
+              onClick={handleLink}
+              size="small"
+              startIcon={<LinkIcon />}
+              sx={{ color: '#60a5fa' }}
+            >
+              Link {selectedTrackClips.length}
+            </Button>
+          )}
+          {groupSize > 0 && (
+            <Button
+              onClick={handleUnlink}
+              size="small"
+              startIcon={<LinkOffIcon />}
+              sx={{ color: '#9ca3af' }}
+            >
+              Unlink
+            </Button>
+          )}
           <Button
             onClick={handleDelete}
             size="small"
             startIcon={<DeleteIcon />}
             sx={{ color: '#ef4444' }}
           >
-            Delete
+            {groupSize > 0 ? `Delete group (${groupSize})` : 'Delete'}
           </Button>
           <button
             onClick={handleClose}

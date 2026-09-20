@@ -58,6 +58,12 @@ export interface TrackClip {
   id: string;
   clipId: string;
   position: number;  // Position on the timeline (in seconds)
+  /**
+   * Set when this clip is linked to others: every track clip sharing a linkId
+   * is one group, across tracks. Groups are flat - a clip belongs to at most
+   * one. See utils/clipLinks.ts for what linking does to moves and resizes.
+   */
+  linkId?: string;
   repeat: boolean;
   repeatCount?: number;
   effect?: ClipEffectId;

@@ -55,7 +55,23 @@ export type UndoAction =
       trackClipId: string;
       oldValues: Partial<TrackClip>;
       newValues: Partial<TrackClip>;
+    }
+  | {
+      /**
+       * Several edits that happened as one gesture, so they undo as one.
+       * Linked clips make this the common case: dragging one member moves
+       * or trims all of them, and that should cost a single undo.
+       */
+      type: 'BATCH';
+      actions: UndoAction[];
     };
+
+/** One entry for a gesture, however many clips it touched. */
+export function batchActions(actions: UndoAction[]): UndoAction | null {
+  if (actions.length === 0) return null;
+  if (actions.length === 1) return actions[0];
+  return { type: 'BATCH', actions };
+}
 
 export class UndoRedoManager {
   private undoStack: UndoAction[] = [];

@@ -1,9 +1,62 @@
 import { useState, useRef } from 'react';
+import LinkIcon from '@mui/icons-material/Link';
 import { TrackClip } from '../types';
-import { UndoAction } from '../utils/undoRedo';
+import { UndoAction, batchActions } from '../utils/undoRedo';
 import { getEffectInfo } from '../utils/clipEffects';
-import { getTrackClipEnd } from '../utils/clipTiming';
+import { getRepeatCount, getTrackClipDuration, getTrackClipEnd } from '../utils/clipTiming';
+import {
+  LinkedMember,
+  diffTrackClip,
+  findTrackClip,
+  linkedResizeLimit,
+  snapshotGroup,
+  solveLinkedMove,
+  solveLinkedResize,
+} from '../utils/clipLinks';
 import { useStore } from '../store';
+
+/** A colour per group, so linked clips can be told apart at a glance. */
+function linkColor(linkId: string): string {
+  const seed = [...linkId].reduce((hash, ch) => hash * 31 + ch.charCodeAt(0), 7);
+  return `hsl(${seed % 360}, 75%, 62%)`;
+}
+
+/** Where a clip sits now, whichever track a drag has left it on. */
+function currentPlacement(trackClipId: string) {
+  for (const track of useStore.getState().tracks) {
+    const trackClip = track.clips.find((tc) => tc.id === trackClipId);
+    if (trackClip) return { trackId: track.id, trackClip };
+  }
+  return null;
+}
+
+/**
+ * What a gesture did to the rest of the group, as undo actions. Members the
+ * dragged edge never reached come back unchanged and are left out.
+ */
+function groupUndoActions(snapshot: LinkedMember[], selfId: string): UndoAction[] {
+  const { tracks } = useStore.getState();
+  const actions: UndoAction[] = [];
+
+  for (const member of snapshot) {
+    if (member.trackClipId === selfId) continue;
+
+    const current = findTrackClip(tracks, member);
+    if (!current) continue;
+
+    const diff = diffTrackClip(member.trackClip, current);
+    if (!diff) continue;
+
+    actions.push({
+      type: 'UPDATE_TRACK_CLIP_OPTIONS',
+      trackId: member.trackId,
+      trackClipId: member.trackClipId,
+      ...diff,
+    });
+  }
+
+  return actions;
+}
 
 interface TrackClipBlockProps {
   trackId: string;
@@ -16,13 +69,21 @@ export function TrackClipBlock({
   trackClip,
   pixelsPerSecond,
 }: TrackClipBlockProps) {
-  const { clips, updateTrackClip, moveTrackClip, moveClipBetweenTracks, recordClipMovedBetweenTracks, audioFiles, tracks, selectedTrackClip, setSelectedTrackClip } = useStore();
+  const { clips, updateTrackClip, moveTrackClip, moveClipBetweenTracks, recordClipMovedBetweenTracks, audioFiles, tracks, selectedTrackClips, setSelectedTrackClip, toggleTrackClipSelection, applyTrackClipPatches, applyTrackClipMoves } = useStore();
   const clip = clips.find((s) => s.id === trackClip.clipId);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
   const dragStartPosRef = useRef(0);
 
-  const isSelected = selectedTrackClip?.trackId === trackId && selectedTrackClip?.trackClipId === trackClip.id;
+  const isSelected = selectedTrackClips.some((s) => s.trackClipId === trackClip.id);
+  const groupSize = trackClip.linkId
+    ? tracks.reduce(
+        (count, t) =>
+          count + t.clips.filter((tc) => tc.linkId === trackClip.linkId).length,
+        0
+      )
+    : 0;
+  const groupColor = trackClip.linkId ? linkColor(trackClip.linkId) : null;
 
   if (!clip) return null;
 
@@ -43,7 +104,9 @@ export function TrackClipBlock({
     if (!targetTrack) return false;
 
     const newStart = position;
-    const newEnd = position + effectiveDuration;
+    // Repetitions are part of what the clip occupies. Measuring only the first
+    // one let a repeating clip's tail slide straight through its neighbour.
+    const newEnd = position + getTrackClipDuration(trackClip, clip);
 
     return targetTrack.clips.some((tc) => {
       if (tc.id === trackClip.id) return false; // Skip self
@@ -65,6 +128,12 @@ export function TrackClipBlock({
     const target = e.target as HTMLElement;
     if (target.closest('.resize-handle')) return;
 
+    // Ctrl/cmd-click builds up the selection that Link works on.
+    if (e.metaKey || e.ctrlKey) {
+      toggleTrackClipSelection({ trackId, trackClipId: trackClip.id });
+      return;
+    }
+
     setSelectedTrackClip({ trackId, trackClipId: trackClip.id });
   };
 
@@ -81,6 +150,12 @@ export function TrackClipBlock({
     const originalEndTime = currentTrimEnd;
     const originalPosition = trackClip.position;
     const maxDuration = audioFile.duration;
+    const repeats = getRepeatCount(trackClip);
+
+    // The group as it stands now. Empty for an unlinked clip, which leaves
+    // everything below on the plain single-clip path.
+    const group = snapshotGroup(tracks, clips, { trackId, trackClipId: trackClip.id });
+    const self = group.find((m) => m.trackClipId === trackClip.id) ?? null;
 
     // Find adjacent clips for overlap checking
     const track = tracks.find((t) => t.id === trackId);
@@ -123,30 +198,70 @@ export function TrackClipBlock({
           newTrimStart = originalStartTime + clampedDelta;
         }
 
-        updateTrackClip(trackId, trackClip.id, {
-          trimStart: newTrimStart,
-          position: newPosition
-        });
+        if (self) {
+          // Stop where the first carried member would run out of length,
+          // rather than letting the group come apart.
+          const limit = linkedResizeLimit(group, self, 'left');
+          if (newPosition > limit) {
+            newPosition = limit;
+            newTrimStart = originalStartTime + (limit - originalPosition);
+          }
+        }
+
+        applyTrackClipPatches(
+          [
+            {
+              trackId,
+              trackClipId: trackClip.id,
+              updates: { trimStart: newTrimStart, position: newPosition },
+            },
+            ...(self ? solveLinkedResize(group, self, 'left', newPosition) : []),
+          ],
+          false
+        );
       } else {
         // Resize from right edge - adjust trimEnd only
         let newTrimEnd = Math.max(originalStartTime + 0.1, Math.min(originalEndTime + deltaTime, maxDuration));
         const newDuration = newTrimEnd - originalStartTime;
-        const newEndPosition = originalPosition + newDuration;
+        // Stretching one repetition stretches them all, so the clip's last
+        // repetition is what meets the next clip.
+        const newEndPosition = originalPosition + repeats * newDuration;
 
         // Check for overlap with clips that start after our current position
-        const clipsToRight = otherClips.filter((tc) => tc.position >= originalPosition + (originalEndTime - originalStartTime));
+        const clipsToRight = otherClips.filter(
+          (tc) => tc.position >= originalPosition + repeats * (originalEndTime - originalStartTime)
+        );
         if (clipsToRight.length > 0) {
           const closestClip = clipsToRight.reduce((prev, curr) =>
             curr.position < prev.position ? curr : prev
           );
           // Don't allow right edge to go past the start of the next clip
           if (newEndPosition > closestClip.position) {
-            const maxAllowedDuration = closestClip.position - originalPosition;
+            const maxAllowedDuration = (closestClip.position - originalPosition) / repeats;
             newTrimEnd = originalStartTime + maxAllowedDuration;
           }
         }
 
-        updateTrackClip(trackId, trackClip.id, { trimEnd: newTrimEnd });
+        // Where the clip now stops sounding, repeats included: that is the
+        // edge the rest of the group sees coming, not the handle under the
+        // mouse.
+        let edgeValue = originalPosition + repeats * (newTrimEnd - originalStartTime);
+
+        if (self) {
+          const limit = linkedResizeLimit(group, self, 'right');
+          if (edgeValue < limit) {
+            edgeValue = limit;
+            newTrimEnd = originalStartTime + (limit - originalPosition) / repeats;
+          }
+        }
+
+        applyTrackClipPatches(
+          [
+            { trackId, trackClipId: trackClip.id, updates: { trimEnd: newTrimEnd } },
+            ...(self ? solveLinkedResize(group, self, 'right', edgeValue) : []),
+          ],
+          false
+        );
       }
     };
 
@@ -177,7 +292,13 @@ export function TrackClipBlock({
           newPosition: finalTrackClip.position,
         };
 
-        undoManager.addAction(resizeAction);
+        // Whatever the gesture carried along goes in the same entry: one
+        // resize, one undo.
+        const action = batchActions([
+          resizeAction,
+          ...groupUndoActions(group, trackClip.id),
+        ]);
+        if (action) undoManager.addAction(action);
       }
     };
 
@@ -205,6 +326,18 @@ export function TrackClipBlock({
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
 
+    // The group travels as a rigid body, measured from where it all started.
+    const group = snapshotGroup(tracks, clips, { trackId, trackClipId: trackClip.id });
+
+    // A clip that is already sitting on top of another one - an arrangement
+    // made back when repetitions did not count towards a clip's footprint -
+    // would be frozen in place by the checks below, since every position it
+    // could move to overlaps too. Let it be dragged out of trouble.
+    const startedOverlapping =
+      group.length > 0
+        ? solveLinkedMove(tracks, clips, group, 0, 0) === null
+        : checkOverlap(trackId, trackClip.position);
+
     const handleMouseMove = (moveEvent: MouseEvent) => {
       // Find which track the mouse is currently over
       const allTrackElements = document.querySelectorAll('[data-track-id]');
@@ -229,8 +362,31 @@ export function TrackClipBlock({
       const relativeX = moveEvent.clientX - targetRect.left - offsetX;
       const newPosition = Math.max(0, relativeX / pixelsPerSecond);
 
+      if (group.length > 0) {
+        const live = useStore.getState().tracks;
+        const fromIndex = live.findIndex((t) => t.id === startTrackId);
+        const toIndex = live.findIndex((t) => t.id === targetTrackId);
+        if (fromIndex < 0 || toIndex < 0) return;
+
+        const moves = solveLinkedMove(
+          live,
+          clips,
+          group,
+          newPosition - dragStartPosRef.current,
+          toIndex - fromIndex,
+          { allowOverlap: startedOverlapping }
+        );
+
+        // One member blocked blocks the group: nothing moves until it fits.
+        if (!moves) return;
+
+        applyTrackClipMoves(moves, false);
+        currentTrackId = targetTrackId;
+        return;
+      }
+
       // Check for overlap before moving
-      if (checkOverlap(targetTrackId, newPosition)) {
+      if (!startedOverlapping && checkOverlap(targetTrackId, newPosition)) {
         // Don't update position if it would cause overlap
         return;
       }
@@ -249,6 +405,41 @@ export function TrackClipBlock({
 
     const handleMouseUp = () => {
       setIsDragging(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+
+      if (group.length > 0) {
+        // One entry for the whole group's drag.
+        const actions: UndoAction[] = [];
+
+        for (const member of group) {
+          const placement = currentPlacement(member.trackClipId);
+          if (!placement) continue;
+
+          if (placement.trackId !== member.trackId) {
+            actions.push({
+              type: 'MOVE_CLIP_BETWEEN_TRACKS',
+              sourceTrackId: member.trackId,
+              targetTrackId: placement.trackId,
+              trackClipId: member.trackClipId,
+              oldPosition: member.start,
+              newPosition: placement.trackClip.position,
+            });
+          } else if (Math.abs(placement.trackClip.position - member.start) > 0.01) {
+            actions.push({
+              type: 'MOVE_TRACK_CLIP',
+              trackId: member.trackId,
+              trackClipId: member.trackClipId,
+              oldPosition: member.start,
+              newPosition: placement.trackClip.position,
+            });
+          }
+        }
+
+        const action = batchActions(actions);
+        if (action) useStore.getState().undoManager.addAction(action);
+        return;
+      }
 
       // Get the final position from the store
       const state = useStore.getState();
@@ -273,9 +464,6 @@ export function TrackClipBlock({
           moveTrackClip(currentTrackId, trackClip.id, dragStartPosRef.current, finalPosition);
         }
       }
-
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -291,7 +479,15 @@ export function TrackClipBlock({
         } ${isResizing ? 'z-50' : ''} ${
           isSelected ? 'border-blue-300 border-2 ring-2 ring-blue-400' : 'border-blue-400'
         }`}
-        style={{ left: `${left}px`, width: `${width}px` }}
+        style={{
+          left: `${left}px`,
+          width: `${width}px`,
+          // Linked clips wear their group's colour, so which clips travel
+          // together is visible without selecting anything.
+          ...(groupColor && !isSelected
+            ? { borderColor: groupColor, borderWidth: '2px' }
+            : {}),
+        }}
         onMouseDown={handleMouseDown}
         onClick={handleClick}
       >
@@ -340,6 +536,16 @@ export function TrackClipBlock({
             {trackClip.effect && trackClip.effect !== 'none' && (
               <span className="shrink-0 px-1 rounded bg-purple-600 text-white text-[9px] uppercase tracking-wide">
                 {getEffectInfo(trackClip.effect).label}
+              </span>
+            )}
+            {groupColor && (
+              <span
+                className="shrink-0 px-1 rounded text-gray-900 text-[9px] font-bold flex items-center gap-0.5"
+                style={{ backgroundColor: groupColor }}
+                title={`Linked to ${groupSize - 1} other clip${groupSize === 2 ? '' : 's'}`}
+              >
+                <LinkIcon sx={{ fontSize: 10 }} />
+                {groupSize}
               </span>
             )}
           </div>

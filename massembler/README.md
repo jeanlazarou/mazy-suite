@@ -4,7 +4,7 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
 
 **▶ [Try it live](https://jeanlazarou.github.io/mazy-suite/massembler/)** — part of the [Mazy Suite](https://jeanlazarou.github.io/mazy-suite/). Everything runs in the browser; no audio is uploaded anywhere.
 
-![The clip library beside a four-track arrangement: clips carry Telephone and Lo-fi effect badges, a repeated clip trails its phantom copies, and the red playhead sits mid-playback](docs/screenshots/main-view.png)
+![The clip library beside a four-track arrangement: three clips across three tracks share an orange border and link badge marking them as one group, clips carry Telephone, Lo-fi and Deep effect badges, a repeated clip trails its phantom copies, and the red playhead sits mid-playback](docs/screenshots/main-view.png)
 
 ## 🎉 Major Features
 
@@ -43,6 +43,22 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
 - **Repeat Functionality**: Mark clips to repeat with configurable repeat count
   - Visual phantom clips show where repetitions will play
   - Can be disabled by setting count to 1
+  - Repetitions count as part of what the clip occupies: a move or a stretch is
+    refused when the *last* repetition would run into the next clip, not the
+    first. Repeats are never dropped to make something fit — shortening a clip
+    is a resize, and stays something you ask for
+- **Linked Clips**: Tie clips that belong together into a group, across any tracks
+  - Moving one moves the group, every relative position intact. It travels as
+    one or not at all, so a member with nowhere to land blocks the whole drag
+  - Resizing behaves like a plunger: the dragged edge carries along each
+    member's edge it runs into, and leaves alone the ones it never reaches.
+    Growing an edge therefore disturbs nobody — it only moves away from them
+  - A carried repeating clip counts as one long clip: it gives up whole
+    repetitions first, and only once the last one is gone does its trim move
+  - The gesture halts before any member is squeezed below its minimum length,
+    rather than letting the group quietly come apart
+  - Each group wears its own colour and a chain badge carrying its size
+  - Deleting a linked clip deletes its group; **Unlink** rescues a member first
 - **Fades**: Per-clip fade in/out, draggable directly on the clip's waveform
 - **Clip Effects**: One-click treatments applied per track clip, no parameters to tune
   - **Reverse** — plays the clip backwards
@@ -61,7 +77,10 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - Moving clips within tracks
   - Moving clips between tracks
   - Resizing clips
+  - Linking and unlinking clips
   - Deleting tracks
+  - A gesture on a linked group is a single entry, however many clips it moved
+    or trimmed along the way
   - Keyboard shortcuts (Ctrl+Z / Cmd+Z for undo, Ctrl+Shift+Z / Cmd+Shift+Z for redo)
 
 ### Track Controls
@@ -232,6 +251,22 @@ only the name can be edited. The row tells you which case applies.
 
    Clips carrying an effect show a badge on the timeline block.
 
+7. **Link clips that belong together**: click one clip, then ⌘-click (Ctrl-click
+   on Windows and Linux) each of the others — on any track, including the same
+   one — and press **Link** in the properties panel. The group gets a colour of
+   its own and a chain badge showing how many clips are in it.
+   - Drag any member and the whole group follows, spacing unchanged
+   - Trim any member and the edge you drag carries along the members' edges it
+     reaches on the way. Ones it never reaches, including anything reaching
+     further out than the clip you are dragging, stay exactly as they are
+   - Growing an edge is always free: it moves away from the others
+   - The drag stops as soon as a carried clip has no length left to give
+   - ⌘-click a selected clip again to drop it from the selection; a plain click
+     starts a new one
+   - **Unlink** takes a clip back out of its group. **Delete** on a linked clip
+     removes the whole group, so unlink first if you only meant the one
+   - Linking survives save and load: groups come back as you left them
+
 ### 4. Control Tracks
 
 - **Volume**: Rotate the volume knob (shows value in center)
@@ -268,7 +303,10 @@ only the name can be edited. The row tells you which case applies.
   - Moving clips within tracks
   - Moving clips between tracks
   - Resizing clips
+  - Linking and unlinking clips
   - Deleting tracks
+- A move or resize that carried a linked group undoes in one step, putting
+  every member back where it was
 
 ### 7. Save and Export
 
@@ -323,8 +361,8 @@ massembler/
 │   │   ├── WaveformEditorModal.tsx # Advanced waveform editor / clip editor
 │   │   ├── Timeline.tsx            # Multi-track timeline
 │   │   ├── Track.tsx               # Individual track component
-│   │   ├── TrackClipBlock.tsx      # Clip block with resize/repeat
-│   │   ├── ClipPropertiesPanel.tsx # Per-clip effects, fades and repeats
+│   │   ├── TrackClipBlock.tsx      # Clip block with resize/repeat/linking
+│   │   ├── ClipPropertiesPanel.tsx # Per-clip effects, fades, repeats, linking
 │   │   ├── VolumeKnob.tsx          # Rotary volume control
 │   │   ├── PlaybackControls.tsx    # Playback UI
 │   │   ├── UndoRedoControls.tsx    # Undo/redo UI
@@ -336,6 +374,8 @@ massembler/
 │   │   ├── clipEffects.ts          # Preset effect chains, shared by
 │   │   │                           #   playback and export
 │   │   ├── clipTiming.ts           # How long a track clip occupies
+│   │   ├── clipLinks.ts            # Linked groups: what a move or a resize
+│   │   │                           #   does to the rest of the group
 │   │   ├── projectOptimizer.ts     # Trim analysis, remapping, relinking
 │   │   ├── undoRedo.ts             # Undo/redo manager
 │   │   └── projectManager.ts       # Save/load/export logic
@@ -381,6 +421,10 @@ keeps projects close to the size of the files they were built from. Trimmed
   "pixelsPerSecond": 50      // Timeline zoom level
 }
 ```
+
+A track clip in a link group carries a `linkId`; every clip sharing one is in
+the same group. The field is simply absent on an unlinked clip, so projects
+saved before linking existed load unchanged and the format version stays at 3.
 
 Each entry in `audioFiles` names the file that holds it inside the archive, and
 optimized files additionally record what was kept:
