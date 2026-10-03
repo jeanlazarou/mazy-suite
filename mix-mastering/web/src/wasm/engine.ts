@@ -2,13 +2,6 @@ export interface ProcessorParams {
   [processor: string]: { [param: string]: number };
 }
 
-export interface PresetInfo {
-  name: string;
-  category: string;
-  description: string;
-  tags: string[];
-}
-
 export interface MeterData {
   [processor: string]: {
     max_gr_db: number;
@@ -65,15 +58,39 @@ export interface StageSummary {
   spec_freqs?: number[]; // band centers in Hz
 }
 
-export interface Recommendation {
-  target: string;
-  suggestions: {
-    category: string;
-    description: string;
-    priority: string;
-    auto_apply: boolean;
-  }[];
+// One style ("what is it?") or destination ("where will it be heard?")
+// offered by the Go recipe builder (pkg/recipe).
+export interface RecipeOption {
+  id: string;
+  name: string;
+  description: string;
+  group?: 'release' | 'device'; // destinations only
+  target_lufs?: number; // destinations only
+  ceiling_dbtp?: number; // destinations only
+}
+
+export interface RecipeOptions {
+  styles: RecipeOption[];
+  destinations: RecipeOption[];
+}
+
+export interface RecipeChoice {
+  style: string; // '' = no style
+  destination: string;
+  fix: boolean;
+}
+
+/** Complete chain settings for a RecipeChoice: every param of every
+ *  processor plus bypass state, so applying one never leaves values
+ *  behind from an earlier choice. */
+export interface Recipe extends RecipeChoice {
+  summary: string;
+  notes: { layer: 'style' | 'destination' | 'fix'; text: string }[];
+  fixes: number;
+  target_lufs: number;
+  ceiling_dbtp: number;
   processors: ProcessorParams;
+  enabled: Record<string, boolean>;
 }
 
 interface PendingCall {
@@ -196,38 +213,21 @@ export class AudioEngine {
     return JSON.parse(json);
   }
 
-  /** Like analyzeBuffer, but does not become the reference analysis that
-   *  recommendations derive from. Use for processed audio. */
+  /** Same analysis as analyzeBuffer; used for processed audio. */
   async inspectBuffer(data: Float32Array, channels: number, sampleRate: number): Promise<AnalysisResult> {
     const json = await this.call<string>('wasmInspectBuffer', [data, channels, sampleRate], [data.buffer]);
     return JSON.parse(json);
   }
 
-  async getRecommendations(target: string): Promise<Recommendation> {
-    return JSON.parse(await this.call<string>('wasmGetRecommendations', [target]));
+  async getRecipeOptions(): Promise<RecipeOptions> {
+    return JSON.parse(await this.call<string>('wasmRecipeOptions', []));
   }
 
-  /** Recommendations based on an aggregate of per-track analyses, suiting
-   *  the album as a whole rather than one track. */
-  async getAlbumRecommendations(analyses: AnalysisResult[], target: string): Promise<Recommendation> {
-    return JSON.parse(await this.call<string>('wasmGetAlbumRecommendations', [JSON.stringify(analyses), target]));
-  }
-
-  applyRecommendations(target: string): Promise<void> {
-    return this.call('wasmApplyRecommendations', [target]);
-  }
-
-  async listPresets(): Promise<PresetInfo[]> {
-    return JSON.parse(await this.call<string>('wasmListPresets', []));
-  }
-
-  async applyPreset(name: string): Promise<void> {
-    const err = await this.call<string | null>('wasmApplyPreset', [name]);
-    if (err) console.warn('applyPreset error:', err);
-  }
-
-  async listTargets(): Promise<Record<string, any>> {
-    return JSON.parse(await this.call<string>('wasmListTargets', []));
+  /** Builds (does not apply) the settings for a choice. analyses: the
+   *  active track's analysis, or every track's for an album (aggregated
+   *  Go-side so the settings suit the whole record). */
+  async buildRecipe(choice: RecipeChoice, analyses: AnalysisResult[]): Promise<Recipe | { error: string }> {
+    return JSON.parse(await this.call<string>('wasmBuildRecipe', [JSON.stringify(choice), JSON.stringify(analyses)]));
   }
 
   reset(): Promise<void> {

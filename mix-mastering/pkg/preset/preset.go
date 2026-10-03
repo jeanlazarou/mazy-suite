@@ -1,7 +1,11 @@
+// Package preset stores user presets: complete chain settings saved under a
+// name in a directory (the CLI uses ~/.audiomaster/presets). There are no
+// built-in presets — the built-in way to choose settings is pkg/recipe
+// (style × destination × fixes), which, unlike fixed presets, combines and
+// adapts to the analysis of the audio.
 package preset
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,13 +13,10 @@ import (
 	"strings"
 )
 
-//go:embed builtins/*.json
-var builtinPresets embed.FS
-
 // Preset represents a mastering preset.
 type Preset struct {
 	Name        string                        `json:"name"`
-	Category    string                        `json:"category"` // genre, target, usecase
+	Category    string                        `json:"category"`
 	Description string                        `json:"description"`
 	Author      string                        `json:"author"`
 	Tags        []string                      `json:"tags"`
@@ -34,32 +35,10 @@ func NewManager(customDir string) *Manager {
 		presets:   make(map[string]*Preset),
 		customDir: customDir,
 	}
-	m.loadBuiltins()
 	if customDir != "" {
 		m.loadCustom()
 	}
 	return m
-}
-
-func (m *Manager) loadBuiltins() {
-	entries, err := builtinPresets.ReadDir("builtins")
-	if err != nil {
-		return
-	}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		data, err := builtinPresets.ReadFile("builtins/" + entry.Name())
-		if err != nil {
-			continue
-		}
-		var p Preset
-		if err := json.Unmarshal(data, &p); err != nil {
-			continue
-		}
-		m.presets[strings.ToLower(p.Name)] = &p
-	}
 }
 
 func (m *Manager) loadCustom() {

@@ -5,10 +5,13 @@ import (
 	"math"
 )
 
-// Limiter implements a lookahead brickwall limiter.
+// Limiter implements a lookahead brickwall limiter with a true-peak
+// ceiling: neither samples nor the peaks between samples (measured with the
+// same 4x interpolator as LUFSMeter.MeasureTruePeak, BS.1770-4 Annex 2) end
+// up above the ceiling, so a ceiling of -1 means -1 dBTP.
 //
 // The gain envelope is computed in three stages over the whole buffer:
-//  1. per-sample target gain (ceiling / peak),
+//  1. per-sample target gain (ceiling / true peak around the sample),
 //  2. sliding-window minimum over the lookahead window, so gain reduction
 //     begins before a peak arrives,
 //  3. release smoothing followed by a moving average the width of the
@@ -16,8 +19,12 @@ import (
 //
 // Because the minimum is taken over the full lookahead window before
 // averaging, the averaged gain at a peak can never exceed the gain that
-// peak requires — the ceiling is a hard guarantee. Processing adds no
-// latency and output stays aligned with input.
+// peak requires, which makes the ceiling exact for samples. Interpolated
+// peaks also depend on the gain at neighbouring samples, so after applying
+// the envelope the output is re-measured and limited again where a small
+// inter-sample overshoot remains; a final whole-buffer trim backs the
+// guarantee if that ever fails to converge. Processing adds no latency and
+// output stays aligned with input.
 type Limiter struct {
 	BaseProcessor
 	Ceiling    float64 // dB (output ceiling)
@@ -42,6 +49,11 @@ func NewLimiter(sampleRate float64) *Limiter {
 	}
 }
 
+// limiterPasses bounds the re-measure-and-limit passes; overshoots left
+// after the first pass are fractions of a dB, so one more pass normally
+// suffices.
+const limiterPasses = 4
+
 // Process applies limiting to the audio buffer.
 func (l *Limiter) Process(buf *AudioBuffer) error {
 	if !l.IsEnabled {
@@ -55,26 +67,106 @@ func (l *Limiter) Process(buf *AudioBuffer) error {
 	}
 
 	ceilingLin := dbToLinear(l.Ceiling)
+	limit := ceilingLin * (1 + 1e-9)
+
+	total := make([]float64, length)
+	for i := range total {
+		total[i] = 1
+	}
+	for pass := 0; pass < limiterPasses; pass++ {
+		peaks := crossChannelTruePeak(buf)
+		over := false
+		for _, p := range peaks {
+			if p > limit {
+				over = true
+				break
+			}
+		}
+		if !over {
+			break
+		}
+		gain := l.gainEnvelope(peaks, ceilingLin)
+		for ch := 0; ch < channels; ch++ {
+			for i := 0; i < length; i++ {
+				buf.Samples[ch][i] *= gain[i]
+			}
+		}
+		for i := range total {
+			total[i] *= gain[i]
+		}
+	}
+
+	// Backstop: interpolation is linear, so scaling the whole buffer by
+	// ceiling/peak is exact.
+	var peak float64
+	for _, p := range crossChannelTruePeak(buf) {
+		peak = math.Max(peak, p)
+	}
+	if peak > limit {
+		trim := ceilingLin / peak
+		for ch := 0; ch < channels; ch++ {
+			for i := 0; i < length; i++ {
+				buf.Samples[ch][i] *= trim
+			}
+		}
+		for i := range total {
+			total[i] *= trim
+		}
+	}
+
+	l.minGain = 1.0
+	l.sumGain = 0
+	l.gainSamples = length
+	for _, g := range total {
+		if g < l.minGain {
+			l.minGain = g
+		}
+		l.sumGain += g
+	}
+	return nil
+}
+
+// crossChannelTruePeak returns, per sample, the largest true-peak value
+// over all channels (see truePeakEnvelope).
+func crossChannelTruePeak(buf *AudioBuffer) []float64 {
+	var peaks []float64
+	for ch := 0; ch < buf.Channels(); ch++ {
+		env := truePeakEnvelope(buf.Samples[ch])
+		if peaks == nil {
+			peaks = env
+			continue
+		}
+		for i, v := range env {
+			if v > peaks[i] {
+				peaks[i] = v
+			}
+		}
+	}
+	return peaks
+}
+
+// gainEnvelope computes the limiter gain for per-sample peak levels.
+func (l *Limiter) gainEnvelope(peaks []float64, ceilingLin float64) []float64 {
+	length := len(peaks)
 	releaseCoeff := math.Exp(-1.0 / (l.Release * 0.001 * l.sampleRate))
 	window := int(l.Lookahead * 0.001 * l.sampleRate)
 	if window < 1 {
 		window = 1
 	}
 
-	// Stage 1: per-sample target gain from the cross-channel peak.
+	// Stage 1: per-sample target gain. The peak between samples i and i+1
+	// is built from both, so it constrains both.
 	target := make([]float64, length)
-	for i := 0; i < length; i++ {
-		var peak float64
-		for ch := 0; ch < channels; ch++ {
-			abs := math.Abs(buf.Samples[ch][i])
-			if abs > peak {
-				peak = abs
-			}
-		}
+	for i := range target {
+		target[i] = 1.0
+	}
+	for i, peak := range peaks {
 		if peak > ceilingLin {
-			target[i] = ceilingLin / peak
-		} else {
-			target[i] = 1.0
+			g := ceilingLin / peak
+			target[i] = math.Min(target[i], g)
+			if i+1 < length {
+				target[i+1] = math.Min(target[i+1], g)
+			}
 		}
 	}
 
@@ -131,24 +223,7 @@ func (l *Limiter) Process(buf *AudioBuffer) error {
 			gain[i] = g
 		}
 	}
-
-	l.minGain = 1.0
-	l.sumGain = 0
-	l.gainSamples = length
-	for _, g := range gain {
-		if g < l.minGain {
-			l.minGain = g
-		}
-		l.sumGain += g
-	}
-
-	for ch := 0; ch < channels; ch++ {
-		for i := 0; i < length; i++ {
-			buf.Samples[ch][i] *= gain[i]
-		}
-	}
-
-	return nil
+	return gain
 }
 
 // GainReduction reports the max and average gain reduction (dB, positive)

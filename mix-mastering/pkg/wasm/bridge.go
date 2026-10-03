@@ -7,16 +7,14 @@ import (
 	"github.com/audiomaster/mastering/pkg/analysis"
 	"github.com/audiomaster/mastering/pkg/dsp"
 	"github.com/audiomaster/mastering/pkg/engine"
-	"github.com/audiomaster/mastering/pkg/preset"
+	"github.com/audiomaster/mastering/pkg/recipe"
 )
 
 // Bridge provides the Go-side API for WASM <-> JS communication.
 type Bridge struct {
-	Engine       *engine.MasteringEngine
-	PresetMgr    *preset.Manager
-	LastAnalysis *analysis.AnalysisResult
-	sampleRate   int
-	channels     int
+	Engine     *engine.MasteringEngine
+	sampleRate int
+	channels   int
 }
 
 // NewBridge creates a new WASM bridge.
@@ -330,18 +328,14 @@ func (b *Bridge) SetProcessorEnabled(name string, enabled bool) {
 	}
 }
 
-// AnalyzeBuffer analyzes audio and returns JSON results. The result is
-// cached as the reference analysis that recommendations derive from, so
-// this should only be called with the original (unprocessed) audio.
+// AnalyzeBuffer analyzes audio and returns JSON results. The UI calls it
+// for the original audio (InspectBuffer for processed audio); both are
+// stateless — recipes get their analyses passed in explicitly.
 func (b *Bridge) AnalyzeBuffer(input []float32, channels, sampleRate int) string {
-	result := b.analyze(input, channels, sampleRate)
-	b.LastAnalysis = result
-	data, _ := json.Marshal(result)
-	return string(data)
+	return b.InspectBuffer(input, channels, sampleRate)
 }
 
-// InspectBuffer analyzes audio without touching the cached reference
-// analysis. Used to display the characteristics of processed audio.
+// InspectBuffer analyzes audio and returns JSON results.
 func (b *Bridge) InspectBuffer(input []float32, channels, sampleRate int) string {
 	result := b.analyze(input, channels, sampleRate)
 	data, _ := json.Marshal(result)
@@ -361,99 +355,31 @@ func (b *Bridge) analyze(input []float32, channels, sampleRate int) *analysis.An
 	return analysis.Analyze(buf)
 }
 
-// GetRecommendations returns recommendations for a target.
-func (b *Bridge) GetRecommendations(target string) string {
-	if b.LastAnalysis == nil {
-		return `{"error": "no analysis available"}`
-	}
-	rec, err := analysis.Recommend(b.LastAnalysis, target)
-	if err != nil {
-		return `{"error": "` + err.Error() + `"}`
-	}
-	data, _ := json.Marshal(rec)
+// RecipeOptions returns the styles and destinations the UI offers, as JSON.
+func (b *Bridge) RecipeOptions() string {
+	data, _ := json.Marshal(recipe.ListOptions())
 	return string(data)
 }
 
-// GetAlbumRecommendations returns recommendations for a target based on an
-// aggregate of per-track analyses (JSON array of AnalysisResult), so the
-// suggestion suits the album as a whole rather than one track.
-func (b *Bridge) GetAlbumRecommendations(analysesJSON, target string) string {
+// BuildRecipe returns the complete chain settings for a choice (JSON
+// recipe.Choice) as JSON. analysesJSON is a JSON array of the analyses
+// the fixes derive from: one for a single track, every track for an
+// album (aggregated, so the settings suit the record as a whole). It does
+// not touch the engine — the UI replays the recipe's params and bypass
+// state like any other settings change.
+func (b *Bridge) BuildRecipe(choiceJSON, analysesJSON string) string {
+	var c recipe.Choice
+	if err := json.Unmarshal([]byte(choiceJSON), &c); err != nil {
+		return `{"error": "invalid choice"}`
+	}
 	var results []*analysis.AnalysisResult
-	if err := json.Unmarshal([]byte(analysesJSON), &results); err != nil || len(results) == 0 {
-		return `{"error": "no analyses provided"}`
-	}
-	agg := analysis.Aggregate(results)
-	rec, err := analysis.Recommend(agg, target)
+	json.Unmarshal([]byte(analysesJSON), &results)
+	r, err := recipe.Build(c, analysis.Aggregate(results))
 	if err != nil {
-		return `{"error": "` + err.Error() + `"}`
+		data, _ := json.Marshal(map[string]string{"error": err.Error()})
+		return string(data)
 	}
-	data, _ := json.Marshal(rec)
-	return string(data)
-}
-
-// ApplyRecommendations applies recommendation settings to the engine.
-func (b *Bridge) ApplyRecommendations(target string) error {
-	if b.LastAnalysis == nil || b.Engine == nil {
-		return nil
-	}
-	rec, err := analysis.Recommend(b.LastAnalysis, target)
-	if err != nil {
-		return err
-	}
-	for procName, params := range rec.Processors {
-		for paramName, value := range params {
-			b.Engine.SetParam(procName, paramName, value)
-		}
-	}
-	return nil
-}
-
-// ListPresets returns available presets as JSON.
-func (b *Bridge) ListPresets() string {
-	if b.PresetMgr == nil {
-		b.PresetMgr = preset.NewManager("")
-	}
-	presets := b.PresetMgr.List()
-	type presetInfo struct {
-		Name        string   `json:"name"`
-		Category    string   `json:"category"`
-		Description string   `json:"description"`
-		Tags        []string `json:"tags"`
-	}
-	var infos []presetInfo
-	for _, p := range presets {
-		infos = append(infos, presetInfo{
-			Name:        p.Name,
-			Category:    p.Category,
-			Description: p.Description,
-			Tags:        p.Tags,
-		})
-	}
-	data, _ := json.Marshal(infos)
-	return string(data)
-}
-
-// ApplyPreset applies a preset by name.
-func (b *Bridge) ApplyPreset(name string) error {
-	if b.PresetMgr == nil {
-		b.PresetMgr = preset.NewManager("")
-	}
-	p, err := b.PresetMgr.Get(name)
-	if err != nil {
-		return err
-	}
-	for procName, params := range p.Processors {
-		for paramName, value := range params {
-			b.Engine.SetParam(procName, paramName, value)
-		}
-	}
-	return nil
-}
-
-// ListTargets returns available target profiles.
-func (b *Bridge) ListTargets() string {
-	targets := analysis.ListTargets()
-	data, _ := json.Marshal(targets)
+	data, _ := json.Marshal(r)
 	return string(data)
 }
 

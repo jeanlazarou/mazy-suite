@@ -83,6 +83,14 @@ func Aggregate(results []*AnalysisResult) *AnalysisResult {
 	if n > 0 {
 		agg.Loudness.IntegratedLUFS = -0.691 + 10*math.Log10(powerSum/float64(n))
 	}
+	// Loudness range: median, so one very quiet or very dense track
+	// doesn't decide the album's compression.
+	agg.Loudness.LoudnessRange = median(collect(func(r *AnalysisResult) (float64, bool) {
+		if r.Loudness == nil {
+			return 0, false
+		}
+		return r.Loudness.LoudnessRange, true
+	}))
 
 	widths := collect(func(r *AnalysisResult) (float64, bool) {
 		if r.StereoField == nil {

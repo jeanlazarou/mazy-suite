@@ -18,11 +18,11 @@ const fmt = (v: number | undefined, digits = 1, suffix = '') =>
 const STEPS = [
   {
     label: 'Set the shared sound',
-    tip: 'Pick a preset and/or "Apply to Album". Settings apply to every track of the album at once.',
+    tip: 'Say what the music is and where it will be heard. Settings apply to every track of the album at once.',
   },
   {
     label: 'Audition tracks',
-    tip: 'Click any track, Process, and A/B it against the original. Optional — listen to as many tracks as you like; nothing has to be repeated per track.',
+    tip: 'Click any track and A/B it against the original — the preview updates by itself. Optional: listen to as many tracks as you like; nothing has to be repeated per track.',
   },
   {
     label: 'Export album',
@@ -85,7 +85,7 @@ export const AlbumPanel: React.FC = () => {
 
   // Suggested next step for the workflow guide: settings first, then
   // audition (until the current settings have been processed), then export.
-  const settingsTouched = useStore((s) => !!(s.activePreset || s.appliedTarget || s.paramsEdited));
+  const settingsTouched = useStore((s) => s.recipe !== null || s.customPreset !== null);
   const auditionReady = useStore((s) => s.processedBuffer !== null && !s.paramsDirty);
   const currentStep = !settingsTouched ? 1 : auditionReady ? 3 : 2;
 
@@ -122,7 +122,7 @@ export const AlbumPanel: React.FC = () => {
             {albumMode && albumPostLufs !== null &&
               ` — with current settings ${albumPostLufs.toFixed(1)} LUFS → target ${target.toFixed(1)} (offset ${target - albumPostLufs >= 0 ? '+' : ''}${(target - albumPostLufs).toFixed(1)} dB, same for all tracks)`}
             {albumMode && albumPostLufs === null &&
-              ` — target ${target.toFixed(1)} LUFS; offset is measured on first Process`}
+              ` — target ${target.toFixed(1)} LUFS; offset is measured when the preview updates`}
           </Typography>
         )}
         <Box sx={{ flex: 1 }} />

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AnalysisResult, Recommendation, PresetInfo, ProcessorParams, MeterData, StageSummary } from '../wasm/engine';
+import type { AnalysisResult, ProcessorParams, MeterData, StageSummary, Recipe, RecipeChoice, RecipeOptions } from '../wasm/engine';
 import { type CustomPreset, loadCustomPresets } from '../audio/customPresets';
 
 export interface AudioFileInfo {
@@ -81,29 +81,33 @@ interface AppState {
   matchGainDB: number | null;
 
   // Analysis of the original audio (runs automatically on file load);
-  // recommendations always derive from this.
+  // the recipe's fixes derive from this.
   analysis: AnalysisResult | null;
   // Analysis of the last processed result, for display only.
   processedAnalysis: AnalysisResult | null;
   isAnalyzing: boolean;
-  recommendation: Recommendation | null;
-  // Whether the current recommendation was derived from the active track's
-  // analysis or the album aggregate.
-  recommendationScope: 'track' | 'album';
-  selectedTarget: string;
-  // Target whose recommendations are currently applied to the engine;
-  // cleared when a preset is applied or a new file is loaded.
-  appliedTarget: string | null;
-  // True when params were manually tweaked after the last preset or
-  // recommendation apply — the settings no longer exactly match either.
+
+  // Master settings: what the material is (style), where it will be heard
+  // (destination) and whether to fix problems found by the analysis. The
+  // Go side turns a choice into complete chain settings (a recipe); the
+  // recipe-sync effect in App rebuilds and applies it whenever the
+  // choice or the analysis it depends on changes.
+  recipeOptions: RecipeOptions | null;
+  choice: RecipeChoice;
+  // Recipe currently applied, and the choice+analysis identity it was
+  // built for (null forces a rebuild). Null recipe while a custom preset
+  // is loaded.
+  recipe: Recipe | null;
+  recipeKey: string | null;
+  // Name of the loaded custom preset; while set, choices aren't applied.
+  customPreset: string | null;
+  // True when params were manually tweaked after the last recipe or
+  // custom preset was applied.
   paramsEdited: boolean;
 
-  // Presets. Built-in presets come from the Go engine (setPresets, on
-  // init); custom presets are saved locally and loaded synchronously at
+  // User-saved presets, kept in localStorage; loaded synchronously at
   // store creation, independent of WASM being ready.
-  presets: PresetInfo[];
   customPresets: CustomPreset[];
-  activePreset: string | null;
 
   // UI
   loading: boolean;
@@ -148,16 +152,18 @@ interface AppState {
   setLoudnessMatch: (v: boolean) => void;
   setMatchGainDB: (v: number | null) => void;
   setIsAnalyzing: (v: boolean) => void;
-  setAppliedTarget: (t: string | null) => void;
   setParamsEdited: (v: boolean) => void;
+  setParamsDirty: (v: boolean) => void;
   setAnalysis: (a: AnalysisResult | null) => void;
   setProcessedAnalysis: (a: AnalysisResult | null) => void;
-  setRecommendationScope: (s: 'track' | 'album') => void;
-  setRecommendation: (r: Recommendation | null) => void;
-  setSelectedTarget: (t: string) => void;
-  setPresets: (p: PresetInfo[]) => void;
+  setRecipeOptions: (o: RecipeOptions) => void;
+  // Changing the choice leaves any loaded custom preset.
+  setChoice: (patch: Partial<RecipeChoice>) => void;
+  setAppliedRecipe: (r: Recipe | null, key: string | null) => void;
+  setCustomPreset: (name: string | null) => void;
+  // Replace all params and bypass state at once (recipe / custom preset).
+  applySettings: (params: ProcessorParams, enabled: Record<string, boolean>) => void;
   setCustomPresets: (p: CustomPreset[]) => void;
-  setActivePreset: (name: string | null) => void;
   setLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
   requestSeek: (position: number) => void;
@@ -177,7 +183,6 @@ const freshTrackView = {
   processedBuffer: null,
   processedAnalysis: null,
   analysis: null,
-  recommendation: null,
   meters: {},
   matchGainDB: null,
   paramsDirty: true,
@@ -212,14 +217,13 @@ export const useStore = create<AppState>((set) => ({
   analysis: null,
   processedAnalysis: null,
   isAnalyzing: false,
-  recommendation: null,
-  recommendationScope: 'track',
-  selectedTarget: 'neutral',
-  appliedTarget: null,
+  recipeOptions: null,
+  choice: { style: '', destination: 'streaming', fix: true },
+  recipe: null,
+  recipeKey: null,
+  customPreset: null,
   paramsEdited: false,
-  presets: [],
   customPresets: loadCustomPresets(),
-  activePreset: null,
   loading: true,
   error: null,
   paramsDirty: true,
@@ -244,7 +248,6 @@ export const useStore = create<AppState>((set) => ({
         activeTrackId: activate.id,
         originalBuffer: activate.buffer,
         fileInfo: activate.info,
-        appliedTarget: null,
         ...freshTrackView,
       } : {}),
     };
@@ -267,7 +270,7 @@ export const useStore = create<AppState>((set) => ({
   setAlbumCalibration: (key, postLufs) => set({ albumCalKey: key, albumPostLufs: postLufs }),
   setAlbumCalibrating: (msg) => set({ albumCalibrating: msg }),
   setOriginalBuffer: (buffer, info) => set({
-    originalBuffer: buffer, fileInfo: info, appliedTarget: null,
+    originalBuffer: buffer, fileInfo: info,
     ...freshTrackView,
   }),
   setProcessedBuffer: (buffer) => set({ processedBuffer: buffer, paramsDirty: false }),
@@ -284,11 +287,11 @@ export const useStore = create<AppState>((set) => ({
   // carry a top-level "enabled" key (currently the Bass/Treble Exciters,
   // which self-report bypass state through the params mirror the way the
   // EQ's bands report band.N.enabled). Every mutation path — setParam,
-  // setProcessorEnabled, applyPreset, applyRecommendations,
-  // applyXraySetup, computeXrayStages, engine init — funnels through
+  // setProcessorEnabled, applyCustomPreset, applyXraySetup,
+  // computeXrayStages, engine init — funnels through
   // setParams(await engine.getParams()), so this is the one place that
   // keeps the store's bypass state from ever diverging from the engine's:
-  // a recommendation that turns an exciter on writes "enabled: 1" into
+  // a custom preset that turns an exciter on writes "enabled: 1" into
   // its params, and that alone is enough for the panel switch, the strip
   // chip, and the X-Ray lane to agree, with no separate wiring needed.
   // Preserves object identity when nothing changed, so this doesn't
@@ -315,16 +318,18 @@ export const useStore = create<AppState>((set) => ({
   setLoudnessMatch: (v) => set({ loudnessMatch: v }),
   setMatchGainDB: (v) => set({ matchGainDB: v }),
   setIsAnalyzing: (v) => set({ isAnalyzing: v }),
-  setAppliedTarget: (t) => set({ appliedTarget: t }),
   setParamsEdited: (v) => set({ paramsEdited: v }),
+  setParamsDirty: (v) => set({ paramsDirty: v }),
   setAnalysis: (a) => set({ analysis: a }),
   setProcessedAnalysis: (a) => set({ processedAnalysis: a }),
-  setRecommendationScope: (s) => set({ recommendationScope: s }),
-  setRecommendation: (r) => set({ recommendation: r }),
-  setSelectedTarget: (t) => set({ selectedTarget: t }),
-  setPresets: (p) => set({ presets: p }),
+  setRecipeOptions: (o) => set({ recipeOptions: o }),
+  setChoice: (patch) => set((s) => ({ choice: { ...s.choice, ...patch }, customPreset: null })),
+  setAppliedRecipe: (r, key) => set({ recipe: r, recipeKey: key }),
+  setCustomPreset: (name) => set({ customPreset: name }),
+  applySettings: (params, enabled) => set({
+    params, processorEnabled: enabled, paramsDirty: true, xrayActiveSetupId: null,
+  }),
   setCustomPresets: (p) => set({ customPresets: p }),
-  setActivePreset: (name) => set({ activePreset: name }),
   setLoading: (v) => set({ loading: v }),
   setError: (e) => set({ error: e }),
   requestSeek: (position) => set({ seekRequest: position }),
@@ -358,9 +363,8 @@ export const useStore = create<AppState>((set) => ({
     analysis: null,
     processedAnalysis: null,
     isAnalyzing: false,
-    recommendation: null,
-    appliedTarget: null,
-    activePreset: null,
+    recipe: null,
+    recipeKey: null,
     error: null,
     meters: {},
     matchGainDB: null,

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, IconButton, Typography, ToggleButton, Button, LinearProgress, Tooltip, CircularProgress } from '@mui/material';
+import { Box, IconButton, Typography, ToggleButton, LinearProgress, Tooltip, CircularProgress } from '@mui/material';
+import CheckIcon from '@mui/icons-material/Check';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
@@ -14,7 +15,7 @@ import { openAudioFilePicker } from '../../audio/loadFiles';
 
 export const TransportBar: React.FC = () => {
   const { togglePlayback, seek, pause } = usePlayback();
-  const { processAudio, openChainXray } = useAudioEngine();
+  const { openChainXray } = useAudioEngine();
   // With an album loaded, the X-ray opens from the per-track buttons in
   // the track list instead.
   const singleTrack = useStore((s) => s.tracks.length <= 1);
@@ -123,7 +124,7 @@ export const TransportBar: React.FC = () => {
           </Tooltip>
           <Tooltip title={processedBuffer
             ? `Processed result${processedLufs !== undefined ? ` — ${processedLufs.toFixed(1)} LUFS` : ''}`
-            : isProcessing ? 'Processing…' : 'No processed result for this track yet — press Process'}>
+            : isProcessing ? 'Processing…' : 'The mastered preview appears here as soon as it is ready'}>
             <span>
               <ToggleButton
                 value="processed"
@@ -161,22 +162,19 @@ export const TransportBar: React.FC = () => {
           </span>
         </Tooltip>
 
-        {/* Process / Analyze buttons */}
-        <Tooltip title={!paramsDirty ? 'Settings unchanged — already processed' : 'Process audio through mastering chain'}>
-          <span>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={processAudio}
-              disabled={isProcessing || !paramsDirty}
-              sx={{ fontSize: '0.75rem', px: 2, minWidth: 100 }}
-            >
-              {isProcessing ? (
-                <CircularProgress size={16} color="inherit" sx={{ mr: 0.75 }} />
-              ) : null}
-              {isProcessing ? 'Processing...' : 'Process'}
-            </Button>
-          </span>
+        {/* Preview status: processing is automatic (see App's auto-preview
+            effect), so this only tells whether B reflects the settings. */}
+        <Tooltip title={isProcessing || paramsDirty
+          ? 'Applying the current settings to the preview (B)…'
+          : 'B plays the current settings'}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, minWidth: 118 }}>
+            {isProcessing || paramsDirty
+              ? <CircularProgress size={12} />
+              : <CheckIcon sx={{ fontSize: 14, color: 'success.main' }} />}
+            <Typography variant="body2" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+              {isProcessing || paramsDirty ? 'Updating preview…' : 'Preview up to date'}
+            </Typography>
+          </Box>
         </Tooltip>
         {singleTrack && (
           <Tooltip title="Chain X-Ray: inspect and shape the signal at every stage of the mastering chain">
@@ -192,7 +190,7 @@ export const TransportBar: React.FC = () => {
             </span>
           </Tooltip>
         )}
-        <Tooltip title={processedBuffer ? 'Download processed audio as WAV' : 'Process audio first'}>
+        <Tooltip title={processedBuffer ? 'Download the mastered audio as WAV' : 'Available once the preview is ready'}>
           <span>
             <IconButton
               size="small"

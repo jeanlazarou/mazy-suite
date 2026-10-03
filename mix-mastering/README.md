@@ -1,8 +1,8 @@
 # Audio Mastering Studio
 
-A professional audio mastering tool written in Go with a CLI and a React/WebAssembly web UI. Process audio through a configurable DSP chain (EQ, compression, limiting, stereo processing), analyze tracks, and get mastering recommendations tailored to target listening environments.
+A professional audio mastering tool written in Go with a CLI and a React/WebAssembly web UI. Process audio through a configurable DSP chain (EQ, compression, limiting, stereo processing), analyze tracks, and master by saying what the music is and where it will be heard.
 
-![Studio view: waveform, processor chain, analysis and recommendations, loudness and stereo field meters](docs/screenshots/studio.png)
+![Studio view: master settings (what it is, where it will be heard, fixes found by analysis) with a plain-language summary, the resulting processor chain, spectrum, loudness and stereo field meters](docs/screenshots/studio.png)
 
 ## Quick Start
 
@@ -10,14 +10,14 @@ A professional audio mastering tool written in Go with a CLI and a React/WebAsse
 # Build everything (CLI + WASM + Web UI)
 ./build.sh
 
-# Process a file
-./bin/master process input.wav -o output.wav --preset rock
+# Master a file: what it is, where it will be heard
+./bin/master process input.wav -o output.wav --style rock --for podcast
 
-# Analyze audio with target-specific recommendations
-./bin/master analyze input.wav --target headphones
+# See what mastering would do, and what it would fix
+./bin/master analyze input.wav --style rock --for podcast
 
-# List available presets
-./bin/master preset list
+# List the styles and destinations
+./bin/master options
 
 # Launch the web UI
 cd web && npx vite
@@ -27,25 +27,30 @@ cd web && npx vite
 
 | Command                                 | Description                                                  |
 | ---------------------------------------- | ------------------------------------------------------------ |
-| `master process <file> -o <out>`         | Process a single file through the mastering chain             |
-| `master analyze <file> --target <t>`     | Analyze audio and get recommendations                          |
-| `master preset list [--category genre]`  | List presets (filter by genre/target/usecase)                 |
-| `master preset search <query>`           | Search presets by name, description, or tags                  |
-| `master preset show <name>`              | Show preset details as JSON                                    |
-| `master batch <dir> -o <outdir>`         | Process every file in a directory independently                |
-| `master album <dir> -o <outdir>`         | Master a directory as one album: shared chain, loudness normalized by a single offset computed from the album's integrated loudness (preserves relative track levels) — use this instead of `batch` for related tracks |
+| `master process <file> -o <out>`         | Master a single file                                          |
+| `master analyze <file>`                  | Analyze audio and show what mastering would do and fix        |
+| `master options`                         | List the styles (`--style`) and destinations (`--for`)        |
+| `master batch <dir> -o <outdir>`         | Master every file in a directory independently                 |
+| `master album <dir> -o <outdir>`         | Master a directory as one album: shared chain (fixes from the whole album's analysis), loudness normalized by a single offset computed from the album's integrated loudness (preserves relative track levels) — use this instead of `batch` for related tracks |
+| `master preset list\|search\|show`        | Your saved presets in `~/.audiomaster/presets`                 |
+
+`process`, `analyze`, `batch` and `album` all choose their settings the same way, with the flags below.
+
+### Settings flags
+
+- `-o, --output` — Output file path (required)
+- `--style` — What the material is, sets the character: `rock`, `pop`, `electronic`, `hiphop`, `jazz`, `acoustic`, `classical`, `voice`
+- `--for` — Where it will be heard, sets loudness and delivery: `streaming` (−14 LUFS, default), `podcast` (−16), `loud` (−9), `vinyl`, `headphones`, `car`, `phone`, `bluetooth`
+- `--no-fix` — Don't correct problems found by analysing the audio (too dark, squashed…)
+- `-p, --preset` — Use a saved preset from `~/.audiomaster/presets` instead of `--style`/`--for`
+
+The limiter ceiling is a true-peak ceiling: `--for streaming` delivers at most −1 dBTP, inter-sample peaks included.
 
 ### Process flags
 
-- `-o, --output` — Output file path (required)
-- `-p, --preset` — Preset name to apply
 - `-b, --bit-depth` — Output bit depth (16, 24, 32; default: same as input)
 - `-r, --sample-rate` — Output sample rate in Hz (default: same as input)
 - `--eq`, `--comp`, `--limit` — Toggle individual processors
-
-### Analyze targets
-
-`headphones`, `car`, `studio`, `phone`, `bluetooth`
 
 ## Web UI
 
@@ -57,8 +62,8 @@ The web interface runs the Go DSP engine via WebAssembly in a Web Worker (so pro
 - Loudness-matched A/B (original vs processed, trimmed to equal LUFS) and per-run gain-reduction stats
 - Interactive EQ curve, knob controls for compressor/limiter/stereo
 - Spectrum analyzer, waveform display, stereo field (Lissajous), LUFS meter
-- Preset browser with search and filtering
-- Analysis panel with per-target recommendations (aggregated across the album when more than one track is loaded)
+- Master settings in three questions — *What is it?* (style, optional), *Where will it be heard?* (destination), *Fix problems found?* — that combine (a rock song for a podcast keeps rock's tone at podcast loudness), with a plain-language list of what the settings do
+- The preview updates by itself after every change, no Process step; fine-tune any stage in the chain, and save the result as your own preset
 
 ### Chain X-Ray
 

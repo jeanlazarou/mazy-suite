@@ -9,6 +9,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/audiomaster/mastering/pkg/analysis"
 	"github.com/audiomaster/mastering/pkg/dsp"
 	"github.com/audiomaster/mastering/pkg/engine"
 	audioio "github.com/audiomaster/mastering/pkg/io"
@@ -22,7 +23,11 @@ var albumCmd = &cobra.Command{
 through the same processing chain, and loudness is normalized with a single
 shared gain offset (computed from the album's integrated loudness per
 BS.1770 gating over all tracks) so the relative levels between tracks are
-preserved. Per-track loudness targets from presets are ignored.
+preserved.
+
+The chain comes from --style/--for like 'master process'; fixes are based on
+the whole album's analysis, so every track gets the same settings. The
+album target is the destination's loudness unless --target-lufs is given.
 
 Track order follows file name order.`,
 	Args: cobra.ExactArgs(1),
@@ -31,7 +36,7 @@ Track order follows file name order.`,
 
 var (
 	albumOutput   string
-	albumPreset   string
+	albumSet      settingsFlags
 	albumBitDepth int
 	albumFormat   string
 	albumTarget   float64
@@ -39,10 +44,10 @@ var (
 
 func init() {
 	albumCmd.Flags().StringVarP(&albumOutput, "output", "o", "", "Output directory (required)")
-	albumCmd.Flags().StringVarP(&albumPreset, "preset", "p", "", "Preset to apply to every track")
+	albumSet.register(albumCmd)
 	albumCmd.Flags().IntVarP(&albumBitDepth, "bit-depth", "b", 0, "Output bit depth (16, 24, 32; default: same as input)")
 	albumCmd.Flags().StringVarP(&albumFormat, "format", "f", "wav", "Output format (wav, flac)")
-	albumCmd.Flags().Float64VarP(&albumTarget, "target-lufs", "t", -14, "Album loudness target in LUFS")
+	albumCmd.Flags().Float64VarP(&albumTarget, "target-lufs", "t", 0, "Album loudness target in LUFS (default: the destination's)")
 	albumCmd.MarkFlagRequired("output")
 }
 
@@ -58,24 +63,15 @@ type albumTrack struct {
 // buildAlbumEngine creates the album chain for one track. NewFullChain
 // already places the Gain stage (which carries the shared album offset)
 // before the limiter, so the ceiling holds on the actual output.
-func buildAlbumEngine(meta *audioio.AudioMetadata, preset string) (*engine.MasteringEngine, error) {
+func buildAlbumEngine(meta *audioio.AudioMetadata, set *settings) *engine.MasteringEngine {
 	eng := engine.NewFullChain(meta.SampleRate, meta.Channels)
-
-	if preset != "" {
-		mgr := getPresetManager()
-		p, err := mgr.Get(preset)
-		if err != nil {
-			return nil, fmt.Errorf("preset error: %w", err)
-		}
-		applyPreset(eng, p)
-	}
+	set.apply(eng)
 
 	// Album mode: loudness is a single shared offset, never per-track.
 	if norm, _, err := eng.GetProcessorByName("Loudness Normalizer"); err == nil {
 		norm.SetEnabled(false)
 	}
-
-	return eng, nil
+	return eng
 }
 
 func runAlbum(cmd *cobra.Command, args []string) error {
@@ -102,8 +98,27 @@ func runAlbum(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Album: %d tracks\n", len(files))
-	if albumPreset != "" {
-		fmt.Printf("Preset: %s (loudness target ignored — album offset is used instead)\n", albumPreset)
+
+	// Settings are shared by every track, so the fixes come from the
+	// whole album's analysis.
+	var analyses []*analysis.AnalysisResult
+	if albumSet.needsAnalysis() {
+		fmt.Printf("Analyzing tracks...\n")
+		for _, path := range files {
+			buf, _, err := audioio.ReadAudio(path)
+			if err != nil {
+				return fmt.Errorf("read %s: %w", filepath.Base(path), err)
+			}
+			analyses = append(analyses, analysis.Analyze(buf))
+		}
+	}
+	set, err := albumSet.resolve(analyses...)
+	if err != nil {
+		return err
+	}
+	set.print("")
+	if !cmd.Flags().Changed("target-lufs") {
+		albumTarget = set.targetLUFS()
 	}
 
 	// Pass 1: process every track (no limiter, no offset) and collect the
@@ -122,10 +137,7 @@ func runAlbum(cmd *cobra.Command, args []string) error {
 		meter := dsp.NewLUFSMeter(float64(meta.SampleRate), meta.Channels)
 		track.inLUFS = meter.MeasureIntegrated(buf)
 
-		eng, err := buildAlbumEngine(meta, albumPreset)
-		if err != nil {
-			return err
-		}
+		eng := buildAlbumEngine(meta, set)
 		if lim, _, err := eng.GetProcessorByName("Limiter"); err == nil {
 			lim.SetEnabled(false) // measure unlimited loudness
 		}
@@ -155,10 +167,7 @@ func runAlbum(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("read %s: %w", track.name, err)
 		}
 
-		eng, err := buildAlbumEngine(meta, albumPreset)
-		if err != nil {
-			return err
-		}
+		eng := buildAlbumEngine(meta, set)
 		if err := eng.SetParam("Gain", "gain_db", offset); err != nil {
 			return err
 		}

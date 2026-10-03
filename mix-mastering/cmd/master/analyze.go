@@ -11,20 +11,22 @@ import (
 )
 
 var (
-	analyzeTarget string
+	analyzeSet    settingsFlags
 	analyzeFormat string
 )
 
 var analyzeCmd = &cobra.Command{
 	Use:   "analyze <input-file>",
-	Short: "Analyze an audio file and suggest mastering settings",
-	Long:  "Analyzes audio for spectrum, dynamics, stereo field, and loudness, then provides mastering recommendations.",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runAnalyze,
+	Short: "Analyze an audio file and show what mastering would do",
+	Long: `Analyzes audio for spectrum, dynamics, stereo field, and loudness, then
+shows the settings 'master process' would use with the same --style/--for
+(default: streaming), including the problems it would fix.`,
+	Args: cobra.ExactArgs(1),
+	RunE: runAnalyze,
 }
 
 func init() {
-	analyzeCmd.Flags().StringVarP(&analyzeTarget, "target", "t", "", "Target listening environment (headphones, car, studio, phone, bluetooth)")
+	analyzeSet.register(analyzeCmd)
 	analyzeCmd.Flags().StringVarP(&analyzeFormat, "format", "f", "text", "Output format (text, json)")
 }
 
@@ -45,20 +47,20 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		meta.SampleRate, meta.BitDepth, meta.Channels, meta.Duration)
 
 	result := analysis.Analyze(buf)
+	set, err := analyzeSet.resolve(result)
+	if err != nil {
+		return err
+	}
 
 	if analyzeFormat == "json" {
-		data, _ := json.MarshalIndent(result, "", "  ")
-		fmt.Println(string(data))
-
-		if analyzeTarget != "" {
-			rec, err := analysis.Recommend(result, analyzeTarget)
-			if err != nil {
-				return err
-			}
-			fmt.Println("\n--- Recommendations ---")
-			data, _ = json.MarshalIndent(rec, "", "  ")
-			fmt.Println(string(data))
+		out := map[string]any{"analysis": result}
+		if set.recipe != nil {
+			out["settings"] = set.recipe
+		} else {
+			out["settings"] = set.preset
 		}
+		data, _ := json.MarshalIndent(out, "", "  ")
+		fmt.Println(string(data))
 		return nil
 	}
 
@@ -94,27 +96,8 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		fmt.Printf("  Side RMS: %.1f dB\n", result.StereoField.SideRMS)
 	}
 
-	// Recommendations
-	if analyzeTarget != "" {
-		rec, err := analysis.Recommend(result, analyzeTarget)
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("\n=== Recommendations for %s ===\n", analyzeTarget)
-		for _, s := range rec.Suggestions {
-			icon := " "
-			switch s.Priority {
-			case "high":
-				icon = "!"
-			case "medium":
-				icon = "*"
-			case "low":
-				icon = "-"
-			}
-			fmt.Printf("  [%s] %s: %s\n", icon, s.Category, s.Description)
-		}
-	}
+	fmt.Println("\n=== Mastering ===")
+	set.print("  ")
 
 	return nil
 }

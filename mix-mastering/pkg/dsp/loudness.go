@@ -202,40 +202,63 @@ func percentile(sorted []float64, p float64) float64 {
 // MeasureTruePeak returns the true peak (dBTP) of the buffer using 4x
 // oversampling with a windowed-sinc interpolator, per BS.1770-4 Annex 2.
 func (m *LUFSMeter) MeasureTruePeak(buf *AudioBuffer) float64 {
-	const taps = 8 // one-sided taps for the interpolation kernel
 	var peak float64
-
 	for ch := 0; ch < buf.Channels(); ch++ {
-		samples := buf.Samples[ch]
-		length := len(samples)
-		for i := 0; i < length; i++ {
-			abs := math.Abs(samples[i])
-			if abs > peak {
-				peak = abs
-			}
-			// Interpolate at phases 1/4, 2/4, 3/4 between i and i+1.
-			for phase := 1; phase < 4; phase++ {
-				frac := float64(phase) / 4.0
-				var v float64
-				for k := -taps + 1; k <= taps; k++ {
-					idx := i + k
-					if idx < 0 || idx >= length {
-						continue
-					}
-					x := frac - float64(k)
-					v += samples[idx] * sincHann(x, taps)
-				}
-				if abs := math.Abs(v); abs > peak {
-					peak = abs
-				}
+		for _, v := range truePeakEnvelope(buf.Samples[ch]) {
+			if v > peak {
+				peak = v
 			}
 		}
 	}
-
 	if peak < 1e-20 {
 		return -200
 	}
 	return 20 * math.Log10(peak)
+}
+
+// truePeakTaps is the one-sided length of the true-peak interpolation
+// kernel.
+const truePeakTaps = 8
+
+// truePeakKernel[p-1][k+taps-1] is the interpolation weight of sample i+k
+// for the value at i + p/4 (p = 1..3), precomputed once.
+var truePeakKernel = func() [3][2 * truePeakTaps]float64 {
+	var kern [3][2 * truePeakTaps]float64
+	for phase := 1; phase < 4; phase++ {
+		frac := float64(phase) / 4.0
+		for k := -truePeakTaps + 1; k <= truePeakTaps; k++ {
+			kern[phase-1][k+truePeakTaps-1] = sincHann(frac-float64(k), truePeakTaps)
+		}
+	}
+	return kern
+}()
+
+// truePeakEnvelope returns, for each sample i, the largest absolute value
+// of the 4x-oversampled signal over [i, i+1): the sample itself and the
+// interpolated values at i+1/4, i+2/4, i+3/4. Its maximum is the true
+// peak; per sample, it tells the limiter where inter-sample peaks are.
+func truePeakEnvelope(samples []float64) []float64 {
+	length := len(samples)
+	env := make([]float64, length)
+	for i := 0; i < length; i++ {
+		peak := math.Abs(samples[i])
+		for p := range truePeakKernel {
+			kern := &truePeakKernel[p]
+			var v float64
+			for k := -truePeakTaps + 1; k <= truePeakTaps; k++ {
+				idx := i + k
+				if idx < 0 || idx >= length {
+					continue
+				}
+				v += samples[idx] * kern[k+truePeakTaps-1]
+			}
+			if abs := math.Abs(v); abs > peak {
+				peak = abs
+			}
+		}
+		env[i] = peak
+	}
+	return env
 }
 
 // sincHann is a Hann-windowed sinc kernel with the given one-sided width.

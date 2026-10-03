@@ -7,6 +7,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/audiomaster/mastering/pkg/analysis"
 	"github.com/audiomaster/mastering/pkg/engine"
 	audioio "github.com/audiomaster/mastering/pkg/io"
 	"github.com/audiomaster/mastering/pkg/preset"
@@ -15,33 +16,37 @@ import (
 
 var presetCmd = &cobra.Command{
 	Use:   "preset",
-	Short: "Manage mastering presets",
+	Short: "List and inspect your saved presets (~/.audiomaster/presets)",
+	Long: `Saved presets are complete chain settings stored as JSON files in
+~/.audiomaster/presets, used with --preset. The built-in way to choose
+settings is --style/--for (see 'master options').`,
 }
 
 var batchCmd = &cobra.Command{
 	Use:   "batch <input-dir>",
-	Short: "Batch process audio files in a directory",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runBatch,
+	Short: "Master every file in a directory independently",
+	Long: `Masters every audio file in a directory on its own: each file is analyzed
+and gets its own fixes and is normalized to the destination's loudness on
+its own. For tracks that belong together, use 'master album', which keeps
+their relative levels.`,
+	Args: cobra.ExactArgs(1),
+	RunE: runBatch,
 }
 
 var (
-	batchOutput    string
-	batchPreset    string
-	batchBitDepth  int
-	batchFormat    string
-	presetCategory string
-	presetSearch   string
+	batchOutput   string
+	batchSet      settingsFlags
+	batchBitDepth int
+	batchFormat   string
 )
 
 func init() {
 	// Preset list
 	listCmd := &cobra.Command{
 		Use:   "list",
-		Short: "List available presets",
+		Short: "List saved presets",
 		RunE:  runPresetList,
 	}
-	listCmd.Flags().StringVarP(&presetCategory, "category", "c", "", "Filter by category (genre, target, usecase)")
 	presetCmd.AddCommand(listCmd)
 
 	// Preset search
@@ -64,7 +69,7 @@ func init() {
 
 	// Batch command
 	batchCmd.Flags().StringVarP(&batchOutput, "output", "o", "", "Output directory (required)")
-	batchCmd.Flags().StringVarP(&batchPreset, "preset", "p", "", "Preset to apply")
+	batchSet.register(batchCmd)
 	batchCmd.Flags().IntVarP(&batchBitDepth, "bit-depth", "b", 0, "Output bit depth")
 	batchCmd.Flags().StringVarP(&batchFormat, "format", "f", "wav", "Output format (wav, flac)")
 	batchCmd.MarkFlagRequired("output")
@@ -77,17 +82,10 @@ func getPresetManager() *preset.Manager {
 }
 
 func runPresetList(cmd *cobra.Command, args []string) error {
-	mgr := getPresetManager()
-	var presets []*preset.Preset
-
-	if presetCategory != "" {
-		presets = mgr.ListByCategory(presetCategory)
-	} else {
-		presets = mgr.List()
-	}
-
+	presets := getPresetManager().List()
 	if len(presets) == 0 {
-		fmt.Println("No presets found.")
+		fmt.Println("No saved presets in ~/.audiomaster/presets.")
+		fmt.Println("Choose settings with --style/--for instead (see 'master options').")
 		return nil
 	}
 
@@ -171,16 +169,17 @@ func runBatch(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		eng := engine.NewFullChain(meta.SampleRate, meta.Channels)
-
-		if batchPreset != "" {
-			mgr := getPresetManager()
-			p, err := mgr.Get(batchPreset)
-			if err != nil {
-				return fmt.Errorf("preset error: %w", err)
-			}
-			applyPreset(eng, p)
+		var a *analysis.AnalysisResult
+		if batchSet.needsAnalysis() {
+			a = analysis.Analyze(buf)
 		}
+		set, err := batchSet.resolve(a)
+		if err != nil {
+			return err
+		}
+		set.print("  ")
+		eng := engine.NewFullChain(meta.SampleRate, meta.Channels)
+		set.apply(eng)
 
 		if err := eng.Process(buf); err != nil {
 			fmt.Printf("  Error processing: %v\n", err)

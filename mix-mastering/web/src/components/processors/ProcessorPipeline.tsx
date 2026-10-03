@@ -7,7 +7,6 @@ import { CompressorPanel } from './CompressorPanel';
 import { LimiterPanel } from './LimiterPanel';
 import { StereoPanel } from './StereoPanel';
 import { useStore } from '../../store/store';
-import { TARGET_LABELS } from '../../store/constants';
 import { useAudioEngine } from '../../hooks/useAudioEngine';
 
 const EXCITER_NAMES = ['Bass Exciter', 'Treble Exciter'] as const;
@@ -43,22 +42,17 @@ const STAGE_META: Record<string, StageMeta> = {
 // (wasmGetProcessorNames resolves once WASM is ready).
 const FALLBACK_ORDER = Object.keys(STAGE_META);
 
-// One-line summary of where the current settings come from:
-// preset base, target adjustments layered on top, then manual edits.
+// One-line summary of where the current settings come from: the master
+// choice (or a saved preset), plus manual edits made here.
 const SettingsProvenance: React.FC = () => {
-  const activePreset = useStore((s) => s.activePreset);
-  const appliedTarget = useStore((s) => s.appliedTarget);
+  const summary = useStore((s) => s.recipe?.summary);
+  const customPreset = useStore((s) => s.customPreset);
   const paramsEdited = useStore((s) => s.paramsEdited);
 
-  const parts: string[] = [];
-  if (activePreset) parts.push(`${activePreset} preset`);
-  if (appliedTarget) parts.push(`${TARGET_LABELS[appliedTarget] ?? appliedTarget} adjustments`);
-  if (paramsEdited) parts.push('manual edits');
-  const summary = parts.length > 0 ? parts.join(' + ') : 'defaults';
-
+  const base = customPreset !== null ? `saved preset "${customPreset}"` : summary ?? 'defaults';
   return (
     <Typography variant="body2" sx={{ fontSize: '0.65rem', color: 'text.secondary', textAlign: 'center', mt: 1 }}>
-      Settings: {summary}
+      Chain set from: {base}{paramsEdited ? ' + manual edits' : ''} — click a stage to fine-tune it
     </Typography>
   );
 };
@@ -91,7 +85,7 @@ export const ProcessorPipeline: React.FC = () => {
     const meta = STAGE_META[name];
     if (!meta?.enhance) return true;
     // Hidden until enabled — either via the Enhance switch above or a
-    // target recommendation that turned it on directly.
+    // destination (e.g. phone) that turned it on directly.
     return processorEnabled[name] ?? false;
   });
 

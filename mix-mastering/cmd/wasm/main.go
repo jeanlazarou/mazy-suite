@@ -25,12 +25,8 @@ func main() {
 	js.Global().Set("wasmSetProcessorEnabled", js.FuncOf(setProcessorEnabled))
 	js.Global().Set("wasmAnalyzeBuffer", js.FuncOf(analyzeBuffer))
 	js.Global().Set("wasmInspectBuffer", js.FuncOf(inspectBuffer))
-	js.Global().Set("wasmGetRecommendations", js.FuncOf(getRecommendations))
-	js.Global().Set("wasmGetAlbumRecommendations", js.FuncOf(getAlbumRecommendations))
-	js.Global().Set("wasmApplyRecommendations", js.FuncOf(applyRecommendations))
-	js.Global().Set("wasmListPresets", js.FuncOf(listPresets))
-	js.Global().Set("wasmApplyPreset", js.FuncOf(applyPreset))
-	js.Global().Set("wasmListTargets", js.FuncOf(listTargets))
+	js.Global().Set("wasmRecipeOptions", js.FuncOf(recipeOptions))
+	js.Global().Set("wasmBuildRecipe", js.FuncOf(buildRecipe))
 	js.Global().Set("wasmReset", js.FuncOf(resetEngine))
 	js.Global().Set("wasmGetMeters", js.FuncOf(getMeters))
 	js.Global().Set("wasmMeasureLoudness", js.FuncOf(measureLoudness))
@@ -218,50 +214,15 @@ func inspectBuffer(this js.Value, args []js.Value) interface{} {
 	})
 }
 
-func getRecommendations(this js.Value, args []js.Value) interface{} {
+func recipeOptions(this js.Value, args []js.Value) interface{} {
 	return safeCall(func() interface{} {
-		target := args[0].String()
-		return bridge.GetRecommendations(target)
+		return bridge.RecipeOptions()
 	})
 }
 
-func getAlbumRecommendations(this js.Value, args []js.Value) interface{} {
+func buildRecipe(this js.Value, args []js.Value) interface{} {
 	return safeCall(func() interface{} {
-		analysesJSON := args[0].String()
-		target := args[1].String()
-		return bridge.GetAlbumRecommendations(analysesJSON, target)
-	})
-}
-
-func applyRecommendations(this js.Value, args []js.Value) interface{} {
-	return safeCall(func() interface{} {
-		target := args[0].String()
-		if err := bridge.ApplyRecommendations(target); err != nil {
-			return err.Error()
-		}
-		return nil
-	})
-}
-
-func listPresets(this js.Value, args []js.Value) interface{} {
-	return safeCall(func() interface{} {
-		return bridge.ListPresets()
-	})
-}
-
-func applyPreset(this js.Value, args []js.Value) interface{} {
-	return safeCall(func() interface{} {
-		name := args[0].String()
-		if err := bridge.ApplyPreset(name); err != nil {
-			return err.Error()
-		}
-		return nil
-	})
-}
-
-func listTargets(this js.Value, args []js.Value) interface{} {
-	return safeCall(func() interface{} {
-		return bridge.ListTargets()
+		return bridge.BuildRecipe(args[0].String(), args[1].String())
 	})
 }
 

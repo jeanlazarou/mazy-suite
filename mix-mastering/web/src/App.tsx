@@ -9,8 +9,7 @@ import { Spectrum } from './components/visualizers/Spectrum';
 import { StereoField } from './components/visualizers/StereoField';
 import { LUFSMeter } from './components/visualizers/LUFSMeter';
 import { DynamicsHistogram } from './components/visualizers/DynamicsHistogram';
-import { PresetBrowser } from './components/presets/PresetBrowser';
-import { AnalysisPanel } from './components/analysis/AnalysisPanel';
+import { MasterPanel } from './components/master/MasterPanel';
 import { AlbumPanel } from './components/album/AlbumPanel';
 import { ChainXRayView } from './components/xray/ChainXRayView';
 import { useAudioEngine } from './hooks/useAudioEngine';
@@ -24,7 +23,7 @@ const App: React.FC = () => {
   const originalBuffer = useStore((s) => s.originalBuffer);
   const wasmReady = useStore((s) => s.wasmReady);
   const setError = useStore((s) => s.setError);
-  const { analyzeAudio, processAudio } = useAudioEngine();
+  const { analyzeAudio, processAudio, syncRecipe } = useAudioEngine();
   const xrayOpen = useStore((s) => s.xrayOpen);
   const analyser = getAnalyserNode();
 
@@ -37,19 +36,6 @@ const App: React.FC = () => {
       analyzeAudio();
     }
   }, [originalBuffer, wasmReady]);
-
-  // When switching album tracks after settings were applied, process the
-  // newly selected track automatically so A/B compares processed vs
-  // original right away (a track switch clears the processed buffer).
-  const activeTrackId = useStore((s) => s.activeTrackId);
-  useEffect(() => {
-    const { tracks, activePreset, appliedTarget, paramsEdited, isProcessing, xrayOpen: inXray } = useStore.getState();
-    if (!wasmReady || tracks.length < 2 || isProcessing) return;
-    // In the Chain X-Ray view stage capture handles its own processing.
-    if (inXray) return;
-    if (!(activePreset || appliedTarget || paramsEdited)) return;
-    processAudio();
-  }, [activeTrackId]);
 
   // Background album pipeline: analyze each track and collect its BS.1770
   // gating blocks, then integrate the album's loudness over all blocks as
@@ -88,6 +74,37 @@ const App: React.FC = () => {
       }
     })();
   }, [tracks, wasmReady]);
+
+  // Keep the applied settings in sync with the master choice: rebuild
+  // whenever the choice changes, the analysis the fixes depend on arrives
+  // (active track's, or every track's for an album), or a reset clears
+  // the recipe key. syncRecipe itself skips when nothing changed.
+  const choice = useStore((s) => s.choice);
+  const customPreset = useStore((s) => s.customPreset);
+  const recipeKey = useStore((s) => s.recipeKey);
+  const activeAnalysis = useStore((s) => s.analysis);
+  const activeTrackId = useStore((s) => s.activeTrackId);
+  useEffect(() => {
+    if (wasmReady) syncRecipe();
+  }, [wasmReady, choice, customPreset, recipeKey, activeAnalysis, tracks, activeTrackId]);
+
+  // Auto-preview: whenever the settings (or the track) differ from the
+  // last processed result, reprocess after a short pause, so every choice
+  // and knob turn is heard without a separate Process step. Waits until
+  // settings exist (a recipe or saved preset), so a freshly loaded file
+  // isn't first processed with bare engine defaults. The Chain X-Ray
+  // view does its own processing.
+  const paramsDirty = useStore((s) => s.paramsDirty);
+  const isProcessing = useStore((s) => s.isProcessing);
+  const settingsReady = useStore((s) => s.recipe !== null || s.customPreset !== null);
+  const params = useStore((s) => s.params);
+  const processorEnabled = useStore((s) => s.processorEnabled);
+  const albumMode = useStore((s) => s.albumMode);
+  useEffect(() => {
+    if (!wasmReady || !originalBuffer || !paramsDirty || isProcessing || xrayOpen || !settingsReady) return;
+    const timer = setTimeout(() => processAudio(), 400);
+    return () => clearTimeout(timer);
+  }, [wasmReady, originalBuffer, paramsDirty, isProcessing, xrayOpen, settingsReady, params, processorEnabled, albumMode]);
 
   if (loading && !wasmReady) {
     return (
@@ -137,9 +154,9 @@ const App: React.FC = () => {
           <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
             <Grid container spacing={2}>
               {albumAnalysisPending ? (
-                /* Album analysis gate: settings choices appear once every
-                   track is analyzed, so recommendations are always based on
-                   the whole album. */
+                /* Album analysis gate: settings appear once every track is
+                   analyzed, so the fixes are always based on the whole
+                   album. */
                 <Grid size={{ xs: 12, md: 8.5 }}>
                   <Paper sx={{ p: 5, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
                     <CircularProgress size={28} />
@@ -147,24 +164,21 @@ const App: React.FC = () => {
                       Analyzing album — {tracksAnalyzed} of {tracks.length} tracks
                     </Typography>
                     <Typography variant="body2" sx={{ fontSize: '0.75rem', color: 'text.secondary', textAlign: 'center' }}>
-                      Presets and target recommendations will appear once every
-                      track is analyzed. You can already listen to the tracks below.
+                      The master settings will appear once every track is
+                      analyzed. You can already listen to the tracks below.
                     </Typography>
                   </Paper>
                 </Grid>
               ) : (
                 <>
-                  {/* Left: Presets */}
-                  <Grid size={{ xs: 12, md: 2.5 }}>
-                    <PresetBrowser />
+                  {/* Left: what to master for */}
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <MasterPanel />
                   </Grid>
 
-                  {/* Center: Processors */}
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <ProcessorPipeline />
-                      <AnalysisPanel />
-                    </Box>
+                  {/* Center: the resulting chain, to fine-tune */}
+                  <Grid size={{ xs: 12, md: 4.5 }}>
+                    <ProcessorPipeline />
                   </Grid>
                 </>
               )}

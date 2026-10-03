@@ -18,6 +18,26 @@ const XRAY_SPEC_COLS = 800;
 // so a slow stale run can't clobber a frester one that finishes first.
 let xrayRunSeq = 0;
 
+// Engine start-up runs once per app, not once per component using this
+// hook: its final setParams(engine.getParams()) would otherwise, from a
+// component mounted later (the master panel appears once an album is
+// analyzed), overwrite settings applied in the meantime with whatever the
+// engine held at that moment.
+let engineInitStarted = false;
+
+// Same idea for recipe builds: a choice clicked while a previous build is
+// still in flight must win, and the older build must stop applying.
+let recipeSeq = 0;
+
+// Identity of what the recipe depends on: the choice, and the analysis
+// the fixes come from (the whole album's, or the active track's).
+function recipeKeyFor(s: ReturnType<typeof useStore.getState>): string {
+  const scope = s.tracks.length > 1
+    ? `album:${s.tracks.map((t) => t.id).join(',')}`
+    : `track:${s.activeTrackId}`;
+  return JSON.stringify({ c: s.choice, scope });
+}
+
 export function useAudioEngine() {
   // Individual selectors only — this hook is instantiated by most panels,
   // so a whole-store subscription here would re-render the entire app on
@@ -25,11 +45,9 @@ export function useAudioEngine() {
   // references are stable, so selecting them never triggers re-renders.
   const wasmReady = useStore((s) => s.wasmReady);
   const originalBuffer = useStore((s) => s.originalBuffer);
-  const selectedTarget = useStore((s) => s.selectedTarget);
   const setWasmReady = useStore((s) => s.setWasmReady);
   const setLoading = useStore((s) => s.setLoading);
   const setError = useStore((s) => s.setError);
-  const setPresets = useStore((s) => s.setPresets);
   const setParams = useStore((s) => s.setParams);
   const setMeters = useStore((s) => s.setMeters);
   const setMatchGainDB = useStore((s) => s.setMatchGainDB);
@@ -38,17 +56,17 @@ export function useAudioEngine() {
   const setAnalysis = useStore((s) => s.setAnalysis);
   const setProcessedAnalysis = useStore((s) => s.setProcessedAnalysis);
   const setIsAnalyzing = useStore((s) => s.setIsAnalyzing);
-  const setRecommendation = useStore((s) => s.setRecommendation);
-  const setAppliedTarget = useStore((s) => s.setAppliedTarget);
   const setParamsEdited = useStore((s) => s.setParamsEdited);
   const setProcessorEnabledState = useStore((s) => s.setProcessorEnabledState);
   const setProcessorNames = useStore((s) => s.setProcessorNames);
 
   useEffect(() => {
+    if (engineInitStarted) return;
+    engineInitStarted = true;
     engine.init().then(async () => {
       setWasmReady(true);
       setLoading(false);
-      setPresets(await engine.listPresets());
+      useStore.getState().setRecipeOptions(await engine.getRecipeOptions());
       setParams(await engine.getParams());
       setProcessorNames(await engine.getProcessorNames());
     }).catch((err) => {
@@ -137,6 +155,18 @@ export function useAudioEngine() {
     const originalBuffer = useStore.getState().originalBuffer;
     if (!wasmReady || !originalBuffer) return;
 
+    // Settings this run is made with. The preview updates automatically,
+    // so settings (or the track) can change while a run is in flight; the
+    // result must then not be marked current (or, for another track, not
+    // be shown at all).
+    const start = useStore.getState();
+    const stillCurrent = () => {
+      const now = useStore.getState();
+      return now.params === start.params
+        && now.processorEnabled === start.processorEnabled
+        && now.albumMode === start.albumMode;
+    };
+
     setIsProcessing(true);
     try {
       const channels = originalBuffer.numberOfChannels;
@@ -147,13 +177,15 @@ export function useAudioEngine() {
       // fresh copy per call.
       const processed = await engine.processBuffer(
         audioBufferToFloat32Array(originalBuffer), channels, sampleRate);
+      if (useStore.getState().originalBuffer !== originalBuffer) return; // track switched
       const processedAudioBuffer = float32ArrayToAudioBuffer(processed, channels, sampleRate);
 
       setProcessedBuffer(processedAudioBuffer);
+      if (!stillCurrent()) useStore.getState().setParamsDirty(true);
       setMeters(await engine.getMeters());
 
-      // Analyze the result for display (does not affect recommendations,
-      // which stay pinned to the original's analysis).
+      // Analyze the result for display (the recipe's fixes stay pinned to
+      // the original's analysis).
       const processedAnalysis = await engine.inspectBuffer(
         audioBufferToFloat32Array(processedAudioBuffer), channels, sampleRate);
       setProcessedAnalysis(processedAnalysis);
@@ -282,25 +314,46 @@ export function useAudioEngine() {
     });
   }, []);
 
-  const fetchRecommendation = useCallback(async (target: string) => {
-    const { analysis, tracks } = useStore.getState();
-    const trackAnalyses = tracks.map((t) => t.analysis);
-    if (tracks.length > 1 && trackAnalyses.every((a) => a !== null)) {
-      // Album: recommend for the aggregate of all tracks.
-      const rec = await engine.getAlbumRecommendations(trackAnalyses as any, target);
-      if (!('error' in rec)) {
-        setRecommendation(rec);
-        useStore.getState().setRecommendationScope('album');
-      }
+  // Build the settings for the current choice and apply them — all params
+  // and bypass states, so nothing is left over from earlier choices.
+  // No-op while a custom preset is loaded, before the analysis the fixes
+  // depend on is available, or when the applied recipe is already current.
+  const syncRecipe = useCallback(async () => {
+    const s = useStore.getState();
+    if (s.customPreset !== null) return;
+    let analyses;
+    if (s.tracks.length > 1) {
+      if (!s.tracks.every((t) => t.analysis)) return;
+      analyses = s.tracks.map((t) => t.analysis!);
+    } else {
+      if (!s.analysis) return;
+      analyses = [s.analysis];
+    }
+    const key = recipeKeyFor(s);
+    if (key === s.recipeKey) return;
+
+    const mySeq = ++recipeSeq;
+    const r = await engine.buildRecipe(s.choice, analyses);
+    if (mySeq !== recipeSeq) return;
+    if ('error' in r) {
+      setError(`Settings: ${r.error}`);
       return;
     }
-    // Single track: recommendations come from the reference analysis
-    // cached in the bridge.
-    if (!analysis) return;
-    const rec = await engine.getRecommendations(target);
-    if (!('error' in rec)) {
-      setRecommendation(rec);
-      useStore.getState().setRecommendationScope('track');
+    // The store is the source of truth (every run re-initializes the
+    // engine from it); the engine is updated too so getParams-based paths
+    // agree.
+    useStore.getState().applySettings(r.processors, r.enabled);
+    useStore.getState().setAppliedRecipe(r, key);
+    setParamsEdited(false);
+    for (const [proc, procParams] of Object.entries(r.processors)) {
+      for (const [param, value] of Object.entries(procParams)) {
+        if (mySeq !== recipeSeq) return;
+        await engine.setParam(proc, param, value);
+      }
+    }
+    for (const [name, enabled] of Object.entries(r.enabled)) {
+      if (mySeq !== recipeSeq) return;
+      await engine.setProcessorEnabled(name, enabled);
     }
   }, []);
 
@@ -323,12 +376,6 @@ export function useAudioEngine() {
         updateTrack(activeTrackId, { analysis: result });
       }
 
-      // Read the target at completion time — the user may have changed it
-      // while the analysis was running.
-      const target = useStore.getState().selectedTarget;
-      if (target) {
-        await fetchRecommendation(target);
-      }
     } catch (err: any) {
       setError(`Analysis failed: ${err.message}`);
     } finally {
@@ -393,7 +440,7 @@ export function useAudioEngine() {
   const setParam = useCallback(async (processor: string, param: string, value: number) => {
     await engine.setParam(processor, param, value);
     setParams(await engine.getParams());
-    // Settings no longer exactly match the applied preset/recommendation.
+    // Settings no longer exactly match the applied recipe/preset.
     setParamsEdited(true);
   }, []);
 
@@ -405,47 +452,27 @@ export function useAudioEngine() {
     setParamsEdited(true);
   }, []);
 
-  const applyPreset = useCallback(async (name: string) => {
-    await engine.applyPreset(name);
-    setParams(await engine.getParams());
-    // A preset is a fresh starting point: it replaces the previous base and
-    // any target adjustments layered on top of it.
-    setAppliedTarget(null);
-    setParamsEdited(false);
-    useStore.getState().setActivePreset(name);
-  }, []);
-
   // Custom presets are saved locally (see audio/customPresets.ts) — the
   // Go engine has no way to look one up by name the way it does built-in
-  // presets, so this replays its param map directly, the same way
-  // applyRecommendations replays a recommendation's.
+  // presets, so this replays its param map directly. While one is loaded
+  // the style/destination choice isn't applied; picking a choice again
+  // leaves it (store.setChoice).
   const applyCustomPreset = useCallback(async (preset: CustomPreset) => {
+    recipeSeq++; // cancel any recipe still being applied
+    useStore.getState().setCustomPreset(preset.name);
+    useStore.getState().setAppliedRecipe(null, null);
     for (const [proc, procParams] of Object.entries(preset.processors)) {
       for (const [param, value] of Object.entries(procParams)) {
         await engine.setParam(proc, param, value);
       }
     }
     setParams(await engine.getParams());
-    setAppliedTarget(null);
     setParamsEdited(false);
-    useStore.getState().setActivePreset(preset.name);
   }, []);
 
-  const applyRecommendations = useCallback(async (target: string) => {
-    // Apply the recommendation currently on screen (track- or album-scoped)
-    // by writing its params into the shared engine settings.
-    const rec = useStore.getState().recommendation;
-    if (!rec || rec.target !== target) return;
-    for (const [proc, procParams] of Object.entries(rec.processors)) {
-      for (const [param, value] of Object.entries(procParams)) {
-        await engine.setParam(proc, param, value);
-      }
-    }
-    setParams(await engine.getParams());
-    // Recommendations layer on top of the current settings (the active
-    // preset stays the base).
-    setAppliedTarget(target);
-    setParamsEdited(false);
+  // Drop manual edits: rebuild the recipe for the current choice.
+  const resetToRecipe = useCallback(() => {
+    useStore.getState().setAppliedRecipe(useStore.getState().recipe, null);
   }, []);
 
   return {
@@ -456,13 +483,12 @@ export function useAudioEngine() {
     applyXraySetup,
     saveXraySetup,
     analyzeAudio,
-    fetchRecommendation,
+    syncRecipe,
+    resetToRecipe,
     exportAlbum,
     setParam,
     setProcessorEnabled,
-    applyPreset,
     applyCustomPreset,
-    applyRecommendations,
     isReady: wasmReady,
   };
 }

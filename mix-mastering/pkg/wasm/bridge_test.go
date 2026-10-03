@@ -3,6 +3,7 @@ package wasm
 import (
 	"encoding/json"
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -134,5 +135,30 @@ func TestProcessBufferStagesSpectrogram(t *testing.T) {
 	}
 	if math.Abs(bestDB-(-6.0)) > 1.5 {
 		t.Errorf("spectral peak level = %.1f dB, want ~-6 dB", bestDB)
+	}
+}
+
+func TestBuildRecipeJSON(t *testing.T) {
+	b := NewBridge()
+	out := b.BuildRecipe(`{"style":"rock","destination":"podcast","fix":true}`,
+		`[{"spectrum":{"spectral_balance":"dark"},"dynamics":{"dynamic_range_db":10,"crest_factor_db":8}},`+
+			`{"spectrum":{"spectral_balance":"dark"},"dynamics":{"dynamic_range_db":12,"crest_factor_db":9}}]`)
+	var r struct {
+		Summary    string                        `json:"summary"`
+		Fixes      int                           `json:"fixes"`
+		Processors map[string]map[string]float64 `json:"processors"`
+		Error      string                        `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(out), &r); err != nil || r.Error != "" {
+		t.Fatalf("bad recipe JSON %q: %v", out, err)
+	}
+	if r.Processors["Loudness Normalizer"]["target_lufs"] != -16 {
+		t.Errorf("target = %v, want -16", r.Processors["Loudness Normalizer"]["target_lufs"])
+	}
+	if r.Fixes != 1 {
+		t.Errorf("album aggregate should yield the dark fix, got %d fixes (%s)", r.Fixes, r.Summary)
+	}
+	if bad := b.BuildRecipe(`{"style":"polka"}`, `[]`); !strings.Contains(bad, "error") {
+		t.Errorf("expected error for unknown style, got %s", bad)
 	}
 }

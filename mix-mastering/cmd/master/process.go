@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/audiomaster/mastering/pkg/analysis"
 	"github.com/audiomaster/mastering/pkg/dsp"
 	"github.com/audiomaster/mastering/pkg/engine"
 	audioio "github.com/audiomaster/mastering/pkg/io"
@@ -15,25 +16,34 @@ var (
 	outputFile   string
 	bitDepth     int
 	sampleRate   int
-	presetName   string
 	eqEnabled    bool
 	compEnabled  bool
 	limitEnabled bool
+	processSet   settingsFlags
 )
 
 var processCmd = &cobra.Command{
 	Use:   "process <input-file>",
-	Short: "Process an audio file through the mastering chain",
-	Long:  "Reads an audio file, applies the mastering chain (EQ, compression, limiting), and writes the output.",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runProcess,
+	Short: "Master an audio file",
+	Long: `Reads an audio file, masters it, and writes the output.
+
+Say what the material is and where it will be heard:
+
+  master process song.wav -o out.wav --style rock --for podcast
+
+--style sets the character, --for sets loudness and delivery (default:
+streaming, -14 LUFS); 'master options' lists both. The file is analyzed and
+problems (too dark, squashed, ...) are corrected unless --no-fix is given.
+--preset uses a saved preset instead.`,
+	Args: cobra.ExactArgs(1),
+	RunE: runProcess,
 }
 
 func init() {
 	processCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Output file path (required)")
 	processCmd.Flags().IntVarP(&bitDepth, "bit-depth", "b", 0, "Output bit depth (16, 24, 32; default: same as input)")
 	processCmd.Flags().IntVarP(&sampleRate, "sample-rate", "r", 0, "Output sample rate in Hz (default: same as input)")
-	processCmd.Flags().StringVarP(&presetName, "preset", "p", "", "Preset name to apply")
+	processSet.register(processCmd)
 	processCmd.Flags().BoolVar(&eqEnabled, "eq", true, "Enable EQ")
 	processCmd.Flags().BoolVar(&compEnabled, "comp", true, "Enable compressor")
 	processCmd.Flags().BoolVar(&limitEnabled, "limit", true, "Enable limiter")
@@ -63,16 +73,16 @@ func runProcess(cmd *cobra.Command, args []string) error {
 	// Create engine
 	eng := engine.NewFullChain(meta.SampleRate, meta.Channels)
 
-	// Apply preset if specified
-	if presetName != "" {
-		mgr := getPresetManager()
-		p, err := mgr.Get(presetName)
-		if err != nil {
-			return fmt.Errorf("preset error: %w", err)
-		}
-		fmt.Printf("  Preset: %s\n", p.Name)
-		applyPreset(eng, p)
+	var a *analysis.AnalysisResult
+	if processSet.needsAnalysis() {
+		a = analysis.Analyze(buf)
 	}
+	set, err := processSet.resolve(a)
+	if err != nil {
+		return err
+	}
+	set.print("  ")
+	set.apply(eng)
 
 	// Toggle processors
 	procs := eng.Processors()

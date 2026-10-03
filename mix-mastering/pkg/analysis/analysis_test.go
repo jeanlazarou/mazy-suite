@@ -75,28 +75,3 @@ func TestFFT(t *testing.T) {
 		t.Errorf("FFT peak at %.0f Hz, expected ~%.0f Hz", peakFreq, freq)
 	}
 }
-
-func TestRecommend(t *testing.T) {
-	buf := generateSine(1000, 44100, 2, 44100*2)
-	result := Analyze(buf)
-
-	for _, target := range []string{"headphones", "car", "studio", "phone", "bluetooth"} {
-		rec, err := Recommend(result, target)
-		if err != nil {
-			t.Errorf("recommend %s: %v", target, err)
-			continue
-		}
-		if len(rec.Suggestions) == 0 {
-			t.Errorf("no suggestions for %s", target)
-		}
-		if len(rec.Processors) == 0 {
-			t.Errorf("no processor settings for %s", target)
-		}
-	}
-
-	// Unknown target should error
-	_, err := Recommend(result, "mars")
-	if err == nil {
-		t.Error("expected error for unknown target")
-	}
-}

@@ -35,6 +35,54 @@ func TestLimiterBrickwall(t *testing.T) {
 	}
 }
 
+// TestLimiterTruePeakCeiling verifies the ceiling holds for true peak
+// (BS.1770-4 4x interpolation), not just samples: a sine at fs/4 sampled
+// 45° off its crests has every sample 3 dB below its real peak, the
+// classic inter-sample overshoot. Quiet passages away from the hot burst
+// must come through untouched — the guarantee must come from the
+// limiter's envelope, not the whole-buffer backstop trim.
+func TestLimiterTruePeakCeiling(t *testing.T) {
+	sr := 44100.0
+	quiet, hot := 44100, 22050
+	length := quiet + hot + quiet
+	buf := NewAudioBuffer(2, length, int(sr))
+	rng := uint32(12345)
+	noise := func() float64 { // deterministic LCG, uniform in [-1, 1)
+		rng = rng*1664525 + 1013904223
+		return float64(rng)/float64(1<<31) - 1
+	}
+	for i := 0; i < length; i++ {
+		var v float64
+		if i >= quiet && i < quiet+hot {
+			v = 1.6*math.Sin(math.Pi/2*float64(i)+math.Pi/4) + 0.4*noise()
+		} else {
+			v = 0.1 * math.Sin(2*math.Pi*440*float64(i)/sr)
+		}
+		buf.Samples[0][i] = v
+		buf.Samples[1][i] = v
+	}
+	orig := make([]float64, length)
+	copy(orig, buf.Samples[0])
+
+	limiter := NewLimiter(sr)
+	limiter.Ceiling = -1.0
+	if err := limiter.Process(buf); err != nil {
+		t.Fatal(err)
+	}
+
+	tp := NewLUFSMeter(sr, 2).MeasureTruePeak(buf)
+	if tp > -1.0+1e-6 {
+		t.Fatalf("true peak %.3f dBTP exceeds -1.0 ceiling", tp)
+	}
+	// Well before the burst (beyond the lookahead) and well after it
+	// (beyond the release), the quiet tone is untouched.
+	for _, i := range []int{1000, quiet / 2, length - 1000} {
+		if math.Abs(buf.Samples[0][i]-orig[i]) > 1e-6 {
+			t.Fatalf("quiet sample %d altered: %.6f != %.6f", i, buf.Samples[0][i], orig[i])
+		}
+	}
+}
+
 // TestLimiterZeroLatency verifies output stays time-aligned with input:
 // a signal entirely below the ceiling passes through unchanged.
 func TestLimiterZeroLatency(t *testing.T) {
