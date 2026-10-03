@@ -1158,3 +1158,238 @@
     display: block;
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * gallery — one layout, several colour atmospheres
+ *
+ * `orbit`'s centred, airy composition without the ring: the cover is shown
+ * whole, at its own aspect ratio, which is the point — a sleeve that is not
+ * square has nowhere to go on a circle.
+ *
+ * The layout lives here once, on the family class. Each atmosphere below
+ * declares nothing but `--desc-*` values, so they can be picked to suit a
+ * cover without changing how the page reads.
+ * ------------------------------------------------------------------ */
+
+/* Flex only to reorder: the cover comes after the title and the year in the
+   rendered page, though the markdown puts it between them. Children keep the
+   full width (no `align-items`), so the list and its rule still stretch. */
+.description-family-gallery .description-body {
+  display: flex;
+  flex-direction: column;
+  max-width: 44rem;
+  text-align: center;
+  font-family: "Avenir Next", "Segoe UI", Roboto, Helvetica, sans-serif;
+}
+
+.description-family-gallery .description-body > p:has(img) {
+  order: 1;
+  margin: 0;
+}
+
+.description-family-gallery .description-body .description-list {
+  order: 2;
+}
+
+.description-family-gallery .description-body h1 {
+  font-size: 2rem;
+  font-weight: 300;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* the cover, whole: both axes capped, both auto, so nothing is cropped */
+.description-family-gallery .description-body img {
+  width: auto;
+  max-width: min(20rem, 100%);
+  height: auto;
+  max-height: 20rem;
+  margin: 1.6rem auto 1.2rem;
+  border-radius: 3px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.3);
+}
+
+/* the prose stays centred with the header; the track list reads left */
+.description-family-gallery .description-body .description-list {
+  margin-top: 2.2rem;
+  padding-top: 1.8rem;
+  border-top: 1px solid var(--desc-rule);
+  text-align: left;
+}
+
+.description-family-gallery .description-body .description-list > li {
+  padding: 0.8rem 0 0.8rem 3rem;
+}
+
+.description-family-gallery .description-body .description-list > li::before {
+  top: 0.95rem;
+  letter-spacing: 0.1em;
+}
+
+.description-family-gallery .description-body .description-song-title {
+  font-size: 1.02rem;
+  letter-spacing: 0.01em;
+}
+
+/* a family built after the origin markers existed, so it shows them */
+.description-family-gallery .description-body .description-origin {
+  display: block;
+  margin: 0.45rem 0 0.1rem;
+  padding: 0.35rem 0 0.35rem 0.8rem;
+  border-left: 2px solid var(--desc-accent);
+  line-height: 1.5;
+}
+
+.description-family-gallery .description-body .description-origin-kind {
+  background: var(--desc-chip);
+  color: var(--desc-heading);
+}
+
+.description-family-gallery .description-body .description-origin-note {
+  color: var(--desc-muted);
+  opacity: 1;
+}
+
+/* ---- atmospheres ---- */
+
+/* dusk — a night sky; `orbit`'s palette, for covers it cannot hold */
+#playlist-description.description-theme-dusk {
+  --desc-bg: #10131b;
+  --desc-bg-image: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(96, 126, 200, 0.26),
+    rgba(0, 0, 0, 0) 60%
+  );
+  --desc-fg: #b6bdd0;
+  --desc-heading: #f1f3fa;
+  --desc-accent: #7f93c4;
+  --desc-muted: #838caa;
+  --desc-rule: rgba(180, 195, 235, 0.16);
+  --desc-link: #8fb8ff;
+  --desc-chip: rgba(180, 195, 235, 0.16);
+}
+
+/* ember — charcoal and warm firelight */
+#playlist-description.description-theme-ember {
+  --desc-bg: #171311;
+  --desc-bg-image: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(230, 130, 60, 0.22),
+    rgba(0, 0, 0, 0) 60%
+  );
+  --desc-fg: #cfc3b8;
+  --desc-heading: #f8f0e7;
+  --desc-accent: #e08c42;
+  --desc-muted: #9c8e81;
+  --desc-rule: rgba(248, 240, 231, 0.15);
+  --desc-link: #f0a85e;
+  --desc-chip: rgba(224, 140, 66, 0.2);
+}
+
+/* garnet — deep red, close and smouldering */
+#playlist-description.description-theme-garnet {
+  --desc-bg: #190f12;
+  --desc-bg-image: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(215, 70, 90, 0.24),
+    rgba(0, 0, 0, 0) 60%
+  );
+  --desc-fg: #cfb9bd;
+  --desc-heading: #f8eced;
+  --desc-accent: #e06b80;
+  --desc-muted: #a08187;
+  --desc-rule: rgba(248, 236, 237, 0.15);
+  --desc-link: #ef8296;
+  --desc-chip: rgba(224, 107, 128, 0.2);
+}
+
+/* ochre — old gold, lamplit */
+#playlist-description.description-theme-ochre {
+  --desc-bg: #17140c;
+  --desc-bg-image: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(230, 190, 70, 0.22),
+    rgba(0, 0, 0, 0) 60%
+  );
+  --desc-fg: #cdc4a9;
+  --desc-heading: #f8f2de;
+  --desc-accent: #dcb63f;
+  --desc-muted: #998f74;
+  --desc-rule: rgba(248, 242, 222, 0.15);
+  --desc-link: #ecc85c;
+  --desc-chip: rgba(220, 182, 63, 0.2);
+}
+
+/* moss — deep green, damp and quiet */
+#playlist-description.description-theme-moss {
+  --desc-bg: #0f1613;
+  --desc-bg-image: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(90, 170, 120, 0.2),
+    rgba(0, 0, 0, 0) 60%
+  );
+  --desc-fg: #b6c7bd;
+  --desc-heading: #eaf3ed;
+  --desc-accent: #6fc08d;
+  --desc-muted: #849489;
+  --desc-rule: rgba(234, 243, 237, 0.15);
+  --desc-link: #86cfa2;
+  --desc-chip: rgba(111, 192, 141, 0.18);
+}
+
+/* plum — deep violet, late and electric */
+#playlist-description.description-theme-plum {
+  --desc-bg: #16101c;
+  --desc-bg-image: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(190, 110, 210, 0.22),
+    rgba(0, 0, 0, 0) 60%
+  );
+  --desc-fg: #c6b9cf;
+  --desc-heading: #f3ecf7;
+  --desc-accent: #c478d8;
+  --desc-muted: #9a8aa3;
+  --desc-rule: rgba(243, 236, 247, 0.15);
+  --desc-link: #dd9bee;
+  --desc-chip: rgba(196, 120, 216, 0.2);
+}
+
+/* ivory — warm paper, for covers that need air around them */
+#playlist-description.description-theme-ivory {
+  --desc-bg: #faf7f1;
+  --desc-bg-image: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(255, 255, 255, 0.9),
+    rgba(255, 255, 255, 0) 55%
+  );
+  --desc-fg: #4a443c;
+  --desc-heading: #1d1a15;
+  --desc-accent: #a8763c;
+  --desc-muted: #8a8176;
+  --desc-rule: rgba(29, 26, 21, 0.14);
+  --desc-link: #8a5a22;
+  --desc-chip: rgba(29, 26, 21, 0.08);
+}
+
+/* slate — cool grey, neutral under a loud cover */
+#playlist-description.description-theme-slate {
+  --desc-bg: #f3f5f8;
+  --desc-bg-image: radial-gradient(
+    ellipse at 50% 0%,
+    rgba(255, 255, 255, 0.9),
+    rgba(255, 255, 255, 0) 55%
+  );
+  --desc-fg: #474f57;
+  --desc-heading: #141a1f;
+  --desc-accent: #5b7a93;
+  --desc-muted: #7d8791;
+  --desc-rule: rgba(20, 26, 31, 0.13);
+  --desc-link: #3f6b8e;
+  --desc-chip: rgba(20, 26, 31, 0.08);
+}
+
+/* the light atmospheres keep their shadow soft */
+.description-theme-ivory .description-body img,
+.description-theme-slate .description-body img {
+  box-shadow: 0 14px 34px rgba(20, 26, 31, 0.16);
+}

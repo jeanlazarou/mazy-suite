@@ -159,8 +159,22 @@ the console). If the file has more than one marker, the first one wins.
 | `prism`   | one hue per track, spread around the colour wheel — coloured bar, number, badge and origin block |              yes              |
 | `orbit`   | the track titles on a ring around a circular cover, with the full list under it                  |              yes              |
 
-Every theme except `neon` and `orbit` follows the app's dark mode; those two are
-dark in both.
+and the **gallery** family — one layout, eight colour atmospheres (see below):
+
+| Theme    | Atmosphere                                               |
+| -------- | -------------------------------------------------------- |
+| `dusk`   | a night sky: deep navy, cool blue glow                    |
+| `ember`  | charcoal and warm firelight, amber accents                |
+| `garnet` | deep red, close and smouldering                           |
+| `ochre`  | old gold, lamplit                                         |
+| `moss`   | deep green, damp and quiet                                |
+| `plum`   | deep violet, late and electric                            |
+| `ivory`  | warm paper, light, plenty of air                          |
+| `slate`  | cool light grey, neutral under a loud cover               |
+
+Every theme except `neon`, `orbit` and the gallery family follows the app's dark
+mode; those are fixed, because an atmosphere is something you pick for a cover,
+not something the time of day should change.
 
 `orbit` shows the numbers and titles on the ring — authors, links and notes
 would collide with it — and then repeats the album under the ring as an ordinary
@@ -173,6 +187,32 @@ altogether and the list is shown once.
 `prism` and `orbit` position songs by their place in the list, so
 `DescriptionModal` puts `--song-index` on every song and `--song-count` on the
 list — CSS cannot count siblings. Any theme can use them.
+
+### The gallery family
+
+`dusk`, `ember`, `garnet`, `ochre`, `moss`, `plum`, `ivory` and `slate` are the
+same layout in eight colour atmospheres: a centred title and year, the cover
+**whole** — at its own
+aspect ratio, nothing cropped — and the track list under a hairline rule. Pick
+the one that suits the artwork; nothing else changes.
+
+It is `orbit`'s composition without the ring. `orbit` masks the cover into a
+circle, which costs a square sleeve its corners, so where that matters use
+`dusk`: same night sky, cover intact.
+
+A family is declared in [`src/descriptionThemes.js`](src/descriptionThemes.js):
+
+```js
+export const THEME_FAMILIES = {
+  gallery: ["dusk", "ember", "garnet", "ochre", "moss", "plum", "ivory", "slate"],
+};
+```
+
+Members get a `description-family-<name>` class alongside their own, so the
+layout is written once against `.description-family-gallery` and each member
+declares nothing but its palette. Adding an atmosphere is one entry in that list
+plus one block of `--desc-*` values.
+
 Themes are implemented in [`src/DescriptionThemes.css`](src/DescriptionThemes.css)
 and listed in [`src/descriptionThemes.js`](src/descriptionThemes.js) — add a
 name to that list and a matching `#playlist-description.description-theme-<name>`
@@ -190,6 +230,7 @@ A theme only needs to declare its palette; the shared rules do the layout:
   --desc-muted: #909090;   /* the year line and the notes under a song */
   --desc-rule: rgba(0, 0, 0, 0.08); /* separators */
   --desc-link: #111111;
+  --desc-chip: rgba(0, 0, 0, 0.07); /* the $KIND badge, gallery family only */
 }
 ```
 

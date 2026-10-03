@@ -1,5 +1,22 @@
 export const DEFAULT_THEME = "default";
 
+// Themes that share one layout and differ only in their palette, so that an
+// album can be matched to its cover without changing how it reads. The family
+// name becomes a second class on the panel and the layout is written once;
+// each member only declares `--desc-*` values.
+export const THEME_FAMILIES = {
+  gallery: [
+    "dusk",
+    "ember",
+    "garnet",
+    "ochre",
+    "moss",
+    "plum",
+    "ivory",
+    "slate",
+  ],
+};
+
 // Themes are implemented in DescriptionThemes.css and documented in README.md
 export const DESCRIPTION_THEMES = [
   DEFAULT_THEME,
@@ -13,7 +30,16 @@ export const DESCRIPTION_THEMES = [
   "lineage",
   "prism",
   "orbit",
+  ...Object.values(THEME_FAMILIES).flat(),
 ];
+
+export function familyOf(theme) {
+  const found = Object.entries(THEME_FAMILIES).find(([, members]) =>
+    members.includes(theme)
+  );
+
+  return found ? found[0] : null;
+}
 
 // `$THEME:name` on a line of its own, returns the raw name or null
 export function themeMarker(line) {
@@ -45,5 +71,13 @@ export function themeClassNames(name) {
 
   if (theme === DEFAULT_THEME) return "description-plain";
 
-  return `description-themed description-theme-${theme}`;
+  const family = familyOf(theme);
+
+  return [
+    "description-themed",
+    family ? `description-family-${family}` : null,
+    `description-theme-${theme}`,
+  ]
+    .filter(Boolean)
+    .join(" ");
 }

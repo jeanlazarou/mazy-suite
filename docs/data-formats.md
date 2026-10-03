@@ -102,8 +102,10 @@ sentence. Any of them may be left out; together they render as one element.
 
 A `$THEME:<name>` line anywhere in the file picks how the player renders the
 description — `default`, `sleeve`, `liner`, `minimal`, `neon`, `dossier`,
-`lineage`, `prism` or `orbit`. The player's own README documents what each one
-looks like and which of them show the `$KIND`/`$FROM`/`$NOTE` element.
+`lineage`, `prism`, `orbit`, or one of the gallery atmospheres (`dusk`, `ember`,
+`garnet`, `ochre`, `moss`, `plum`, `ivory`, `slate`: one layout, eight colour
+moods, meant to be matched to the cover). The player's own README documents what
+each one looks like and which of them show the `$KIND`/`$FROM`/`$NOTE` element.
 
 An optional `<style>…</style>` block anywhere in the file is extracted and
 applied to the rendered description.

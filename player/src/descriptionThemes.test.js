@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  DESCRIPTION_THEMES,
+  THEME_FAMILIES,
+  familyOf,
   DEFAULT_THEME,
   normalizeTheme,
   themeClassNames,
@@ -48,5 +51,31 @@ describe("themeClassNames", () => {
     expect(themeClassNames("neon")).toBe(
       "description-themed description-theme-neon"
     );
+  });
+
+  it("adds the family class for a theme that belongs to one", () => {
+    expect(themeClassNames("dusk")).toBe(
+      "description-themed description-family-gallery description-theme-dusk"
+    );
+  });
+});
+
+describe("theme families", () => {
+  it("names the family a theme belongs to", () => {
+    expect(familyOf("ember")).toBe("gallery");
+    expect(familyOf("neon")).toBeNull();
+    expect(familyOf(DEFAULT_THEME)).toBeNull();
+  });
+
+  it("lists every member as a usable theme", () => {
+    Object.values(THEME_FAMILIES)
+      .flat()
+      .forEach((member) => expect(DESCRIPTION_THEMES).toContain(member));
+  });
+
+  it("never gives a theme two families", () => {
+    const members = Object.values(THEME_FAMILIES).flat();
+
+    expect(new Set(members).size).toBe(members.length);
   });
 });
