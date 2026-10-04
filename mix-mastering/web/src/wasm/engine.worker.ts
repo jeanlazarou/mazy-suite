@@ -19,12 +19,19 @@ function loadEngine(): Promise<void> {
       // always matches the Go toolchain that built engine.wasm. It's a plain
       // script (not a module), and Vite blocks importing public files, so
       // fetch it and evaluate in the worker's global scope.
-      const src = await (await fetch(new URL('wasm_exec.js', assetBase))).text();
+      // Both URLs carry the engine's content hash (vite.config.ts) so a
+      // new app bundle never runs against a cached old engine.
+      const engineURL = (file: string) => {
+        const url = new URL(file, assetBase);
+        url.searchParams.set('v', __ENGINE_VERSION__);
+        return url;
+      };
+      const src = await (await fetch(engineURL('wasm_exec.js'))).text();
       (0, eval)(src);
 
       const go = new self.Go();
       const result = await WebAssembly.instantiateStreaming(
-        fetch(new URL('engine.wasm', assetBase)),
+        fetch(engineURL('engine.wasm')),
         go.importObject
       );
 

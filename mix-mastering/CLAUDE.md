@@ -50,7 +50,7 @@ There are no built-in presets — built-in settings come from recipes (below). `
 
 ### Web UI
 
-React + TypeScript + Vite + Material UI. State in Zustand (`web/src/store/store.ts`). The Go WASM engine runs in a Web Worker (`web/src/wasm/engine.worker.ts`) so processing never blocks the UI; `web/src/wasm/engine.ts` is the promise-based RPC client (all engine methods are async, Float32Array arguments are transferred/consumed). The worker fetches `/wasm_exec.js` (copied from GOROOT by build.sh) and evals it — Vite blocks importing public files as modules.
+React + TypeScript + Vite + Material UI. State in Zustand (`web/src/store/store.ts`). The Go WASM engine runs in a Web Worker (`web/src/wasm/engine.worker.ts`) so processing never blocks the UI; `web/src/wasm/engine.ts` is the promise-based RPC client (all engine methods are async, Float32Array arguments are transferred/consumed). The worker fetches `/wasm_exec.js` (copied from GOROOT by build.sh) and evals it — Vite blocks importing public files as modules. Both engine files are fetched with `?v=<content hash>` (`__ENGINE_VERSION__`, computed in vite.config.ts from public/engine.wasm + wasm_exec.js — so build the WASM *before* `vite build`): public files keep fixed URLs and GitHub Pages caches them for 10 minutes, so without it a fresh deploy could pair the new bundle with a cached old engine ("unknown WASM function").
 
 A/B playback routes through a shared gain node; the "Match" toggle plays the processed buffer trimmed to the original's integrated LUFS (`matchGainDB` in the store, measured via `wasmMeasureLoudness`). Compressor/limiter panels show per-run gain-reduction stats from `wasmGetMeters`.
 
