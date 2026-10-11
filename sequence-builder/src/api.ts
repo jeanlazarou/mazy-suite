@@ -40,14 +40,17 @@ function dataRoot(): Promise<string> {
 const encodePath = (path: string) => path.split('/').map(encodeURIComponent).join('/');
 
 /**
- * A track url as written in an album ("/music/files/Album/Song.mp3", or
- * "../music/files/..." once the demo site rewrote it) becomes a URL this app
- * can fetch. Paths are human-readable and hold spaces, so every segment is
- * encoded.
+ * A track url is used as the album writes it, as the player does: it is
+ * already right for the page — "/music/files/Album/Song.mp3" from the server
+ * root, or "../music/files/..." once the demo site rewrote it relative to the
+ * app. Not rebased on the data root: the audio need not sit next to the data
+ * (a site serving /music/sequence/ and /music/files/ has no
+ * /music/music/files). Paths are human-readable and hold spaces, so every
+ * segment is encoded.
  */
-function audioUrl(url: string, root: string): string {
+function audioUrl(url: string): string {
   if (/^https?:\/\//.test(url)) return url;
-  return `${root}/${encodePath(url.replace(/^(\.\.\/|\.\/|\/)+/, ''))}`;
+  return encodePath(url);
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -90,7 +93,7 @@ export async function loadAlbum(name: string): Promise<Playlist> {
     tracks: raw.playlist.map(track => ({
       ...track,
       sourceUrl: track.url,
-      url: audioUrl(track.url, root)
+      url: audioUrl(track.url)
     }))
   };
 }

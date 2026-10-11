@@ -83,9 +83,12 @@ there is no file picker: the album files' track urls point at the server's
 
 `api.ts` follows twin_diff's `api.js`: it probes `./data/albums.json` once and
 falls back to `../data/albums.json` (the suite's demo site, where apps live one
-folder down and share `/data` and `/music`). Track urls (`/music/files/...`,
-or `../music/files/...` as `build_site.sh` rewrites them) are resolved against
-that same root, segment by segment encoded. `public/data` and
+folder down and share `/data` and `/music`). Track urls are used as the album
+writes them, as `player` does — `/music/files/...` from the server root, or
+`../music/files/...` as `build_site.sh` rewrites them for the portal — only
+segment by segment encoded. They are **not** rebased on the data root: on a
+site laid out `/music/{player,sequence,data,files}` the data is at `../data`
+but the audio is not at `../music/files`. `public/data` and
 `public/music/files` are symlinks made by `../scripts/link_data.sh demo|library sequence-builder`.
 
 The open album is kept in the URL (`#album=<name>`) so a reload reopens it.
