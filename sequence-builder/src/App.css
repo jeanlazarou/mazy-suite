@@ -50,6 +50,61 @@ body {
   align-items: center;
 }
 
+/* Preview length dial */
+.preview-dial {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 50%;
+}
+
+.preview-dial:active {
+  cursor: grabbing;
+}
+
+.preview-dial:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+.dial-face {
+  fill: rgba(255, 255, 255, 0.2);
+}
+
+.dial-wedge {
+  fill: rgba(255, 255, 255, 0.6);
+}
+
+.dial-tick {
+  stroke: rgba(255, 255, 255, 0.6);
+  stroke-width: 2;
+}
+
+.dial-tick.major {
+  stroke: white;
+  stroke-width: 3.5;
+}
+
+.dial-hand {
+  stroke: white;
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+
+.dial-hub {
+  fill: rgba(40, 30, 80, 0.85);
+}
+
+.dial-label {
+  fill: white;
+  font-size: 24px;
+  font-weight: 700;
+  user-select: none;
+  pointer-events: none;
+}
+
 .album-select {
   background: rgba(255, 255, 255, 0.2);
   color: white;

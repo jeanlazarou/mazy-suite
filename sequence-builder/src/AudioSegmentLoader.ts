@@ -1,17 +1,19 @@
 /**
  * AudioSegmentLoader
  *
- * Loads audio files, extracts first/last 10-second segments, and plays them
- * using HTML5 Audio elements for reliable playback control.
- * Caches decoded AudioBuffers for fast repeated access.
+ * Loads audio files, extracts first/last segments of the longest preview
+ * length, and plays them using HTML5 Audio elements for reliable playback
+ * control. Caches decoded AudioBuffers for fast repeated access; a segment is
+ * trimmed to the current preview length only when played, so changing the
+ * length needs no reloading.
  */
 
 import { AudioSegments } from './types';
+import { MAX_PREVIEW } from './PreviewDial';
 
 class AudioSegmentLoader {
   private audioContext: AudioContext;
   private cache: Map<string, AudioSegments>;
-  private segmentDuration: number;
   private currentAudio: HTMLAudioElement | null;
   private currentBlobUrl: string | null;
 
@@ -22,10 +24,13 @@ class AudioSegmentLoader {
    */
   onProgress: ((trackUrl: string | null, progress: number, segment: 'start' | 'end' | null) => void) | null;
 
+  /** How much of a segment is played, in seconds (at most MAX_PREVIEW) */
+  previewSeconds: number;
+
   constructor() {
     this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     this.cache = new Map();
-    this.segmentDuration = 10; // seconds
+    this.previewSeconds = 10;
     this.currentAudio = null;
     this.currentBlobUrl = null;
     this.onProgress = null;
@@ -52,12 +57,12 @@ class AudioSegmentLoader {
       const arrayBuffer = await response.arrayBuffer();
       const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
 
-      // Extract first 10 seconds
-      const startDuration = Math.min(this.segmentDuration, audioBuffer.duration);
+      // Extract the first MAX_PREVIEW seconds
+      const startDuration = Math.min(MAX_PREVIEW, audioBuffer.duration);
       const startBuffer = this.extractSegment(audioBuffer, 0, startDuration);
 
-      // Extract last 10 seconds
-      const endStart = Math.max(0, audioBuffer.duration - this.segmentDuration);
+      // Extract the last MAX_PREVIEW seconds
+      const endStart = Math.max(0, audioBuffer.duration - MAX_PREVIEW);
       const endBuffer = this.extractSegment(audioBuffer, endStart, audioBuffer.duration);
 
       const segments: AudioSegments = { start: startBuffer, end: endBuffer };
@@ -80,7 +85,7 @@ class AudioSegmentLoader {
   private extractSegment(source: AudioBuffer, startTime: number, endTime: number): AudioBuffer {
     const sampleRate = source.sampleRate;
     const startSample = Math.floor(startTime * sampleRate);
-    const endSample = Math.ceil(endTime * sampleRate);
+    const endSample = Math.min(source.length, Math.ceil(endTime * sampleRate));
     const segmentLength = endSample - startSample;
 
     const segment = this.audioContext.createBuffer(
@@ -100,6 +105,18 @@ class AudioSegmentLoader {
     }
 
     return segment;
+  }
+
+  /**
+   * The part of a cached segment to play: the first previewSeconds of a
+   * beginning, the last previewSeconds of an ending
+   */
+  private preview(buffer: AudioBuffer, segment?: 'start' | 'end'): AudioBuffer {
+    const length = this.previewSeconds;
+    if (!segment || buffer.duration <= length) return buffer;
+    return segment === 'start'
+      ? this.extractSegment(buffer, 0, length)
+      : this.extractSegment(buffer, buffer.duration - length, buffer.duration);
   }
 
   /**
@@ -173,8 +190,8 @@ class AudioSegmentLoader {
       // Stop any currently playing audio
       this.stopCurrentSource();
 
-      // Convert AudioBuffer to WAV Blob
-      const blob = this.audioBufferToWavBlob(buffer);
+      // Convert the part to hear to a WAV Blob
+      const blob = this.audioBufferToWavBlob(this.preview(buffer, segment));
       const blobUrl = URL.createObjectURL(blob);
 
       // Create Audio element

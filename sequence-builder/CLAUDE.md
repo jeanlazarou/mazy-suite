@@ -22,7 +22,7 @@ This is a Vite + React + TypeScript project. Vite provides instant HMR and fast 
 
 When curating playlists, DJs and music enthusiasts need to test how tracks transition. Loading full tracks is memory-intensive and slow. This app:
 
-1. Loads only the **first 10 seconds** and **last 10 seconds** of each track
+1. Plays only the **first** and **last few seconds** of each track (5–15 s, set on a dial; 10 by default)
 2. Lets users click tiles to build a sequence
 3. Plays transitions (end of track A → beginning of track B)
 4. Provides a replay mode to review the full sequence
@@ -41,6 +41,7 @@ When curating playlists, DJs and music enthusiasts need to test how tracks trans
 - **App.tsx** — Main container, album chooser, manages sequence state and saving
 - **TrackGrid.tsx** — Grid display of colored tiles with hover titles
 - **TrackTile.tsx** — Individual tile component with color, sequence number, hover state
+- **PreviewDial.tsx** — Preview length control, an analog 15-second timer face (also defines MIN/MAX_PREVIEW)
 - **SequencePlayer.ts** — Audio playback engine, manages segment loading and playback
 - **AudioSegmentLoader.ts** — Loads specific time ranges using HTTP Range requests
 - **App.css** — Styling with gradient background and responsive grid
@@ -53,10 +54,13 @@ When curating playlists, DJs and music enthusiasts need to test how tracks trans
 
 1. **Fetch entire file**: `fetch(url)` loads the complete audio file
 2. **Decode**: Web Audio API's `AudioContext.decodeAudioData(arrayBuffer)`
-3. **Extract segments**: Slice AudioBuffer to get first/last 10 seconds
-   - Start segment: samples 0 to (sampleRate × 10)
-   - End segment: samples (totalSamples - sampleRate × 10) to totalSamples
+3. **Extract segments**: Slice AudioBuffer to get first/last `MAX_PREVIEW` (15) seconds
+   - Start segment: samples 0 to (sampleRate × 15)
+   - End segment: samples (totalSamples - sampleRate × 15) to totalSamples
 4. **Cache**: Store decoded segment AudioBuffers in Map<url, {start, end}>
+5. **Trim at play time**: `play()` takes the first `previewSeconds` of a start
+   segment, the last `previewSeconds` of an end segment — so changing the
+   preview length is instant and never reloads anything
 
 **Playback approach**:
 
@@ -131,7 +135,7 @@ When `stop()` is called, it increments the session ID, causing all running async
 ### Interaction Modes
 
 **Build Mode** (default):
-- Click tile → plays last 10s, adds to sequence
+- Click tile → plays its ending (the preview length, 10 s by default), adds to sequence
 - Click next tile → plays previous end + new beginning (transition test)
 - Tiles show sequence numbers (1, 2, 3...)
 
@@ -140,6 +144,17 @@ When `stop()` is called, it increments the session ID, causing all running async
 - Currently playing tile highlights
 - Track title displays at bottom
 - Auto-advances through sequence
+
+### Preview Length
+
+The dial in the header sets how much of an ending/beginning is played, whole
+seconds from 5 to 15. It is a 15-second timer face (one turn = 15 s, 12
+o'clock = 0/15) with the length as a wedge and the value in the hub: drag the
+hand or click the face, scroll over it, or arrow keys / Home / End
+(`role="slider"`). Dragging into the unreachable 0–5 zone snaps to the nearer
+end, so moving past 12 o'clock stays at 15. The value is remembered in
+localStorage (`sequence-builder:preview-seconds`); it applies from the next
+segment played.
 
 ### Color Generation
 
@@ -163,10 +178,11 @@ Export formats:
 
 ## Memory Optimization
 
-**Why only 10 seconds?**
+**Why only a few seconds?**
 - A 3-minute MP3 at 320kbps ≈ 7.2 MB
 - A 50-track playlist ≈ 360 MB (too much!)
-- 10s segments × 2 (start + end) × 50 tracks ≈ 24 MB (manageable)
+- 15s segments × 2 (start + end) × 50 tracks ≈ 36 MB (manageable) — cached at
+  the longest preview length so the dial can change it without reloading
 
 **Caching strategy**:
 - Pre-load all segments on playlist load (for fast transitions)
@@ -175,7 +191,6 @@ Export formats:
 
 ## Future Enhancements
 
-- Adjustable segment duration (5s, 10s, 15s)
 - Crossfade between transitions
 - Waveform visualization of segments
 - BPM detection for better matching

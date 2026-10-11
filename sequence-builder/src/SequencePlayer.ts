@@ -28,6 +28,14 @@ class SequencePlayer {
   }
 
   /**
+   * How many seconds of an ending or a beginning are played. Takes effect
+   * from the next segment played; the segments are not reloaded.
+   */
+  set previewSeconds(seconds: number) {
+    this.loader.previewSeconds = seconds;
+  }
+
+  /**
    * Play the ending of a track
    * @param url - Track URL
    */

@@ -4,8 +4,22 @@ import { loadAlbums, loadAlbum } from './api';
 import TrackGrid from './TrackGrid';
 import TrackListPopup from './TrackListPopup';
 import SequencePlayer from './SequencePlayer';
+import PreviewDial, { MIN_PREVIEW, MAX_PREVIEW } from './PreviewDial';
+
+const PREVIEW_KEY = 'sequence-builder:preview-seconds';
+
+function savedPreviewSeconds(): number {
+  try {
+    const s = Number(localStorage.getItem(PREVIEW_KEY));
+    if (Number.isInteger(s) && s >= MIN_PREVIEW && s <= MAX_PREVIEW) return s;
+  } catch {
+    // storage unavailable: use the default
+  }
+  return 10;
+}
 
 function App() {
+  const [previewSeconds, setPreviewSeconds] = useState(savedPreviewSeconds);
   const [albums, setAlbums] = useState<Album[] | null>(null);
   const [albumsError, setAlbumsError] = useState<string | null>(null);
   const [albumName, setAlbumName] = useState('');
@@ -33,6 +47,15 @@ function App() {
       player.onProgress = null;
     };
   }, []);
+
+  useEffect(() => {
+    playerRef.current.previewSeconds = previewSeconds;
+    try {
+      localStorage.setItem(PREVIEW_KEY, String(previewSeconds));
+    } catch {
+      // not remembered, still applied
+    }
+  }, [previewSeconds]);
 
   useEffect(() => {
     loadAlbums()
@@ -183,6 +206,7 @@ function App() {
       <header className="header">
         <h1>Sequence Builder</h1>
         <div className="controls">
+          <PreviewDial seconds={previewSeconds} onChange={setPreviewSeconds} />
           {albums && albums.length > 0 && (
             <select
               className="album-select"
