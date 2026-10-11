@@ -2,6 +2,8 @@
 
 A track transition tester for playlist curation. Test how tracks flow together by listening to endings and beginnings without loading entire files.
 
+![Testing a transition on the demo album "Back to Normal": the first track's ending has played (tile 1), the third track was clicked as number 2 and its beginning is now playing — the progress bar fills along the bottom of its tile and the footer shows "▶ Against Myself"](docs/screenshots/main-view.png)
+
 ## Features
 
 - 🎵 **Smart Loading**: Only loads first/last 10 seconds of each track
@@ -23,23 +25,35 @@ Vite will automatically open [http://localhost:3000](http://localhost:3000) in y
 
 ## Usage
 
-1. **Load a Playlist**: Click "Load Playlist" and select a JSON file
+![The start screen lists the suite's albums by cover, title and track count — here the two demo albums, Back to Normal and Skip On Back](docs/screenshots/albums.png)
+
+1. **Choose an Album**: Pick one of the suite's albums (from `data/albums.json`) on the start screen, or switch with the selector in the header
 2. **Build a Sequence**: Click tiles to add tracks to your sequence
    - First click: Plays the track's ending
    - Subsequent clicks: Plays transition (previous ending → new beginning)
 3. **Review**: Click "Replay" to hear the full sequence with visual highlighting
 4. **Save**: Export your sequence as a new playlist JSON file
 
-## Playlist JSON Format
+## Albums
 
-Compatible with the Mazy Suite Player format:
+Like the other suite apps, Sequence Builder reads the suite's albums: `data/albums.json`
+and one `<name>.json` per album, audio under `music/files/`. Link them into `public/` with
+
+```bash
+../scripts/link_data.sh demo sequence-builder      # the demo albums in examples/
+../scripts/link_data.sh library sequence-builder   # your own collection
+```
+
+On the suite's demo site the app finds the shared `../data` and `../music` instead.
+
+Saved sequences use the same format as an album file, so the Player can open them:
 
 ```json
 {
-  "title": "My Playlist",
-  "tracks": [
+  "title": "My Album - Sequenced",
+  "playlist": [
     {
-      "url": "../music/files/track.mp3",
+      "url": "/music/files/My Album/track.mp3",
       "title": "Track Title",
       "authors": ["Artist Name"],
       "rating": 5,

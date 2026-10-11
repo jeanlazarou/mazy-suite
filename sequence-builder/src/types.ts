@@ -3,7 +3,10 @@
  */
 
 export interface Track {
+  /** URL the audio is fetched from */
   url: string;
+  /** url as written in the album file, kept for saving */
+  sourceUrl?: string;
   title: string;
   authors?: string[];
   rating?: number;
@@ -26,6 +29,15 @@ export interface RawPlaylist {
     from: string;
     to: string;
   };
+}
+
+/** An entry of the suite's albums.json, with its title read from the album */
+export interface Album {
+  name: string;
+  title: string;
+  trackCount: number;
+  cover: string;
+  color?: string;
 }
 
 export interface AudioSegments {

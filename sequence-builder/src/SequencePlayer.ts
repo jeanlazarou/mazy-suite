@@ -138,8 +138,9 @@ class SequencePlayer {
    * @param urls - Track URLs to pre-load
    */
   async preloadTracks(urls: string[]): Promise<void> {
-    const promises = urls.map(url => this.loader.loadSegments(url));
-    await Promise.all(promises);
+    // A track that fails to load (already logged by the loader) must not
+    // keep the rest of the album from being tested
+    await Promise.allSettled(urls.map(url => this.loader.loadSegments(url)));
   }
 
   /**

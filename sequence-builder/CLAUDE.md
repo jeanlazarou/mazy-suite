@@ -36,8 +36,9 @@ When curating playlists, DJs and music enthusiasts need to test how tracks trans
 
 **Key Files**:
 
-- **types.ts** — TypeScript type definitions for Track, Playlist, AudioSegments
-- **App.tsx** — Main container, manages sequence state, handles playlist loading/saving
+- **types.ts** — TypeScript type definitions for Track, Playlist, Album, AudioSegments
+- **api.ts** — Reads the suite's albums (`albums.json`, album files) and resolves track URLs
+- **App.tsx** — Main container, album chooser, manages sequence state and saving
 - **TrackGrid.tsx** — Grid display of colored tiles with hover titles
 - **TrackTile.tsx** — Individual tile component with color, sequence number, hover state
 - **SequencePlayer.ts** — Audio playback engine, manages segment loading and playback
@@ -69,26 +70,36 @@ This approach enables:
 - Session-based cancellation to prevent audio overlap
 - Instant playback (no buffering delays since it's in-memory)
 
-### Playlist JSON Format
+### Albums (where the tracks come from)
 
-Compatible with the `player` app format:
+Like the other suite apps, the app lists the suite's albums from
+`data/albums.json` (covers on the start screen, a selector in the header) —
+there is no file picker: the album files' track urls point at the server's
+`/music/files/`, so a playlist picked from the local disk made no sense.
+
+`api.ts` follows twin_diff's `api.js`: it probes `./data/albums.json` once and
+falls back to `../data/albums.json` (the suite's demo site, where apps live one
+folder down and share `/data` and `/music`). Track urls (`/music/files/...`,
+or `../music/files/...` as `build_site.sh` rewrites them) are resolved against
+that same root, segment by segment encoded. `public/data` and
+`public/music/files` are symlinks made by `../scripts/link_data.sh demo|library sequence-builder`.
+
+The open album is kept in the URL (`#album=<name>`) so a reload reopens it.
+
+### Saved sequence format
+
+Same shape as an album file, so `player` can open it — `playlist`, not
+`tracks`, with each track's `url` as written in the album (`Track.sourceUrl`),
+not the resolved fetch URL:
 
 ```json
 {
-  "title": "Playlist Name",
-  "tracks": [
-    {
-      "url": "relative/path/to/file.mp3",
-      "title": "Track Title",
-      "authors": ["Artist Name"],
-      "rating": 5,
-      "enabled": true
-    }
+  "title": "Album Title - Sequenced",
+  "playlist": [
+    { "url": "/music/files/Album/Song.mp3", "title": "Track Title", "authors": ["Artist Name"] }
   ]
 }
 ```
-
-Audio files are resolved relative to the playlist JSON location (typically `../music/files/`).
 
 ### Session-Based Playback Cancellation
 
@@ -147,11 +158,8 @@ Export formats:
 
 ## File Locations
 
-Example playlist JSON files:
-- `<your music site>/data/default.json`
-- `player/public/data/<album>.json` (playlists from the suite's player app)
-
-Audio files: typically `../music/files/` relative to playlist JSON
+- Albums: `public/data/albums.json` and `public/data/<name>.json` (link to the suite's `data/` or `examples/data/`)
+- Audio: `public/music/files/` (link to your collection or `examples/music/files/`)
 
 ## Memory Optimization
 

@@ -1,10 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Track, Playlist, RawPlaylist } from './types';
+import { useState, useRef, useEffect } from 'react';
+import { Album, Track, Playlist, RawPlaylist } from './types';
+import { loadAlbums, loadAlbum } from './api';
 import TrackGrid from './TrackGrid';
 import TrackListPopup from './TrackListPopup';
 import SequencePlayer from './SequencePlayer';
 
 function App() {
+  const [albums, setAlbums] = useState<Album[] | null>(null);
+  const [albumsError, setAlbumsError] = useState<string | null>(null);
+  const [albumName, setAlbumName] = useState('');
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [sequence, setSequence] = useState<string[]>([]);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
@@ -30,58 +34,47 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    loadAlbums()
+      .then(list => {
+        setAlbums(list);
+        // the album shown last is in the URL, so a reload keeps it
+        const name = decodeURIComponent(window.location.hash.replace(/^#album=/, ''));
+        if (list.some(a => a.name === name)) selectAlbum(name);
+      })
+      .catch(error => {
+        console.error('Error loading albums:', error);
+        setAlbumsError('Could not read albums.json — is the suite data linked? (scripts/link_data.sh)');
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /**
-   * Handle playlist file selection
+   * Load an album from the suite's albums and pre-load its segments
    */
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const selectAlbum = async (name: string) => {
+    if (!name) return;
+
+    const player = playerRef.current;
+    player.stop();
+    player.clearCache();
+
+    setAlbumName(name);
+    setSequence([]);
+    setActiveIndex(-1);
+    setIsReplaying(false);
+    window.history.replaceState(null, '', `#album=${encodeURIComponent(name)}`);
 
     try {
       setIsLoading(true);
-      const text = await file.text();
-      const rawData: RawPlaylist = JSON.parse(text);
-
-      // Normalize: remap "playlist" to "tracks"
-      const trackList = rawData.playlist;
-
-      // Resolve URLs: absolute paths (starting with /) are served from public folder via symlinks
-      const tracksWithResolvedUrls = trackList.map(track => {
-        let resolvedUrl = track.url;
-
-        // If it's already an absolute URL, leave it
-        if (track.url.startsWith('http://') || track.url.startsWith('https://')) {
-          resolvedUrl = track.url;
-        }
-        // If it starts with /, it's relative to server root (served via public folder symlinks)
-        else if (track.url.startsWith('/')) {
-          resolvedUrl = track.url; // Browser will resolve to http://localhost:3000/music/...
-        }
-        // Otherwise, make it relative to server root
-        else {
-          resolvedUrl = `/${track.url}`;
-        }
-
-        return { ...track, url: resolvedUrl };
-      });
-
-      const normalizedPlaylist: Playlist = {
-        title: rawData.title,
-        tracks: tracksWithResolvedUrls
-      };
-
-      setPlaylist(normalizedPlaylist);
-      setSequence([]);
-      setActiveIndex(-1);
-
-      // Pre-load all tracks
-      const urls = tracksWithResolvedUrls.map(t => t.url);
-      await playerRef.current.preloadTracks(urls);
-
-      setIsLoading(false);
+      const album = await loadAlbum(name);
+      setPlaylist(album);
+      await player.preloadTracks(album.tracks.map(t => t.url));
     } catch (error) {
-      console.error('Error loading playlist:', error);
-      alert('Failed to load playlist. Check console for details.');
+      console.error('Error loading album:', error);
+      alert('Failed to load album. Check console for details.');
+      setPlaylist(null);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -154,13 +147,15 @@ function App() {
   const handleSave = () => {
     if (!playlist || sequence.length === 0) return;
 
-    const orderedTracks = sequence.map(url =>
-      playlist.tracks.find(t => t.url === url)!
-    );
+    // Same shape as the suite's album files, with the urls as they were written there
+    const orderedTracks = sequence.map(url => {
+      const { sourceUrl, ...track } = playlist.tracks.find(t => t.url === url)!;
+      return { ...track, url: sourceUrl ?? track.url };
+    });
 
-    const newPlaylist: Playlist = {
+    const newPlaylist: RawPlaylist = {
       title: `${playlist.title} - Sequenced`,
-      tracks: orderedTracks
+      playlist: orderedTracks
     };
 
     const blob = new Blob([JSON.stringify(newPlaylist, null, 2)], {
@@ -188,15 +183,19 @@ function App() {
       <header className="header">
         <h1>Sequence Builder</h1>
         <div className="controls">
-          <label className="file-input-label">
-            Load Playlist
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleFileSelect}
-              style={{ display: 'none' }}
-            />
-          </label>
+          {albums && albums.length > 0 && (
+            <select
+              className="album-select"
+              value={albumName}
+              onChange={e => selectAlbum(e.target.value)}
+              disabled={isLoading}
+            >
+              <option value="" disabled>Choose an album…</option>
+              {albums.map(a => (
+                <option key={a.name} value={a.name}>{a.title}</option>
+              ))}
+            </select>
+          )}
 
           {playlist && (
             <>
@@ -242,9 +241,26 @@ function App() {
         )}
 
         {!playlist && !isLoading && (
-          <div className="welcome">
-            <p>Load a playlist JSON file to begin</p>
-          </div>
+          albums && albums.length > 0 ? (
+            <div className="album-grid">
+              {albums.map(a => (
+                <button
+                  key={a.name}
+                  className="album-card"
+                  onClick={() => selectAlbum(a.name)}
+                  style={a.color ? { borderColor: a.color } : undefined}
+                >
+                  <img src={a.cover} alt="" loading="lazy" />
+                  <span className="album-title">{a.title}</span>
+                  <span className="album-count">{a.trackCount} tracks</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="welcome">
+              <p>{albumsError ?? (albums ? 'No albums in albums.json' : 'Reading albums…')}</p>
+            </div>
+          )
         )}
       </main>
 

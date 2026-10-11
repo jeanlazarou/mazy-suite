@@ -37,6 +37,7 @@ jobs:
             player_editor/pnpm-lock.yaml
             lyrics_book/pnpm-lock.yaml
             twin_diff/pnpm-lock.yaml
+            sequence-builder/pnpm-lock.yaml
 
       - uses: actions/setup-go@v5
         with:
@@ -45,7 +46,7 @@ jobs:
       - name: Build site
         run: bash scripts/build_site.sh
         env:
-          APPS: player massembler mix-mastering gig_anim lyrics-cards player_editor lyrics_book twin_diff
+          APPS: player massembler mix-mastering gig_anim lyrics-cards player_editor lyrics_book twin_diff sequence-builder
 
       - uses: actions/upload-pages-artifact@v3
         with:

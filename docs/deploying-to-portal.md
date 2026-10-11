@@ -243,7 +243,7 @@ proves what GitHub actually serves.
 | live_prompter | default (`/`) | `fetch('/data/albums.json')` in `App.tsx` | needs both fixes |
 | track_mixer | default (`/`) | `fetch('/__suite/list')` in `api.js` | needs base fix; confirm the `/__suite/list` call is dev-only before touching it |
 | groove_lab | default (`/`) | none found | needs `base: './'` |
-| sequence-builder | default (`/`) | none found | needs `base: './'` |
+| sequence-builder | `./` | none — it had no album loading at all, only a local file picker | **deployed**; now reads the shared albums (`./data` probe, `../data` fallback, like twin_diff), has its own `build_site.sh` branch (`SUITE_SITE=1` skips copying `public/`, whose music link can be a whole collection); verified on a locally assembled site under `/mazy-suite/` |
 
 gig_anim needed one more thing beyond path fixes: it has no album-list browsing
 mode at all (`fetchAlbums`/`fetchAlbumDetails` in `endpoints.ts` are unused —

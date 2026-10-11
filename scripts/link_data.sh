@@ -28,9 +28,8 @@ ALL_APPS="player player_editor live_prompter gig_anim lyrics-cards sequence-buil
 # What each app serves. Apps absent from this list need neither.
 app_needs() {
   case $1 in
-    player | player_editor | live_prompter | gig_anim | twin_diff) echo "data music" ;;
+    player | player_editor | live_prompter | gig_anim | sequence-builder | twin_diff) echo "data music" ;;
     lyrics-cards) echo "data" ;;
-    sequence-builder) echo "music" ;;
     *) return 1 ;;
   esac
 }

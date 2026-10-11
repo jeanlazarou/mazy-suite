@@ -66,6 +66,14 @@ for app in $APPS; do
     rm -rf "$SITE/$app/data" "$SITE/$app/music"
     continue
   fi
+  if [ "$app" = "sequence-builder" ]; then
+    # Same shared /data and /music as Twin Diff, but its public/ holds only
+    # those links -- and locally they can point at a whole music collection,
+    # gigabytes Vite would copy into dist/. SUITE_SITE skips public/ entirely.
+    (cd "$app" && pnpm install --frozen-lockfile && SUITE_SITE=1 pnpm build)
+    cp -R "$app/dist" "$SITE/$app"
+    continue
+  fi
   (cd "$app" && pnpm install --frozen-lockfile && pnpm build)
   if [ -d "$app/build" ]; then
     cp -R "$app/build" "$SITE/$app"
