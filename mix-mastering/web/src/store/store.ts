@@ -26,6 +26,11 @@ export interface XraySetup {
   stagesKey: string | null;
 }
 
+export interface RenderedEq {
+  params: Record<string, number> | undefined;
+  enabled: boolean;
+}
+
 export interface AlbumTrack {
   id: string;
   name: string;
@@ -56,6 +61,9 @@ interface AppState {
   // Audio
   originalBuffer: AudioBuffer | null;
   processedBuffer: AudioBuffer | null;
+  // EQ settings processedBuffer was rendered with, so live playback can
+  // bridge EQ edits until the next render lands (audio/liveEq.ts).
+  processedEq: RenderedEq | null;
   fileInfo: AudioFileInfo | null;
   isProcessing: boolean;
   isPlaying: boolean;
@@ -139,7 +147,7 @@ interface AppState {
   setAlbumCalibration: (key: string, postLufs: number) => void;
   setAlbumCalibrating: (msg: string | null) => void;
   setOriginalBuffer: (buffer: AudioBuffer, info: AudioFileInfo) => void;
-  setProcessedBuffer: (buffer: AudioBuffer) => void;
+  setProcessedBuffer: (buffer: AudioBuffer, eq: RenderedEq) => void;
   setIsProcessing: (v: boolean) => void;
   setIsPlaying: (v: boolean) => void;
   setPlaybackPosition: (v: number) => void;
@@ -181,6 +189,7 @@ interface AppState {
 // track switch); analysis is re-established by the automatic analysis.
 const freshTrackView = {
   processedBuffer: null,
+  processedEq: null,
   processedAnalysis: null,
   analysis: null,
   meters: {},
@@ -202,6 +211,7 @@ export const useStore = create<AppState>((set) => ({
   albumCalibrating: null,
   originalBuffer: null,
   processedBuffer: null,
+  processedEq: null,
   fileInfo: null,
   isProcessing: false,
   isPlaying: false,
@@ -273,7 +283,7 @@ export const useStore = create<AppState>((set) => ({
     originalBuffer: buffer, fileInfo: info,
     ...freshTrackView,
   }),
-  setProcessedBuffer: (buffer) => set({ processedBuffer: buffer, paramsDirty: false }),
+  setProcessedBuffer: (buffer, eq) => set({ processedBuffer: buffer, processedEq: eq, paramsDirty: false }),
   setIsProcessing: (v) => set({ isProcessing: v }),
   setIsPlaying: (v) => set({ isPlaying: v }),
   setPlaybackPosition: (v) => set({ playbackPosition: v }),
@@ -356,6 +366,7 @@ export const useStore = create<AppState>((set) => ({
     albumCalibrating: null,
     originalBuffer: null,
     processedBuffer: null,
+    processedEq: null,
     fileInfo: null,
     isProcessing: false,
     isPlaying: false,

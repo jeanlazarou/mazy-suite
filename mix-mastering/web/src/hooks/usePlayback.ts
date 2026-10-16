@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react';
-import { getAudioContext, resumeAudioContext, getAnalyserNode, getPlaybackGainNode, setPlaybackGainDB } from '../audio/context';
+import { getAudioContext, resumeAudioContext, getAnalyserNode, getPlaybackInputNode, setPlaybackGainDB } from '../audio/context';
 import { useStore } from '../store/store';
 
 // Playback source state is module-level: there is exactly one playing
@@ -74,7 +74,7 @@ export function usePlayback() {
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-    source.connect(getPlaybackGainNode());
+    source.connect(getPlaybackInputNode());
 
     source.onended = () => {
       playback.source = null;
@@ -148,7 +148,7 @@ export function usePlayback() {
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-    source.connect(getPlaybackGainNode());
+    source.connect(getPlaybackInputNode());
 
     source.onended = () => {
       playback.source = null;
