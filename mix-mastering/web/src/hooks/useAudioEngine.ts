@@ -3,7 +3,7 @@ import { engine } from '../wasm/engine';
 import { audioBufferToFloat32Array, float32ArrayToAudioBuffer, encodeWav } from '../audio/context';
 import { createZip } from '../audio/zip';
 import type { ZipEntry } from '../audio/zip';
-import { useStore, type RenderedEq } from '../store/store';
+import { useStore, type RenderedSettings } from '../store/store';
 import { stopPlayback } from './usePlayback';
 import type { CustomPreset } from '../audio/customPresets';
 
@@ -76,10 +76,10 @@ export function useAudioEngine() {
   }, []);
 
   // Re-apply store params and bypass state to a freshly initialized engine.
-  // Returns the EQ part of what was applied (for the live EQ preview).
-  const applyEngineState = async (): Promise<RenderedEq> => {
+  // Returns what was applied (for the live preview).
+  const applyEngineState = async (): Promise<RenderedSettings> => {
     const { params, processorEnabled } = useStore.getState();
-    const applied = { params: params['Parametric EQ'], enabled: processorEnabled['Parametric EQ'] ?? true };
+    const applied = { params, enabled: processorEnabled };
     for (const [proc, procParams] of Object.entries(params)) {
       for (const [param, value] of Object.entries(procParams)) {
         await engine.setParam(proc, param, value);
@@ -175,7 +175,7 @@ export function useAudioEngine() {
     try {
       const channels = originalBuffer.numberOfChannels;
       const sampleRate = originalBuffer.sampleRate;
-      const renderedEq = await prepareEngineRun(channels, sampleRate);
+      const rendered = await prepareEngineRun(channels, sampleRate);
 
       // Float32Array args are transferred to the worker, so interleave a
       // fresh copy per call.
@@ -184,7 +184,7 @@ export function useAudioEngine() {
       if (useStore.getState().originalBuffer !== originalBuffer) return; // track switched
       const processedAudioBuffer = float32ArrayToAudioBuffer(processed, channels, sampleRate);
 
-      setProcessedBuffer(processedAudioBuffer, renderedEq);
+      setProcessedBuffer(processedAudioBuffer, rendered);
       if (!stillCurrent()) useStore.getState().setParamsDirty(true);
       setMeters(await engine.getMeters());
 

@@ -6,6 +6,10 @@ export interface MeterData {
   [processor: string]: {
     max_gr_db: number;
     avg_gr_db: number;
+    // Timeline across the track (dynamics processors, when enabled):
+    // highest detected level (dBFS) and most gain reduction (dB) per slice.
+    in_db?: number[];
+    gr_db?: number[];
   };
 }
 

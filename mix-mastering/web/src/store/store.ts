@@ -26,9 +26,11 @@ export interface XraySetup {
   stagesKey: string | null;
 }
 
-export interface RenderedEq {
-  params: Record<string, number> | undefined;
-  enabled: boolean;
+// Settings a processed buffer was rendered with (what the engine run
+// actually applied), so live playback can bridge later edits.
+export interface RenderedSettings {
+  params: ProcessorParams;
+  enabled: Record<string, boolean>;
 }
 
 export interface AlbumTrack {
@@ -61,9 +63,10 @@ interface AppState {
   // Audio
   originalBuffer: AudioBuffer | null;
   processedBuffer: AudioBuffer | null;
-  // EQ settings processedBuffer was rendered with, so live playback can
-  // bridge EQ edits until the next render lands (audio/liveEq.ts).
-  processedEq: RenderedEq | null;
+  // Settings processedBuffer was rendered with, so live playback can
+  // bridge EQ and width edits until the next render lands
+  // (audio/livePreview.ts).
+  processedSettings: RenderedSettings | null;
   fileInfo: AudioFileInfo | null;
   isProcessing: boolean;
   isPlaying: boolean;
@@ -147,7 +150,7 @@ interface AppState {
   setAlbumCalibration: (key: string, postLufs: number) => void;
   setAlbumCalibrating: (msg: string | null) => void;
   setOriginalBuffer: (buffer: AudioBuffer, info: AudioFileInfo) => void;
-  setProcessedBuffer: (buffer: AudioBuffer, eq: RenderedEq) => void;
+  setProcessedBuffer: (buffer: AudioBuffer, rendered: RenderedSettings) => void;
   setIsProcessing: (v: boolean) => void;
   setIsPlaying: (v: boolean) => void;
   setPlaybackPosition: (v: number) => void;
@@ -189,7 +192,7 @@ interface AppState {
 // track switch); analysis is re-established by the automatic analysis.
 const freshTrackView = {
   processedBuffer: null,
-  processedEq: null,
+  processedSettings: null,
   processedAnalysis: null,
   analysis: null,
   meters: {},
@@ -211,7 +214,7 @@ export const useStore = create<AppState>((set) => ({
   albumCalibrating: null,
   originalBuffer: null,
   processedBuffer: null,
-  processedEq: null,
+  processedSettings: null,
   fileInfo: null,
   isProcessing: false,
   isPlaying: false,
@@ -283,7 +286,7 @@ export const useStore = create<AppState>((set) => ({
     originalBuffer: buffer, fileInfo: info,
     ...freshTrackView,
   }),
-  setProcessedBuffer: (buffer, eq) => set({ processedBuffer: buffer, processedEq: eq, paramsDirty: false }),
+  setProcessedBuffer: (buffer, rendered) => set({ processedBuffer: buffer, processedSettings: rendered, paramsDirty: false }),
   setIsProcessing: (v) => set({ isProcessing: v }),
   setIsPlaying: (v) => set({ isPlaying: v }),
   setPlaybackPosition: (v) => set({ playbackPosition: v }),
@@ -366,7 +369,7 @@ export const useStore = create<AppState>((set) => ({
     albumCalibrating: null,
     originalBuffer: null,
     processedBuffer: null,
-    processedEq: null,
+    processedSettings: null,
     fileInfo: null,
     isProcessing: false,
     isPlaying: false,

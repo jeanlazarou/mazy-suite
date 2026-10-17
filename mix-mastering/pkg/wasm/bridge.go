@@ -256,19 +256,35 @@ func (b *Bridge) GetProcessorNames() string {
 }
 
 // GetMeters returns gain-reduction metering from the last ProcessBuffer
-// call as JSON: processor name -> {"max_gr_db": x, "avg_gr_db": y}.
+// call as JSON: processor name -> {"max_gr_db": x, "avg_gr_db": y}, plus,
+// for enabled processors that record one, the timeline across the buffer
+// ("in_db" detected level, "gr_db" gain reduction; dsp.TimelineBuckets
+// slices, rounded to 0.01 dB).
 func (b *Bridge) GetMeters() string {
 	if b.Engine == nil {
 		return "{}"
 	}
-	meters := make(map[string]map[string]float64)
+	round := func(v []float64) []float64 {
+		out := make([]float64, len(v))
+		for i, x := range v {
+			out[i] = math.Round(x*100) / 100
+		}
+		return out
+	}
+	meters := make(map[string]map[string]interface{})
 	for _, p := range b.Engine.Processors() {
 		if m, ok := p.(dsp.GainReductionMeter); ok {
 			maxDB, avgDB := m.GainReduction()
-			meters[p.Name()] = map[string]float64{
+			entry := map[string]interface{}{
 				"max_gr_db": maxDB,
 				"avg_gr_db": avgDB,
 			}
+			if t, ok := p.(dsp.DynamicsTimelineMeter); ok && p.Enabled() {
+				tl := t.Timeline()
+				entry["in_db"] = round(tl.InputDB)
+				entry["gr_db"] = round(tl.GainReductionDB)
+			}
+			meters[p.Name()] = entry
 		}
 	}
 	data, _ := json.Marshal(meters)

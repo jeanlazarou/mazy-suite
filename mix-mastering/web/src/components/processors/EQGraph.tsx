@@ -45,7 +45,7 @@ interface EQGraphProps {
 // Smoothed spectrum on the log axis: average power over 1/6 octave around
 // each point, then shift so the 200 Hz–5 kHz mean sits at 0 dB — the
 // overlays compare tonal shape, not level (the result is louder anyway).
-function shapeCurve(mags: ArrayLike<number>, binHz: number, points: number): Float32Array {
+export function shapeCurve(mags: ArrayLike<number>, binHz: number, points: number): Float32Array {
   const out = new Float32Array(points);
   const n = mags.length;
   const half = Math.pow(2, 1 / 12);

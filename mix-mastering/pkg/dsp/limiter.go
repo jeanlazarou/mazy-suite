@@ -36,6 +36,7 @@ type Limiter struct {
 	minGain     float64
 	sumGain     float64
 	gainSamples int
+	timeline    timelineRecorder
 }
 
 // NewLimiter creates a limiter with sensible defaults.
@@ -73,8 +74,14 @@ func (l *Limiter) Process(buf *AudioBuffer) error {
 	for i := range total {
 		total[i] = 1
 	}
+	l.timeline.start(length)
 	for pass := 0; pass < limiterPasses; pass++ {
 		peaks := crossChannelTruePeak(buf)
+		if pass == 0 {
+			for i, p := range peaks {
+				l.timeline.input(i, p)
+			}
+		}
 		over := false
 		for _, p := range peaks {
 			if p > limit {
@@ -117,7 +124,8 @@ func (l *Limiter) Process(buf *AudioBuffer) error {
 	l.minGain = 1.0
 	l.sumGain = 0
 	l.gainSamples = length
-	for _, g := range total {
+	for i, g := range total {
+		l.timeline.gain(i, g)
 		if g < l.minGain {
 			l.minGain = g
 		}
@@ -224,6 +232,12 @@ func (l *Limiter) gainEnvelope(peaks []float64, ceilingLin float64) []float64 {
 		}
 	}
 	return gain
+}
+
+// Timeline reports, per time slice of the last Process call, the highest
+// input true peak and the most gain reduction.
+func (l *Limiter) Timeline() DynamicsTimeline {
+	return l.timeline.timeline()
 }
 
 // GainReduction reports the max and average gain reduction (dB, positive)

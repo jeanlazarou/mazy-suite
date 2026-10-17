@@ -23,6 +23,7 @@ type Compressor struct {
 	minGain     float64
 	sumGain     float64
 	gainSamples int
+	timeline    timelineRecorder
 }
 
 // NewCompressor creates a compressor with sensible defaults.
@@ -62,6 +63,7 @@ func (c *Compressor) Process(buf *AudioBuffer) error {
 	c.minGain = 1.0
 	c.sumGain = 0
 	c.gainSamples = length
+	c.timeline.start(length)
 
 	for i := 0; i < length; i++ {
 		// Compute peak across all channels for this sample
@@ -82,6 +84,8 @@ func (c *Compressor) Process(buf *AudioBuffer) error {
 
 		// Compute gain reduction
 		gainReduction := c.computeGainReduction(c.envelope)
+		c.timeline.input(i, c.envelope)
+		c.timeline.gain(i, gainReduction)
 		if gainReduction < c.minGain {
 			c.minGain = gainReduction
 		}
@@ -103,6 +107,13 @@ func (c *Compressor) GainReduction() (maxDB, avgDB float64) {
 		return 0, 0
 	}
 	return -linearToDb(c.minGain), -linearToDb(c.sumGain / float64(c.gainSamples))
+}
+
+// Timeline reports, per time slice of the last Process call, the highest
+// detector level (the envelope the threshold acts on) and the most gain
+// reduction.
+func (c *Compressor) Timeline() DynamicsTimeline {
+	return c.timeline.timeline()
 }
 
 func (c *Compressor) computeGainReduction(level float64) float64 {

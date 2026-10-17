@@ -60,10 +60,37 @@ The web interface runs the Go DSP engine via WebAssembly in a Web Worker (so pro
 - Album mastering: one shared chain and a single loudness offset across tracks, so relative levels are preserved instead of squashed flat
 - Chain X-Ray: a full-screen workbench showing the signal at every stage of the chain as waveform or spectrogram lanes, with in-place processor editing (changes ripple through downstream lanes) and instant visual A/B between saved setups
 - Loudness-matched A/B (original vs processed, trimmed to equal LUFS) and per-run gain-reduction stats
-- Interactive EQ curve, knob controls for compressor/limiter/stereo
+- Every processor has two views: a picture you edit by dragging, and the classic knobs (see below)
+- EQ and stereo width changes are heard instantly while playing; EQ band solo and a mono check let you hear what a change does
 - Spectrum analyzer, waveform display, stereo field (Lissajous), LUFS meter
 - Master settings in three questions — *What is it?* (style, optional), *Where will it be heard?* (destination), *Fix problems found?* — that combine (a rock song for a podcast keeps rock's tone at podcast loudness), with a plain-language list of what the settings do
 - The preview updates by itself after every change, no Process step; fine-tune any stage in the chain, and save the result as your own preset
+
+### Editing by ear: the visual views
+
+Each processor panel opens on a visual view; **Knobs** is one click away for exact values. The browser remembers your choice per panel.
+
+**EQ — Curve.** The EQ's real response, drawn over the track's spectrum (original, result, and what's playing right now), with the frequency zones labelled — Sub, Bass, Low mids, Mids, … Air — so "a bit less mud" has an obvious place to go.
+
+- Drag a point: sideways for frequency, up or down for boost or cut. The mouse wheel makes a band wider or narrower, and double-click switches it on or off.
+- **Hear it while you drag.** Press play on B and move a point: the change is heard immediately, not after the next render. The rendered preview catches up a moment later and takes over seamlessly.
+- **Solo.** With Solo on, press and hold a point to hear only the range that band works on. You hear at once whether the 300 Hz you're about to cut really is the boxiness, and whether the boost really lands on the vocal.
+
+![EQ curve view: a low-mid cut and a presence lift over the track's spectrum, with the Low Mid band selected](docs/screenshots/eq-curve.png)
+
+**Compressor — Curve.** The in/out curve over a histogram of the track's levels. Drag the threshold dot sideways and the end of the line up or down for how hard. While you drag, the panel already tells you how much of the track gets compressed and by how much, and a strip shows where in the song it happens.
+
+![Compressor curve view: levels above the threshold in red, and gain reduction across the track below](docs/screenshots/compressor-curve.png)
+
+**Limiter — Ceiling.** The peaks reaching the limiter across the whole track, with the ceiling as a red line you drag. The parts above the line are what gets cut. A warning appears when the limiting gets heavy enough to sound squashed.
+
+![Limiter ceiling view: peaks above the red ceiling line are what the limiter turns down](docs/screenshots/limiter-ceiling.png)
+
+**Stereo — Stage.** The sound between two speakers; drag its edges from mono through as recorded to extra wide, and hear the change while playing. *Hold: mono check* plays the track in mono, the way a phone or a single speaker does, and a warning appears when a wide setting risks parts of the mix vanishing there.
+
+**Bass and Treble Exciter — Harmonics.** The band the exciter feeds on and where its added overtones land, over the track's spectrum. Drag the dot sideways for where and up for how much.
+
+Only the EQ and stereo width are heard instantly, because they can be applied on top of the playing preview exactly. The compressor, limiter and exciters respond to the signal over time, so their sound follows when the preview re-renders, about a second later. Their pictures and numbers still update instantly while you drag.
 
 ### Chain X-Ray
 
@@ -110,8 +137,9 @@ cmd/wasm/         WebAssembly entry point (syscall/js)
 pkg/dsp/          DSP processors (all implement Processor interface)
 pkg/engine/       Mastering engine / pipeline orchestration
 pkg/io/           Audio file readers and writers
-pkg/analysis/     Spectrum, dynamics, stereo, loudness analysis + recommendations
-pkg/preset/       Preset system with go:embed built-ins
+pkg/analysis/     Spectrum, dynamics, stereo, loudness analysis
+pkg/recipe/       Chain settings from style × destination × fixes
+pkg/preset/       User presets (~/.audiomaster/presets/)
 pkg/wasm/         JS↔Go bridge for WASM
 web/              React + Vite + TypeScript + Material UI
 ```

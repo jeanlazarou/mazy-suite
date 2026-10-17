@@ -16,7 +16,7 @@ import { useAudioEngine } from './hooks/useAudioEngine';
 import { useStore } from './store/store';
 import { getAnalyserNode, audioBufferToFloat32Array } from './audio/context';
 import { engine } from './wasm/engine';
-import { startLiveEq } from './audio/liveEq';
+import { startLivePreview } from './audio/livePreview';
 
 const App: React.FC = () => {
   const loading = useStore((s) => s.loading);
@@ -28,8 +28,9 @@ const App: React.FC = () => {
   const xrayOpen = useStore((s) => s.xrayOpen);
   const analyser = getAnalyserNode();
 
-  // Live EQ preview: bridges EQ edits during playback until the re-render.
-  useEffect(() => startLiveEq(), []);
+  // Live preview: bridges EQ and width edits during playback until the
+  // re-render lands.
+  useEffect(() => startLivePreview(), []);
 
   // Analysis depends only on the original audio, so run it automatically
   // once per loaded file. This effect lives here (single instance) rather

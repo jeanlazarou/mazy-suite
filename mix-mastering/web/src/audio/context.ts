@@ -1,4 +1,4 @@
-import { createLiveSection } from './liveEq';
+import { createLiveSection } from './livePreview';
 
 let audioContext: AudioContext | null = null;
 let analyserNode: AnalyserNode | null = null;
@@ -33,8 +33,8 @@ export function getPlaybackGainNode(): GainNode {
   return playbackGainNode;
 }
 
-// Playback sources connect here: the live EQ section (delta filters and
-// band solo, see liveEq.ts) sits in front of the playback gain node.
+// Playback sources connect here: the live preview section (EQ delta
+// filters, width, mono check and band solo, see livePreview.ts) sits in front of the playback gain node.
 let playbackInputNode: GainNode | null = null;
 export function getPlaybackInputNode(): GainNode {
   if (!playbackInputNode) {

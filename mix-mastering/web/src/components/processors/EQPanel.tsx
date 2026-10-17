@@ -1,25 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Paper, Typography, Collapse, ToggleButton, ToggleButtonGroup, Tooltip, Switch } from '@mui/material';
+import { Box, Paper, Typography, Collapse, ToggleButton, Tooltip, Switch } from '@mui/material';
 import HeadphonesIcon from '@mui/icons-material/Headphones';
 import { ProcessorHeader } from '../controls/ParamSlider';
 import { Knob } from '../controls/Knob';
+import { usePanelView, ViewToggle } from '../controls/PanelView';
 import { useAudioEngine } from '../../hooks/useAudioEngine';
 import { useStore } from '../../store/store';
 import { EMPTY_PARAMS } from '../../store/constants';
 import { EQ_NAME, readBands, type EQBand } from '../../audio/eqMath';
-import { setBandSolo } from '../../audio/liveEq';
+import { setBandSolo } from '../../audio/livePreview';
 import { EQGraph, BAND_COLORS, BAND_LABELS, GAIN_RANGE, type BandEdit } from './EQGraph';
-
-type EQView = 'curve' | 'knobs';
-const VIEW_KEY = 'mm.eqView';
-
-function loadView(): EQView {
-  try {
-    return localStorage.getItem(VIEW_KEY) === 'knobs' ? 'knobs' : 'curve';
-  } catch {
-    return 'curve';
-  }
-}
 
 interface EQPanelProps {
   expanded: boolean;
@@ -32,7 +22,7 @@ export const EQPanel: React.FC<EQPanelProps> = ({ expanded, onExpandToggle }) =>
   const enabled = useStore((s) => s.processorEnabled[EQ_NAME] ?? true);
   const isPlaying = useStore((s) => s.isPlaying);
 
-  const [view, setView] = useState<EQView>(loadView);
+  const [view, setView] = usePanelView('eq');
   const [selected, setSelected] = useState<number | null>(2);
   const [solo, setSolo] = useState(false);
   const [grabbed, setGrabbed] = useState<number | null>(null);
@@ -94,12 +84,6 @@ export const EQPanel: React.FC<EQPanelProps> = ({ expanded, onExpandToggle }) =>
     setProcessorEnabled(EQ_NAME, v);
   }, [setProcessorEnabled]);
 
-  const changeView = (_: unknown, v: EQView | null) => {
-    if (!v) return;
-    setView(v);
-    try { localStorage.setItem(VIEW_KEY, v); } catch { /* per-viewer convenience only */ }
-  };
-
   const bandKnobs = (i: number, size: number) => {
     const band = bands[i];
     const pass = band.type === 'highpass' || band.type === 'lowpass';
@@ -107,7 +91,7 @@ export const EQPanel: React.FC<EQPanelProps> = ({ expanded, onExpandToggle }) =>
       <>
         <Knob label="Freq" value={band.freq} min={20} max={20000} step={1} unit="Hz"
           color={BAND_COLORS[i]} size={size} onChange={(v) => setParam(EQ_NAME, `band.${i}.freq`, v)} />
-        {!(view === 'curve' && pass) && (
+        {!(view === 'visual' && pass) && (
           <Knob label="Gain" value={band.gain} min={-GAIN_RANGE} max={GAIN_RANGE} step={0.1} unit="dB"
             color={BAND_COLORS[i]} size={size} onChange={(v) => setParam(EQ_NAME, `band.${i}.gain`, v)} />
         )}
@@ -122,11 +106,8 @@ export const EQPanel: React.FC<EQPanelProps> = ({ expanded, onExpandToggle }) =>
       <ProcessorHeader title="Parametric EQ" enabled={enabled} onToggle={handleToggle} expanded={expanded} onExpandToggle={onExpandToggle} />
       <Collapse in={expanded}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-          <ToggleButtonGroup size="small" exclusive value={view} onChange={changeView}>
-            <ToggleButton value="curve" sx={{ py: 0.25, px: 1.5, fontSize: '0.7rem' }}>Curve</ToggleButton>
-            <ToggleButton value="knobs" sx={{ py: 0.25, px: 1.5, fontSize: '0.7rem' }}>Knobs</ToggleButton>
-          </ToggleButtonGroup>
-          {view === 'curve' && (
+          <ViewToggle view={view} onChange={setView} visualLabel="Curve" />
+          {view === 'visual' && (
             <Tooltip title="Solo: while you hold a point, hear only the range that band works on">
               <ToggleButton value="solo" size="small" selected={solo} onChange={() => setSolo(!solo)}
                 sx={{ py: 0.25, px: 1, fontSize: '0.7rem', gap: 0.5 }}>
@@ -135,14 +116,14 @@ export const EQPanel: React.FC<EQPanelProps> = ({ expanded, onExpandToggle }) =>
             </Tooltip>
           )}
           <Box sx={{ flex: 1 }} />
-          {view === 'curve' && (
+          {view === 'visual' && (
             <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>
               {isPlaying ? 'Changes play right away' : 'Drag points · wheel: width · double-click: on/off'}
             </Typography>
           )}
         </Box>
 
-        {view === 'curve' ? (
+        {view === 'visual' ? (
           <>
             <EQGraph
               bands={bands} eqEnabled={enabled} height={220} interactive showZones showSpectra
