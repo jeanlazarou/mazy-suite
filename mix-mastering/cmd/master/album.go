@@ -25,9 +25,10 @@ shared gain offset (computed from the album's integrated loudness per
 BS.1770 gating over all tracks) so the relative levels between tracks are
 preserved.
 
-The chain comes from --style/--for like 'master process'; fixes are based on
-the whole album's analysis, so every track gets the same settings. The
-album target is the destination's loudness unless --target-lufs is given.
+The chain comes from --style/--for like 'master process': the style and
+destination are the album's, and each track is corrected for the problems
+found in its own analysis (unless --no-fix). The album target is the
+destination's loudness unless --target-lufs is given.
 
 Track order follows file name order.`,
 	Args: cobra.ExactArgs(1),
@@ -54,6 +55,7 @@ func init() {
 type albumTrack struct {
 	path    string
 	name    string
+	set     *settings
 	inLUFS  float64 // raw input loudness
 	midLUFS float64 // after processing, before album offset
 	outLUFS float64 // final output loudness
@@ -99,31 +101,25 @@ func runAlbum(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Album: %d tracks\n", len(files))
 
-	// Settings are shared by every track, so the fixes come from the
-	// whole album's analysis.
-	var analyses []*analysis.AnalysisResult
-	if albumSet.needsAnalysis() {
-		fmt.Printf("Analyzing tracks...\n")
-		for _, path := range files {
-			buf, _, err := audioio.ReadAudio(path)
-			if err != nil {
-				return fmt.Errorf("read %s: %w", filepath.Base(path), err)
-			}
-			analyses = append(analyses, analysis.Analyze(buf))
-		}
-	}
-	set, err := albumSet.resolve(analyses...)
+	// The album's choice (checked before any audio is read); each track's
+	// fixes come from its own analysis in pass 1.
+	albumWide, err := albumSet.resolve()
 	if err != nil {
 		return err
 	}
-	set.print("")
+	if albumWide.recipe != nil {
+		fmt.Printf("Release: %s\n", albumWide.summary())
+	} else {
+		albumWide.print("")
+	}
 	if !cmd.Flags().Changed("target-lufs") {
-		albumTarget = set.targetLUFS()
+		albumTarget = albumWide.targetLUFS()
 	}
 
-	// Pass 1: process every track (no limiter, no offset) and collect the
-	// 400ms gating blocks so the album can be integrated as one program.
-	fmt.Printf("\nPass 1/2: analyzing album loudness...\n")
+	// Pass 1: settle each track's settings, process it (no limiter, no
+	// offset) and collect the 400ms gating blocks so the album can be
+	// integrated as one program.
+	fmt.Printf("\nPass 1/2: analyzing tracks and album loudness...\n")
 	tracks := make([]*albumTrack, 0, len(files))
 	var albumBlocks []float64
 
@@ -133,11 +129,16 @@ func runAlbum(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("read %s: %w", filepath.Base(path), err)
 		}
 
-		track := &albumTrack{path: path, name: filepath.Base(path)}
+		track := &albumTrack{path: path, name: filepath.Base(path), set: albumWide}
 		meter := dsp.NewLUFSMeter(float64(meta.SampleRate), meta.Channels)
 		track.inLUFS = meter.MeasureIntegrated(buf)
+		if albumSet.needsAnalysis() {
+			if track.set, err = albumSet.resolve(analysis.Analyze(buf)); err != nil {
+				return err
+			}
+		}
 
-		eng := buildAlbumEngine(meta, set)
+		eng := buildAlbumEngine(meta, track.set)
 		if lim, _, err := eng.GetProcessorByName("Limiter"); err == nil {
 			lim.SetEnabled(false) // measure unlimited loudness
 		}
@@ -150,6 +151,13 @@ func runAlbum(cmd *cobra.Command, args []string) error {
 		albumBlocks = append(albumBlocks, blocks...)
 		tracks = append(tracks, track)
 		fmt.Printf("  %-40s %7.1f LUFS\n", track.name, track.midLUFS)
+		if r := track.set.recipe; r != nil && albumSet.needsAnalysis() {
+			for _, n := range r.Notes {
+				if n.Layer == "fix" {
+					fmt.Printf("    [fix] %s\n", n.Text)
+				}
+			}
+		}
 	}
 
 	albumLUFS := dsp.GatedLoudness(albumBlocks)
@@ -167,7 +175,7 @@ func runAlbum(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("read %s: %w", track.name, err)
 		}
 
-		eng := buildAlbumEngine(meta, set)
+		eng := buildAlbumEngine(meta, track.set)
 		if err := eng.SetParam("Gain", "gain_db", offset); err != nil {
 			return err
 		}

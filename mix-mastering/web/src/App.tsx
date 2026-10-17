@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Box, Grid, CircularProgress, Typography, Alert, Paper } from '@mui/material';
+import { Box, Grid, CircularProgress, Typography, Alert } from '@mui/material';
 import { Header } from './components/layout/Header';
 import { FileDropZone } from './components/layout/FileDropZone';
 import { TransportBar } from './components/layout/TransportBar';
@@ -10,7 +10,7 @@ import { StereoField } from './components/visualizers/StereoField';
 import { LUFSMeter } from './components/visualizers/LUFSMeter';
 import { DynamicsHistogram } from './components/visualizers/DynamicsHistogram';
 import { MasterPanel } from './components/master/MasterPanel';
-import { AlbumPanel } from './components/album/AlbumPanel';
+import { AlbumView } from './components/album/AlbumView';
 import { ChainXRayView } from './components/xray/ChainXRayView';
 import { useAudioEngine } from './hooks/useAudioEngine';
 import { useStore } from './store/store';
@@ -24,7 +24,8 @@ const App: React.FC = () => {
   const originalBuffer = useStore((s) => s.originalBuffer);
   const wasmReady = useStore((s) => s.wasmReady);
   const setError = useStore((s) => s.setError);
-  const { analyzeAudio, processAudio, syncRecipe } = useAudioEngine();
+  const { analyzeAudio, processAudio, syncRecipe, syncEngineToActive } = useAudioEngine();
+  const workspace = useStore((s) => s.workspace);
   const xrayOpen = useStore((s) => s.xrayOpen);
   const analyser = getAnalyserNode();
 
@@ -46,8 +47,6 @@ const App: React.FC = () => {
   // gating blocks, then integrate the album's loudness over all blocks as
   // one program. Sequential, in the worker, guarded against re-entry.
   const tracks = useStore((s) => s.tracks);
-  const tracksAnalyzed = tracks.filter((t) => t.analysis && t.blocks).length;
-  const albumAnalysisPending = tracks.length > 1 && tracksAnalyzed < tracks.length;
   const albumWorkRunning = useRef(false);
   useEffect(() => {
     if (!wasmReady || albumWorkRunning.current) return;
@@ -80,10 +79,10 @@ const App: React.FC = () => {
     })();
   }, [tracks, wasmReady]);
 
-  // Keep the applied settings in sync with the master choice: rebuild
-  // whenever the choice changes, the analysis the fixes depend on arrives
-  // (active track's, or every track's for an album), or a reset clears
-  // the recipe key. syncRecipe itself skips when nothing changed.
+  // Keep every track's settings in sync with the choice: rebuild whenever
+  // the choice (or a track's style) changes, a track's analysis arrives,
+  // or a reset clears a recipe key. syncRecipe itself skips tracks that
+  // are current.
   const choice = useStore((s) => s.choice);
   const customPreset = useStore((s) => s.customPreset);
   const recipeKey = useStore((s) => s.recipeKey);
@@ -93,23 +92,31 @@ const App: React.FC = () => {
     if (wasmReady) syncRecipe();
   }, [wasmReady, choice, customPreset, recipeKey, activeAnalysis, tracks, activeTrackId]);
 
+  // The engine holds the active track's settings (knob edits read them
+  // back), so switching tracks loads the new one's.
+  useEffect(() => {
+    if (wasmReady && activeTrackId) syncEngineToActive();
+  }, [wasmReady, activeTrackId]);
+
   // Auto-preview: whenever the settings (or the track) differ from the
   // last processed result, reprocess after a short pause, so every choice
   // and knob turn is heard without a separate Process step. Waits until
   // settings exist (a recipe or saved preset), so a freshly loaded file
-  // isn't first processed with bare engine defaults. The Chain X-Ray
-  // view does its own processing.
+  // isn't first processed with bare engine defaults. In an album, other
+  // tracks' changes (albumRev) move the shared offset, so they count too.
+  // The Chain X-Ray view does its own processing.
   const paramsDirty = useStore((s) => s.paramsDirty);
   const isProcessing = useStore((s) => s.isProcessing);
   const settingsReady = useStore((s) => s.recipe !== null || s.customPreset !== null);
   const params = useStore((s) => s.params);
   const processorEnabled = useStore((s) => s.processorEnabled);
   const albumMode = useStore((s) => s.albumMode);
+  const albumRev = useStore((s) => s.albumRev);
   useEffect(() => {
     if (!wasmReady || !originalBuffer || !paramsDirty || isProcessing || xrayOpen || !settingsReady) return;
     const timer = setTimeout(() => processAudio(), 400);
     return () => clearTimeout(timer);
-  }, [wasmReady, originalBuffer, paramsDirty, isProcessing, xrayOpen, settingsReady, params, processorEnabled, albumMode]);
+  }, [wasmReady, originalBuffer, paramsDirty, isProcessing, xrayOpen, settingsReady, params, processorEnabled, albumMode, albumRev]);
 
   if (loading && !wasmReady) {
     return (
@@ -148,60 +155,37 @@ const App: React.FC = () => {
             <Waveform />
           </Box>
 
-          {/* Album track list (multiple tracks loaded) */}
-          {tracks.length > 1 && (
-            <Box sx={{ px: 2, pt: 1 }}>
-              <AlbumPanel />
-            </Box>
-          )}
-
           {/* Main content area */}
           <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-            <Grid container spacing={2}>
-              {albumAnalysisPending ? (
-                /* Album analysis gate: settings appear once every track is
-                   analyzed, so the fixes are always based on the whole
-                   album. */
-                <Grid size={{ xs: 12, md: 8.5 }}>
-                  <Paper sx={{ p: 5, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
-                    <CircularProgress size={28} />
-                    <Typography variant="body2" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-                      Analyzing album — {tracksAnalyzed} of {tracks.length} tracks
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontSize: '0.75rem', color: 'text.secondary', textAlign: 'center' }}>
-                      The master settings will appear once every track is
-                      analyzed. You can already listen to the tracks below.
-                    </Typography>
-                  </Paper>
+            {workspace === 'album' ? (
+              <AlbumView />
+            ) : (
+              <Grid container spacing={2}>
+                {/* Left: what to master for */}
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <MasterPanel />
                 </Grid>
-              ) : (
-                <>
-                  {/* Left: what to master for */}
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <MasterPanel />
-                  </Grid>
 
-                  {/* Center: the resulting chain, to fine-tune */}
-                  <Grid size={{ xs: 12, md: 4.5 }}>
-                    <ProcessorPipeline />
-                  </Grid>
-                </>
-              )}
+                {/* Center: the resulting chain, to fine-tune */}
+                <Grid size={{ xs: 12, md: 4.5 }}>
+                  <ProcessorPipeline />
+                </Grid>
 
-              {/* Right: Visualizations */}
-              <Grid size={{ xs: 12, md: 3.5 }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <Spectrum analyser={analyser} />
-                  <Box sx={{ display: 'flex', gap: 2 }}>
-                    <StereoField analyser={analyser} />
-                    <Box sx={{ flex: 1 }}>
-                      <LUFSMeter />
+                {/* Right: Visualizations */}
+                <Grid size={{ xs: 12, md: 3.5 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Spectrum analyser={analyser} />
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <StereoField analyser={analyser} />
+                      <Box sx={{ flex: 1 }}>
+                        <LUFSMeter />
+                      </Box>
                     </Box>
+                    <DynamicsHistogram />
                   </Box>
-                  <DynamicsHistogram />
-                </Box>
+                </Grid>
               </Grid>
-            </Grid>
+            )}
           </Box>
         </Box>
       )}

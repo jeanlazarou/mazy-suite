@@ -33,6 +33,37 @@ export interface RenderedSettings {
   enabled: Record<string, boolean>;
 }
 
+// What the user is working on: one track, or an album. Chosen explicitly
+// (start screen, "Make an album with this track") — never inferred from
+// how many files happen to be loaded.
+export type Workspace = 'track' | 'album';
+
+// The album workflow: choose the release, get each track right, then
+// balance the album as a whole.
+export type AlbumStep = 'release' | 'tracks' | 'balance';
+
+// One track's settings. The active track's live copy is in the global
+// fields (params, processorEnabled, recipe, recipeKey, customPreset,
+// paramsEdited) so every panel works on "the current track" unchanged;
+// read any track's through trackSettingsOf, never t.settings directly.
+export interface TrackSettings {
+  params: ProcessorParams;
+  enabled: Record<string, boolean>;
+  recipe: Recipe | null;
+  recipeKey: string | null;
+  customPreset: string | null;
+  paramsEdited: boolean;
+  // Album only:
+  style: string | null; // this track's style; null = the album's
+  nudgeDB: number; // level nudge on top of the album loudness offset
+  reviewed: boolean; // previewed in the Tracks step
+}
+
+export const emptyTrackSettings = (): TrackSettings => ({
+  params: {}, enabled: {}, recipe: null, recipeKey: null, customPreset: null,
+  paramsEdited: false, style: null, nudgeDB: 0, reviewed: false,
+});
+
 export interface AlbumTrack {
   id: string;
   name: string;
@@ -41,24 +72,43 @@ export interface AlbumTrack {
   // Filled in by the background album analysis
   analysis: AnalysisResult | null;
   blocks: number[] | null; // BS.1770 gating blocks for album integration
+  settings: TrackSettings;
 }
 
-interface AppState {
-  // Album: all loaded tracks. The single-track fields below always mirror
-  // the active track, so the whole single-file UI works unchanged.
+// A track measured through its own chain (limiter off, no loudness
+// offset): the basis of the album offset, and of the balance view. Cached
+// under the track's settings key so editing one track re-measures only it.
+export interface TrackCalibration {
+  key: string;
+  blocks: number[];
+  lufs: number;
+  analysis: AnalysisResult;
+}
+
+export interface AppState {
+  workspace: Workspace | null; // null = start screen
+  albumStep: AlbumStep;
+  // Loaded tracks (one in the track workspace). The single-track fields
+  // below always mirror the active track, so the whole single-file UI
+  // works unchanged.
   tracks: AlbumTrack[];
   activeTrackId: string | null;
-  // When on (and >1 track), loudness is normalized with one shared offset
-  // from the album's integrated loudness instead of per-track.
+  // Album: on = one shared loudness offset from the album's integrated
+  // loudness, keeping the level differences between tracks; off = each
+  // track brought to the target on its own.
   albumMode: boolean;
-  // Album loudness of the source tracks (informational, for the table).
+  // Album loudness of the source tracks (informational).
   albumLufs: number | null;
-  // Album loudness measured through the current chain (limiter off) — the
-  // basis of the shared offset. Cached per settings key; recomputed by the
-  // calibration pass when settings change.
-  albumCalKey: string | null;
+  // Per-track calibration and the album loudness integrated from it.
+  albumCal: Record<string, TrackCalibration>;
   albumPostLufs: number | null;
   albumCalibrating: string | null; // progress message while calibrating
+  // Bumped whenever any track's settings change outside the active
+  // track's live fields (other tracks' recipes, nudges): those change the
+  // album offset, so the active preview must re-render too.
+  albumRev: number;
+  // Index of the track whose transition into the next is playing.
+  transitionPlaying: number | null;
 
   // Audio
   originalBuffer: AudioBuffer | null;
@@ -142,13 +192,30 @@ interface AppState {
   xrayActiveSetupId: string | null; // setup the current params came from
 
   // Actions
+  // Track workspace: work on this track instead (replaces the current
+  // one). The release choice and a loaded saved preset carry over.
+  openTrack: (track: AlbumTrack) => void;
+  // Start an album with these tracks.
+  startAlbum: (tracks: AlbumTrack[]) => void;
+  // Add tracks to the album (from the track workspace: makes an album of
+  // the current track plus these).
   addTracks: (tracks: AlbumTrack[]) => void;
+  removeTrack: (id: string) => void;
+  // Play order (album): move a track one place up (-1) or down (+1).
+  moveTrack: (id: string, dir: -1 | 1) => void;
+  closeSession: () => void;
+  setAlbumStep: (step: AlbumStep) => void;
   setActiveTrack: (id: string) => void;
   updateTrack: (id: string, patch: Partial<Pick<AlbumTrack, 'analysis' | 'blocks'>>) => void;
+  // Change any track's settings (the active one's live fields included).
+  setTrackSettings: (id: string, patch: Partial<TrackSettings>) => void;
+  markReviewed: (id: string) => void;
   setAlbumMode: (v: boolean) => void;
   setAlbumLufs: (v: number | null) => void;
-  setAlbumCalibration: (key: string, postLufs: number) => void;
+  setTrackCalibration: (id: string, cal: TrackCalibration) => void;
+  setAlbumPostLufs: (v: number | null) => void;
   setAlbumCalibrating: (msg: string | null) => void;
+  setTransitionPlaying: (i: number | null) => void;
   setOriginalBuffer: (buffer: AudioBuffer, info: AudioFileInfo) => void;
   setProcessedBuffer: (buffer: AudioBuffer, rendered: RenderedSettings) => void;
   setIsProcessing: (v: boolean) => void;
@@ -168,7 +235,8 @@ interface AppState {
   setAnalysis: (a: AnalysisResult | null) => void;
   setProcessedAnalysis: (a: AnalysisResult | null) => void;
   setRecipeOptions: (o: RecipeOptions) => void;
-  // Changing the choice leaves any loaded custom preset.
+  // Changing the choice leaves any loaded custom preset (in an album: on
+  // every track, since the choice is the album's).
   setChoice: (patch: Partial<RecipeChoice>) => void;
   setAppliedRecipe: (r: Recipe | null, key: string | null) => void;
   setCustomPreset: (name: string | null) => void;
@@ -185,7 +253,6 @@ interface AppState {
   addXraySetup: (setup: XraySetup) => void;
   deleteXraySetup: (id: string) => void;
   setXrayActiveSetup: (id: string | null) => void;
-  reset: () => void;
 }
 
 // View-state reset applied whenever the active audio changes (new file or
@@ -196,6 +263,7 @@ const freshTrackView = {
   processedAnalysis: null,
   analysis: null,
   meters: {},
+  listenMode: 'original',
   matchGainDB: null,
   paramsDirty: true,
   isPlaying: false,
@@ -204,14 +272,69 @@ const freshTrackView = {
   xrayStagesKey: null,
 } as const;
 
-export const useStore = create<AppState>((set) => ({
-  tracks: [],
-  activeTrackId: null,
-  albumMode: false,
+// The live settings fields, from a track's settings.
+function liveFields(st: TrackSettings) {
+  return {
+    params: st.params,
+    processorEnabled: st.enabled,
+    recipe: st.recipe,
+    recipeKey: st.recipeKey,
+    customPreset: st.customPreset,
+    paramsEdited: st.paramsEdited,
+  };
+}
+
+/** A track's settings; for the active track, its live copy. */
+export function trackSettingsOf(s: AppState, t: AlbumTrack): TrackSettings {
+  if (t.id !== s.activeTrackId) return t.settings;
+  return {
+    ...t.settings,
+    params: s.params,
+    enabled: s.processorEnabled,
+    recipe: s.recipe,
+    recipeKey: s.recipeKey,
+    customPreset: s.customPreset,
+    paramsEdited: s.paramsEdited,
+  };
+}
+
+// Tracks with the active track's live settings written back into it.
+function persistActive(s: AppState): AlbumTrack[] {
+  return s.tracks.map((t) => (t.id === s.activeTrackId ? { ...t, settings: trackSettingsOf(s, t) } : t));
+}
+
+// Fields that make a track the active one.
+function activate(t: AlbumTrack) {
+  return {
+    activeTrackId: t.id,
+    originalBuffer: t.buffer,
+    fileInfo: t.info,
+    ...freshTrackView,
+    analysis: t.analysis, // already analyzed tracks don't re-analyze
+    ...liveFields(t.settings),
+  };
+}
+
+// Album bookkeeping reset whenever the set of tracks changes.
+const freshAlbum = {
   albumLufs: null,
-  albumCalKey: null,
   albumPostLufs: null,
   albumCalibrating: null,
+  transitionPlaying: null,
+} as const;
+
+export const useStore = create<AppState>((set) => ({
+  workspace: null,
+  albumStep: 'release',
+  tracks: [],
+  activeTrackId: null,
+  albumMode: true,
+  albumLufs: null,
+  albumCal: {},
+  albumPostLufs: null,
+  albumCalibrating: null,
+  albumRev: 0,
+  transitionPlaying: null,
   originalBuffer: null,
   processedBuffer: null,
   processedSettings: null,
@@ -248,40 +371,98 @@ export const useStore = create<AppState>((set) => ({
   xraySetups: [],
   xrayActiveSetupId: null,
 
-  addTracks: (newTracks) => set((s) => {
-    const tracks = [...s.tracks, ...newTracks];
-    const activate = s.activeTrackId === null && newTracks.length > 0 ? newTracks[0] : null;
+  openTrack: (track) => set((s) => {
+    // Carry over a loaded saved preset (with its edits); a recipe is
+    // rebuilt for the new track's own analysis.
+    const settings: TrackSettings = s.customPreset !== null
+      ? { ...emptyTrackSettings(), params: s.params, enabled: s.processorEnabled, customPreset: s.customPreset }
+      : { ...emptyTrackSettings(), params: s.params, enabled: s.processorEnabled };
+    const t = { ...track, settings };
+    return { workspace: 'track', tracks: [t], ...activate(t), ...freshAlbum, albumCal: {} };
+  }),
+  startAlbum: (newTracks) => set(() => {
+    if (newTracks.length === 0) return {};
+    const tracks = newTracks.map((t) => ({ ...t, settings: emptyTrackSettings() }));
     return {
-      tracks,
-      albumMode: tracks.length > 1 ? true : s.albumMode,
-      albumLufs: null, // recomputed once every track has blocks
-      albumCalKey: null,
-      albumPostLufs: null,
-      ...(activate ? {
-        activeTrackId: activate.id,
-        originalBuffer: activate.buffer,
-        fileInfo: activate.info,
-        ...freshTrackView,
-      } : {}),
+      workspace: 'album', albumStep: 'release', albumMode: true, tracks,
+      ...activate(tracks[0]), ...freshAlbum, albumCal: {},
     };
   }),
+  addTracks: (newTracks) => set((s) => {
+    const added = newTracks.map((t) => ({ ...t, settings: emptyTrackSettings() }));
+    // A new album (from a single track) is in file name order like any
+    // other; tracks added to an album go at the end, after the order the
+    // user may have arranged.
+    const tracks = [...persistActive(s), ...added];
+    if (s.workspace === 'track') tracks.sort((a, b) => a.name.localeCompare(b.name));
+    return {
+      workspace: 'album',
+      // From a single track the release is already chosen: go on with
+      // the tracks.
+      ...(s.workspace === 'track' ? { albumStep: 'tracks' as const, albumMode: true } : {}),
+      tracks, ...freshAlbum, albumRev: s.albumRev + 1, paramsDirty: true,
+    };
+  }),
+  removeTrack: (id) => set((s) => {
+    const tracks = persistActive(s).filter((t) => t.id !== id);
+    if (tracks.length === 0) return { tracks };
+    const { [id]: _, ...albumCal } = s.albumCal;
+    const base = { tracks, albumCal, ...freshAlbum, albumRev: s.albumRev + 1, paramsDirty: true };
+    if (id !== s.activeTrackId) return base;
+    const i = s.tracks.findIndex((t) => t.id === id);
+    return { ...base, ...activate(tracks[Math.min(i, tracks.length - 1)]) };
+  }),
+  moveTrack: (id, dir) => set((s) => {
+    const i = s.tracks.findIndex((t) => t.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= s.tracks.length) return {};
+    const tracks = [...s.tracks];
+    [tracks[i], tracks[j]] = [tracks[j], tracks[i]];
+    return { tracks };
+  }),
+  closeSession: () => set({
+    workspace: null, tracks: [], activeTrackId: null, originalBuffer: null, fileInfo: null,
+    ...freshTrackView, ...freshAlbum, albumCal: {}, recipe: null, recipeKey: null,
+    customPreset: null, paramsEdited: false, xrayOpen: false, xraySetups: [], xrayActiveSetupId: null,
+  }),
+  setAlbumStep: (step) => set({ albumStep: step }),
   setActiveTrack: (id) => set((s) => {
     const track = s.tracks.find((t) => t.id === id);
     if (!track || id === s.activeTrackId) return {};
-    return {
-      activeTrackId: id,
-      originalBuffer: track.buffer,
-      fileInfo: track.info,
-      ...freshTrackView,
-    };
+    const tracks = persistActive(s);
+    return { tracks, ...activate(tracks.find((t) => t.id === id)!) };
   }),
   updateTrack: (id, patch) => set((s) => ({
     tracks: s.tracks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
   })),
-  setAlbumMode: (v) => set({ albumMode: v, paramsDirty: true }),
+  setTrackSettings: (id, patch) => set((s) => {
+    const tracks = s.tracks.map((t) => (t.id === id ? { ...t, settings: { ...t.settings, ...patch } } : t));
+    const live: Partial<AppState> = {};
+    if (id === s.activeTrackId) {
+      if (patch.params) live.params = patch.params;
+      if (patch.enabled) live.processorEnabled = patch.enabled;
+      if ('recipe' in patch) live.recipe = patch.recipe!;
+      if ('recipeKey' in patch) live.recipeKey = patch.recipeKey!;
+      if ('customPreset' in patch) live.customPreset = patch.customPreset!;
+      if ('paramsEdited' in patch) live.paramsEdited = patch.paramsEdited!;
+    }
+    // Only changes to what gets rendered make the preview stale.
+    const audible = !!(patch.params || patch.enabled || 'nudgeDB' in patch);
+    return {
+      tracks, ...live,
+      ...(audible ? { albumRev: s.albumRev + 1, paramsDirty: true, xrayActiveSetupId: null } : {}),
+    };
+  }),
+  markReviewed: (id) => set((s) => ({
+    tracks: s.tracks.map((t) => (t.id === id && !t.settings.reviewed
+      ? { ...t, settings: { ...t.settings, reviewed: true } } : t)),
+  })),
+  setAlbumMode: (v) => set((s) => ({ albumMode: v, paramsDirty: true, albumRev: s.albumRev + 1 })),
   setAlbumLufs: (v) => set({ albumLufs: v }),
-  setAlbumCalibration: (key, postLufs) => set({ albumCalKey: key, albumPostLufs: postLufs }),
+  setTrackCalibration: (id, cal) => set((s) => ({ albumCal: { ...s.albumCal, [id]: cal } })),
+  setAlbumPostLufs: (v) => set({ albumPostLufs: v }),
   setAlbumCalibrating: (msg) => set({ albumCalibrating: msg }),
+  setTransitionPlaying: (i) => set({ transitionPlaying: i }),
   setOriginalBuffer: (buffer, info) => set({
     originalBuffer: buffer, fileInfo: info,
     ...freshTrackView,
@@ -336,7 +517,14 @@ export const useStore = create<AppState>((set) => ({
   setAnalysis: (a) => set({ analysis: a }),
   setProcessedAnalysis: (a) => set({ processedAnalysis: a }),
   setRecipeOptions: (o) => set({ recipeOptions: o }),
-  setChoice: (patch) => set((s) => ({ choice: { ...s.choice, ...patch }, customPreset: null })),
+  setChoice: (patch) => set((s) => ({
+    choice: { ...s.choice, ...patch },
+    customPreset: null,
+    tracks: s.workspace === 'album'
+      ? s.tracks.map((t) => (t.settings.customPreset !== null
+        ? { ...t, settings: { ...t.settings, customPreset: null } } : t))
+      : s.tracks,
+  })),
   setAppliedRecipe: (r, key) => set({ recipe: r, recipeKey: key }),
   setCustomPreset: (name) => set({ customPreset: name }),
   applySettings: (params, enabled) => set({
@@ -359,32 +547,4 @@ export const useStore = create<AppState>((set) => ({
     xrayActiveSetupId: s.xrayActiveSetupId === id ? null : s.xrayActiveSetupId,
   })),
   setXrayActiveSetup: (id) => set({ xrayActiveSetupId: id }),
-  reset: () => set({
-    tracks: [],
-    activeTrackId: null,
-    albumMode: false,
-    albumLufs: null,
-    albumCalKey: null,
-    albumPostLufs: null,
-    albumCalibrating: null,
-    originalBuffer: null,
-    processedBuffer: null,
-    processedSettings: null,
-    fileInfo: null,
-    isProcessing: false,
-    isPlaying: false,
-    playbackPosition: 0,
-    analysis: null,
-    processedAnalysis: null,
-    isAnalyzing: false,
-    recipe: null,
-    recipeKey: null,
-    error: null,
-    meters: {},
-    matchGainDB: null,
-    xrayOpen: false,
-    xrayStages: null,
-    xrayStagesKey: null,
-    xrayBusy: false,
-  }),
 }));

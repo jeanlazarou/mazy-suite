@@ -3,7 +3,10 @@ import { engine } from '../wasm/engine';
 import { audioBufferToFloat32Array, float32ArrayToAudioBuffer, encodeWav } from '../audio/context';
 import { createZip } from '../audio/zip';
 import type { ZipEntry } from '../audio/zip';
-import { useStore, type RenderedSettings } from '../store/store';
+import {
+  useStore, trackSettingsOf, type AppState, type AlbumTrack, type RenderedSettings, type TrackSettings,
+} from '../store/store';
+import { playTransition } from '../audio/transition';
 import { stopPlayback } from './usePlayback';
 import type { CustomPreset } from '../audio/customPresets';
 
@@ -29,13 +32,54 @@ let engineInitStarted = false;
 // still in flight must win, and the older build must stop applying.
 let recipeSeq = 0;
 
-// Identity of what the recipe depends on: the choice, and the analysis
-// the fixes come from (the whole album's, or the active track's).
-function recipeKeyFor(s: ReturnType<typeof useStore.getState>): string {
-  const scope = s.tracks.length > 1
-    ? `album:${s.tracks.map((t) => t.id).join(',')}`
-    : `track:${s.activeTrackId}`;
-  return JSON.stringify({ c: s.choice, scope });
+// The style a track is built with: in an album, its own if set, else the
+// album's.
+function styleFor(s: AppState, st: TrackSettings): string {
+  return s.workspace === 'album' && st.style !== null ? st.style : s.choice.style;
+}
+
+// Identity of what a track's recipe depends on: the choice (with the
+// track's style) and the track, whose own analysis the fixes come from.
+function recipeKeyFor(s: AppState, t: AlbumTrack, st: TrackSettings): string {
+  return JSON.stringify({
+    s: styleFor(s, st), d: s.choice.destination, f: s.choice.fix, t: t.id,
+  });
+}
+
+// What album levels are computed from.
+export type AlbumLevels = Pick<AppState, 'albumCal' | 'albumMode' | 'albumPostLufs' | 'recipeOptions' | 'choice'>;
+
+// Album loudness target: the release destination's.
+export function albumTargetLUFS(s: AlbumLevels): number {
+  return s.recipeOptions?.destinations.find((d) => d.id === s.choice.destination)?.target_lufs ?? -14;
+}
+
+// Calibration identity of a track: what its chain renders.
+function calKeyFor(t: AlbumTrack, st: TrackSettings): string {
+  return JSON.stringify({ t: t.id, p: st.params, e: Object.entries(st.enabled).sort() });
+}
+
+/** Gain (dB) a track gets in the album, from its calibration: the shared
+ *  offset (album loudness mode) or its own (off), plus its nudge. Null
+ *  until the album is calibrated. */
+export function albumTrackGainDB(s: AlbumLevels, t: AlbumTrack): number | null {
+  const cal = s.albumCal[t.id];
+  const target = albumTargetLUFS(s);
+  const nudge = t.settings.nudgeDB;
+  if (s.albumMode) {
+    if (s.albumPostLufs === null || s.albumPostLufs < -100) return null;
+    return target - s.albumPostLufs + nudge;
+  }
+  if (!cal || cal.lufs < -100) return null;
+  return target - cal.lufs + nudge;
+}
+
+// Every track has settings to render with (a recipe or a saved preset).
+export function albumSettingsReady(s: AppState): boolean {
+  return s.tracks.length > 0 && s.tracks.every((t) => {
+    const st = trackSettingsOf(s, t);
+    return st.recipe !== null || st.customPreset !== null;
+  });
 }
 
 export function useAudioEngine() {
@@ -75,10 +119,13 @@ export function useAudioEngine() {
     });
   }, []);
 
-  // Re-apply store params and bypass state to a freshly initialized engine.
-  // Returns what was applied (for the live preview).
-  const applyEngineState = async (): Promise<RenderedSettings> => {
-    const { params, processorEnabled } = useStore.getState();
+  // Apply params and bypass state (the active track's unless given) to a
+  // freshly initialized engine. Returns what was applied (for the live
+  // preview).
+  const applyEngineState = async (settings?: TrackSettings): Promise<RenderedSettings> => {
+    const live = useStore.getState();
+    const params = settings ? settings.params : live.params;
+    const processorEnabled = settings ? settings.enabled : live.processorEnabled;
     const applied = { params, enabled: processorEnabled };
     for (const [proc, procParams] of Object.entries(params)) {
       for (const [param, value] of Object.entries(procParams)) {
@@ -91,68 +138,82 @@ export function useAudioEngine() {
     return applied;
   };
 
-  // Album loudness must be measured through the current chain (the chain
-  // changes loudness), so run every track once with the limiter and
-  // normalizer off and integrate the gating blocks as one program. Cached
-  // per settings key; re-runs only when settings or the track set change.
-  const ensureAlbumCalibration = async (): Promise<number | null> => {
+  // Album loudness must be measured through the chains (they change
+  // loudness): each track runs once through its own chain with the
+  // limiter off and no offset; the gating blocks of all tracks are then
+  // integrated as one program. Cached per track under its settings, so
+  // editing one track re-measures only that one. Returns false when some
+  // track has no settings yet.
+  const ensureAlbumCalibration = async (): Promise<boolean> => {
     const s = useStore.getState();
-    const key = JSON.stringify({
-      p: s.params,
-      e: Object.entries(s.processorEnabled).sort(),
-      t: s.tracks.map((t) => t.id),
-    });
-    if (s.albumCalKey === key && s.albumPostLufs !== null) return s.albumPostLufs;
-
-    const allBlocks: number[] = [];
-    for (let i = 0; i < s.tracks.length; i++) {
-      useStore.getState().setAlbumCalibrating(
-        `Measuring album loudness with current settings (${i + 1}/${s.tracks.length})…`);
-      const t = s.tracks[i];
+    if (!albumSettingsReady(s)) return false;
+    const stale = s.tracks.filter((t) => s.albumCal[t.id]?.key !== calKeyFor(t, trackSettingsOf(s, t)));
+    for (let i = 0; i < stale.length; i++) {
+      const t = stale[i];
+      const st = trackSettingsOf(useStore.getState(), t);
+      useStore.getState().setAlbumCalibrating(stale.length === 1
+        ? `Measuring ${t.name}…`
+        : `Measuring tracks with their settings (${i + 1}/${stale.length})…`);
       const ch = t.buffer.numberOfChannels;
       const sr = t.buffer.sampleRate;
       await engine.initEngine(sr, ch);
-      await applyEngineState();
+      await applyEngineState(st);
       await engine.setProcessorEnabled('Loudness Normalizer', false);
       await engine.setProcessorEnabled('Limiter', false);
       await engine.setParam('Gain', 'gain_db', 0);
-      const processed = await engine.processBuffer(
-        audioBufferToFloat32Array(t.buffer), ch, sr);
-      const blocks = await engine.measureBlocks(processed, ch, sr);
-      allBlocks.push(...blocks);
+      const processed = await engine.processBuffer(audioBufferToFloat32Array(t.buffer), ch, sr);
+      const blocks = await engine.measureBlocks(processed.slice(), ch, sr);
+      const analysis = await engine.inspectBuffer(processed, ch, sr);
+      useStore.getState().setTrackCalibration(t.id, {
+        key: calKeyFor(t, st), blocks, lufs: await engine.gatedLoudness(blocks), analysis,
+      });
     }
     useStore.getState().setAlbumCalibrating(null);
-    if (allBlocks.length === 0) return null;
-    const postLufs = await engine.gatedLoudness(allBlocks);
-    useStore.getState().setAlbumCalibration(key, postLufs);
-    return postLufs;
+    const now = useStore.getState();
+    const allBlocks = now.tracks.flatMap((t) => now.albumCal[t.id]?.blocks ?? []);
+    const post = allBlocks.length > 0 ? await engine.gatedLoudness(allBlocks) : null;
+    if (post !== now.albumPostLufs) now.setAlbumPostLufs(post);
+    return true;
   };
 
-  // Prepare the engine for a full-chain run under the current settings:
-  // init at the audio's rate, apply params/bypass, and configure album
-  // loudness (one shared Gain offset instead of per-track normalization).
-  const prepareEngineRun = async (channels: number, sampleRate: number) => {
-    const { albumMode, tracks } = useStore.getState();
-    let albumOffsetDB: number | null = null;
-    if (albumMode && tracks.length > 1) {
-      const postLufs = await ensureAlbumCalibration();
-      if (postLufs !== null && postLufs > -100) {
-        const target = useStore.getState().params['Loudness Normalizer']?.target_lufs ?? -14;
-        albumOffsetDB = target - postLufs;
-      }
-    }
-
-    await engine.initEngine(sampleRate, channels);
-    const applied = await applyEngineState();
-
-    if (albumOffsetDB !== null) {
+  // Configure the engine's loudness for a track: in an album an explicit
+  // gain (the normalizer can't keep the level differences between
+  // tracks), otherwise the normalizer as set.
+  const applyTrackLoudness = async (t: AlbumTrack | undefined) => {
+    const s = useStore.getState();
+    const gain = s.workspace === 'album' && t ? albumTrackGainDB(s, t) : null;
+    if (gain !== null) {
       await engine.setProcessorEnabled('Loudness Normalizer', false);
-      await engine.setParam('Gain', 'gain_db', albumOffsetDB);
+      await engine.setParam('Gain', 'gain_db', gain);
     } else {
       await engine.setParam('Gain', 'gain_db', 0);
     }
+  };
+
+  // Prepare the engine for a full-chain run of the active track under the
+  // current settings: init at the audio's rate, apply params/bypass, and
+  // in an album its gain from the calibration.
+  const prepareEngineRun = async (channels: number, sampleRate: number) => {
+    if (useStore.getState().workspace === 'album') await ensureAlbumCalibration();
+    await engine.initEngine(sampleRate, channels);
+    const applied = await applyEngineState();
+    const s = useStore.getState();
+    await applyTrackLoudness(s.tracks.find((t) => t.id === s.activeTrackId));
     return applied;
   };
+
+  // Put the active track's settings back into the engine after work on
+  // other tracks (calibration, export, transitions): knob edits read the
+  // engine's params back, so it must hold the active track's.
+  const restoreActiveEngine = async () => {
+    const s = useStore.getState();
+    const t = s.tracks.find((x) => x.id === s.activeTrackId);
+    if (!t) return;
+    await engine.initEngine(t.buffer.sampleRate, t.buffer.numberOfChannels);
+    await applyEngineState();
+    await applyTrackLoudness(t);
+  };
+  const syncEngineToActive = useCallback(() => restoreActiveEngine(), []);
 
   // Full processing pass: chain + meters + result analysis + match gain.
   const runProcess = async () => {
@@ -168,7 +229,9 @@ export function useAudioEngine() {
       const now = useStore.getState();
       return now.params === start.params
         && now.processorEnabled === start.processorEnabled
-        && now.albumMode === start.albumMode;
+        && now.albumMode === start.albumMode
+        && now.albumRev === start.albumRev
+        && now.choice === start.choice;
     };
 
     setIsProcessing(true);
@@ -186,6 +249,9 @@ export function useAudioEngine() {
 
       setProcessedBuffer(processedAudioBuffer, rendered);
       if (!stillCurrent()) useStore.getState().setParamsDirty(true);
+      else if (start.workspace === 'album' && start.activeTrackId) {
+        useStore.getState().markReviewed(start.activeTrackId);
+      }
       setMeters(await engine.getMeters());
 
       // Analyze the result for display (the recipe's fixes stay pinned to
@@ -223,6 +289,7 @@ export function useAudioEngine() {
       e: Object.entries(s.processorEnabled).sort(),
       t: s.activeTrackId,
       a: s.albumMode,
+      r: s.albumRev,
     });
   };
 
@@ -318,46 +385,47 @@ export function useAudioEngine() {
     });
   }, []);
 
-  // Build the settings for the current choice and apply them — all params
-  // and bypass states, so nothing is left over from earlier choices.
-  // No-op while a custom preset is loaded, before the analysis the fixes
-  // depend on is available, or when the applied recipe is already current.
+  // Build each track's settings for the current choice and apply them —
+  // all params and bypass states, so nothing is left over from earlier
+  // choices. Each track's fixes come from its own analysis. Skips tracks
+  // with a saved preset loaded, not yet analyzed, or already current.
   const syncRecipe = useCallback(async () => {
-    const s = useStore.getState();
-    if (s.customPreset !== null) return;
-    let analyses;
-    if (s.tracks.length > 1) {
-      if (!s.tracks.every((t) => t.analysis)) return;
-      analyses = s.tracks.map((t) => t.analysis!);
-    } else {
-      if (!s.analysis) return;
-      analyses = [s.analysis];
-    }
-    const key = recipeKeyFor(s);
-    if (key === s.recipeKey) return;
-
     const mySeq = ++recipeSeq;
-    const r = await engine.buildRecipe(s.choice, analyses);
-    if (mySeq !== recipeSeq) return;
-    if ('error' in r) {
-      setError(`Settings: ${r.error}`);
-      return;
-    }
-    // The store is the source of truth (every run re-initializes the
-    // engine from it); the engine is updated too so getParams-based paths
-    // agree.
-    useStore.getState().applySettings(r.processors, r.enabled);
-    useStore.getState().setAppliedRecipe(r, key);
-    setParamsEdited(false);
-    for (const [proc, procParams] of Object.entries(r.processors)) {
-      for (const [param, value] of Object.entries(procParams)) {
-        if (mySeq !== recipeSeq) return;
-        await engine.setParam(proc, param, value);
-      }
-    }
-    for (const [name, enabled] of Object.entries(r.enabled)) {
+    const s0 = useStore.getState();
+    for (const t0 of s0.tracks) {
+      const s = useStore.getState();
+      const t = s.tracks.find((x) => x.id === t0.id);
+      if (!t) continue;
+      const st = trackSettingsOf(s, t);
+      const analysis = t.id === s.activeTrackId ? (s.analysis ?? t.analysis) : t.analysis;
+      if (st.customPreset !== null || !analysis) continue;
+      const key = recipeKeyFor(s, t, st);
+      if (key === st.recipeKey) continue;
+
+      const r = await engine.buildRecipe(
+        { style: styleFor(s, st), destination: s.choice.destination, fix: s.choice.fix }, [analysis]);
       if (mySeq !== recipeSeq) return;
-      await engine.setProcessorEnabled(name, enabled);
+      if ('error' in r) {
+        setError(`Settings: ${r.error}`);
+        return;
+      }
+      useStore.getState().setTrackSettings(t.id, {
+        params: r.processors, enabled: r.enabled, recipe: r, recipeKey: key, paramsEdited: false,
+      });
+      if (t.id !== useStore.getState().activeTrackId) continue;
+      // The store is the source of truth (every run re-initializes the
+      // engine from it); the engine is updated too so getParams-based
+      // paths agree.
+      for (const [proc, procParams] of Object.entries(r.processors)) {
+        for (const [param, value] of Object.entries(procParams)) {
+          if (mySeq !== recipeSeq) return;
+          await engine.setParam(proc, param, value);
+        }
+      }
+      for (const [name, enabled] of Object.entries(r.enabled)) {
+        if (mySeq !== recipeSeq) return;
+        await engine.setProcessorEnabled(name, enabled);
+      }
     }
   }, []);
 
@@ -367,18 +435,18 @@ export function useAudioEngine() {
     const channels = originalBuffer.numberOfChannels;
     const sampleRate = originalBuffer.sampleRate;
 
+    const trackId = useStore.getState().activeTrackId;
     setIsAnalyzing(true);
     try {
       const result = await engine.analyzeBuffer(
         audioBufferToFloat32Array(originalBuffer), channels, sampleRate);
-      setAnalysis(result);
+      // The user may have switched tracks meanwhile: the result belongs to
+      // the track it was started for.
+      if (useStore.getState().originalBuffer === originalBuffer) setAnalysis(result);
 
       // Share the result with the album track cache so the background
-      // album pipeline doesn't analyze the active track a second time.
-      const { activeTrackId, updateTrack } = useStore.getState();
-      if (activeTrackId) {
-        updateTrack(activeTrackId, { analysis: result });
-      }
+      // album pipeline doesn't analyze the track a second time.
+      if (trackId) useStore.getState().updateTrack(trackId, { analysis: result });
 
     } catch (err: any) {
       setError(`Analysis failed: ${err.message}`);
@@ -387,42 +455,29 @@ export function useAudioEngine() {
     }
   }, [wasmReady, originalBuffer]);
 
-  // Master every track with the current settings (album offset included)
-  // and download the whole set as one zip — no per-track clicking, and no
-  // risk of stale files exported under older settings.
+  // Master every track with its settings and album gain, and download
+  // the whole set as one zip — no per-track clicking, and no risk of stale
+  // files exported under older settings.
   const exportAlbum = useCallback(async () => {
-    const { tracks, albumMode } = useStore.getState();
-    if (!wasmReady || tracks.length === 0) return;
+    if (!wasmReady || useStore.getState().tracks.length === 0) return;
 
     setIsProcessing(true);
     try {
-      let albumOffsetDB: number | null = null;
-      if (albumMode && tracks.length > 1) {
-        const postLufs = await ensureAlbumCalibration();
-        if (postLufs !== null && postLufs > -100) {
-          const target = useStore.getState().params['Loudness Normalizer']?.target_lufs ?? -14;
-          albumOffsetDB = target - postLufs;
-        }
-      }
-
+      if (!await ensureAlbumCalibration()) throw new Error('some tracks are not ready yet');
+      const s = useStore.getState();
       const entries: ZipEntry[] = [];
-      for (let i = 0; i < tracks.length; i++) {
-        const t = tracks[i];
-        useStore.getState().setAlbumCalibrating(`Exporting ${i + 1}/${tracks.length}: ${t.name}…`);
+      for (let i = 0; i < s.tracks.length; i++) {
+        const t = s.tracks[i];
+        useStore.getState().setAlbumCalibrating(`Exporting ${i + 1}/${s.tracks.length}: ${t.name}…`);
         const ch = t.buffer.numberOfChannels;
         const sr = t.buffer.sampleRate;
         await engine.initEngine(sr, ch);
-        await applyEngineState();
-        if (albumOffsetDB !== null) {
-          await engine.setProcessorEnabled('Loudness Normalizer', false);
-          await engine.setParam('Gain', 'gain_db', albumOffsetDB);
-        } else {
-          await engine.setParam('Gain', 'gain_db', 0);
-        }
+        await applyEngineState(trackSettingsOf(s, t));
+        await applyTrackLoudness(t);
         const processed = await engine.processBuffer(
           audioBufferToFloat32Array(t.buffer), ch, sr);
         entries.push({
-          name: t.name.replace(/\.[^.]+$/, '') + '_mastered.wav',
+          name: `${String(i + 1).padStart(2, '0')} ${t.name.replace(/\.[^.]+$/, '')}_mastered.wav`,
           data: encodeWav(processed, ch, sr),
         });
       }
@@ -437,6 +492,70 @@ export function useAudioEngine() {
       setError(`Album export failed: ${err.message}`);
     } finally {
       useStore.getState().setAlbumCalibrating(null);
+      await restoreActiveEngine();
+      setIsProcessing(false);
+    }
+  }, [wasmReady]);
+
+  // Measure the album (balance view) when it isn't yet. Uses the engine,
+  // so it takes the processing slot like any other run.
+  const calibrateAlbum = useCallback(async () => {
+    const s = useStore.getState();
+    if (!wasmReady || s.isProcessing || s.workspace !== 'album') return;
+    setIsProcessing(true);
+    try {
+      await ensureAlbumCalibration();
+    } catch (err: any) {
+      setError(`Measuring the album failed: ${err.message}`);
+    } finally {
+      await restoreActiveEngine();
+      setIsProcessing(false);
+    }
+  }, [wasmReady]);
+
+  // Render [start, start+dur) seconds of a track as mastered in the album
+  // (its settings and gain). Starts a little earlier so the compressor
+  // has settled by the part that is kept.
+  const renderAlbumPart = async (t: AlbumTrack, start: number, dur: number): Promise<AudioBuffer> => {
+    const PREROLL = 1.5;
+    const s = useStore.getState();
+    const ch = t.buffer.numberOfChannels;
+    const sr = t.buffer.sampleRate;
+    const total = t.buffer.length;
+    const from = Math.max(0, Math.floor((start - PREROLL) * sr));
+    const keepFrom = Math.max(0, Math.floor(start * sr));
+    const to = Math.min(total, Math.floor((start + dur) * sr));
+    const all = audioBufferToFloat32Array(t.buffer);
+    await engine.initEngine(sr, ch);
+    await applyEngineState(trackSettingsOf(s, t));
+    await applyTrackLoudness(t);
+    const out = await engine.processBuffer(all.slice(from * ch, to * ch), ch, sr);
+    return float32ArrayToAudioBuffer(out.slice((keepFrom - from) * ch), ch, sr);
+  };
+
+  // Play the end of track i straight into the start of track i+1, both as
+  // mastered in the album: the transition is where level and tone
+  // differences between tracks show.
+  const previewTransition = useCallback(async (i: number) => {
+    const s = useStore.getState();
+    const a = s.tracks[i];
+    const b = s.tracks[i + 1];
+    if (!wasmReady || !a || !b) return;
+    stopPlayback();
+    setIsProcessing(true);
+    try {
+      if (!await ensureAlbumCalibration()) throw new Error('some tracks are not ready yet');
+      const TAIL = 8;
+      const head = await renderAlbumPart(b, 0, 8);
+      const tail = await renderAlbumPart(a, Math.max(0, a.info.duration - TAIL), TAIL);
+      useStore.getState().setTransitionPlaying(i);
+      playTransition([tail, head], () => {
+        if (useStore.getState().transitionPlaying === i) useStore.getState().setTransitionPlaying(null);
+      });
+    } catch (err: any) {
+      setError(`Transition preview failed: ${err.message}`);
+    } finally {
+      await restoreActiveEngine();
       setIsProcessing(false);
     }
   }, [wasmReady]);
@@ -488,8 +607,11 @@ export function useAudioEngine() {
     saveXraySetup,
     analyzeAudio,
     syncRecipe,
+    syncEngineToActive,
     resetToRecipe,
     exportAlbum,
+    calibrateAlbum,
+    previewTransition,
     setParam,
     setProcessorEnabled,
     applyCustomPreset,

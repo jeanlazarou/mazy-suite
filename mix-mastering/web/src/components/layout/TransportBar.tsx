@@ -6,19 +6,22 @@ import PauseIcon from '@mui/icons-material/Pause';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import DownloadIcon from '@mui/icons-material/Download';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import LibraryAddIcon from '@mui/icons-material/LibraryAdd';
 import TroubleshootIcon from '@mui/icons-material/Troubleshoot';
 import { usePlayback } from '../../hooks/usePlayback';
 import { useAudioEngine } from '../../hooks/useAudioEngine';
 import { useStore } from '../../store/store';
 import { audioBufferToWavBlob } from '../../audio/context';
-import { openAudioFilePicker } from '../../audio/loadFiles';
+import { pickAudioFiles, openTrackFiles, addAlbumFiles } from '../../audio/loadFiles';
 
 export const TransportBar: React.FC = () => {
   const { togglePlayback, seek, pause } = usePlayback();
   const { openChainXray } = useAudioEngine();
-  // With an album loaded, the X-ray opens from the per-track buttons in
-  // the track list instead.
-  const singleTrack = useStore((s) => s.tracks.length <= 1);
+  const isAlbum = useStore((s) => s.workspace === 'album');
+  const trackPos = useStore((s) => {
+    const i = s.tracks.findIndex((t) => t.id === s.activeTrackId);
+    return i < 0 ? null : `Track ${i + 1} of ${s.tracks.length}`;
+  });
   const xrayOpen = useStore((s) => s.xrayOpen);
   const isPlaying = useStore((s) => s.isPlaying);
   const playbackPosition = useStore((s) => s.playbackPosition);
@@ -34,9 +37,16 @@ export const TransportBar: React.FC = () => {
   const originalLufs = useStore((s) => s.analysis?.loudness.integrated_lufs);
   const processedLufs = useStore((s) => s.processedAnalysis?.loudness.integrated_lufs);
 
-  const handleOpenFile = () => {
+  // Track workspace only: work on another song instead of this one, or
+  // grow this one into an album. (An album adds tracks from its own
+  // screen.)
+  const handleOpenTrack = () => {
     pause();
-    openAudioFilePicker();
+    pickAudioFiles(false, openTrackFiles);
+  };
+  const handleMakeAlbum = () => {
+    pause();
+    pickAudioFiles(true, addAlbumFiles);
   };
 
   if (!fileInfo) return null;
@@ -54,17 +64,26 @@ export const TransportBar: React.FC = () => {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         {/* File info */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 160 }}>
-          <Tooltip title="Open another file">
-            <IconButton size="small" onClick={handleOpenFile}>
-              <FolderOpenIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+          {!isAlbum && (
+            <>
+              <Tooltip title="Open another track — it replaces this one; your choices carry over">
+                <IconButton size="small" onClick={handleOpenTrack} aria-label="Open another track">
+                  <FolderOpenIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Make an album: add the other tracks that belong with this one">
+                <IconButton size="small" onClick={handleMakeAlbum} aria-label="Make an album">
+                  <LibraryAddIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </>
+          )}
           <Box>
             <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }} noWrap>
               {fileInfo.name}
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>
-              {fileInfo.sampleRate}Hz / {fileInfo.channels}ch / {formatTime(fileInfo.duration)}
+              {isAlbum && trackPos ? `${trackPos} · ` : ''}{fileInfo.sampleRate}Hz / {fileInfo.channels}ch / {formatTime(fileInfo.duration)}
             </Typography>
           </Box>
         </Box>
@@ -176,20 +195,18 @@ export const TransportBar: React.FC = () => {
             </Typography>
           </Box>
         </Tooltip>
-        {singleTrack && (
-          <Tooltip title="Chain X-Ray: inspect and shape the signal at every stage of the mastering chain">
-            <span>
-              <IconButton
-                size="small"
-                color={xrayOpen ? 'primary' : 'default'}
-                disabled={isProcessing}
-                onClick={() => openChainXray()}
-              >
-                <TroubleshootIcon fontSize="small" />
-              </IconButton>
-            </span>
-          </Tooltip>
-        )}
+        <Tooltip title="Chain X-Ray: inspect and shape this track's signal at every stage of the mastering chain">
+          <span>
+            <IconButton
+              size="small"
+              color={xrayOpen ? 'primary' : 'default'}
+              disabled={isProcessing}
+              onClick={() => openChainXray()}
+            >
+              <TroubleshootIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
         <Tooltip title={processedBuffer ? 'Download the mastered audio as WAV' : 'Available once the preview is ready'}>
           <span>
             <IconButton

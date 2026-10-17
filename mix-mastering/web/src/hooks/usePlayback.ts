@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import { getAudioContext, resumeAudioContext, getAnalyserNode, getPlaybackInputNode, setPlaybackGainDB } from '../audio/context';
 import { useStore } from '../store/store';
+import { stopTransition } from '../audio/transition';
 
 // Playback source state is module-level: there is exactly one playing
 // source at a time no matter how many components use this hook, and
@@ -15,6 +16,8 @@ const playback = {
 /** Stop any playing source. Safe to call from outside the hook (e.g.
  *  when a view without a transport takes over the screen). */
 export function stopPlayback(): void {
+  stopTransition();
+  if (useStore.getState().transitionPlaying !== null) useStore.getState().setTransitionPlaying(null);
   if (playback.source) {
     try {
       playback.source.onended = null;
@@ -71,6 +74,9 @@ export function usePlayback() {
     const ctx = getAudioContext();
 
     stopSource();
+    // An album transition preview and the transport never play together.
+    stopTransition();
+    useStore.getState().setTransitionPlaying(null);
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;

@@ -31,7 +31,7 @@ cd web && npx vite
 | `master analyze <file>`                  | Analyze audio and show what mastering would do and fix        |
 | `master options`                         | List the styles (`--style`) and destinations (`--for`)        |
 | `master batch <dir> -o <outdir>`         | Master every file in a directory independently                 |
-| `master album <dir> -o <outdir>`         | Master a directory as one album: shared chain (fixes from the whole album's analysis), loudness normalized by a single offset computed from the album's integrated loudness (preserves relative track levels) — use this instead of `batch` for related tracks |
+| `master album <dir> -o <outdir>`         | Master a directory as one album: the album's style and destination for every track, each corrected for its own problems, loudness normalized by a single offset computed from the album's integrated loudness (preserves relative track levels) — use this instead of `batch` for related tracks |
 | `master preset list\|search\|show`        | Your saved presets in `~/.audiomaster/presets`                 |
 
 `process`, `analyze`, `batch` and `album` all choose their settings the same way, with the flags below.
@@ -56,8 +56,8 @@ The limiter ceiling is a true-peak ceiling: `--for streaming` delivers at most �
 
 The web interface runs the Go DSP engine via WebAssembly in a Web Worker (so processing never blocks the UI). Features:
 
-- Drag-and-drop file loading, single track or a whole album at once
-- Album mastering: one shared chain and a single loudness offset across tracks, so relative levels are preserved instead of squashed flat
+- Start by saying what you're mastering: one track, or an album. With a single track, open the next song when you're done (your choices carry over), or grow it into an album
+- Album mastering in three steps, the way albums are mastered: choose the release (destination and the album's usual style), get each track right (its own fixes, an optional different style, fine-tuning), then balance the album — levels in play order against the target with ± nudges, tracks whose tone stands out, reordering, and listening across each transition — before exporting a zip. One shared loudness offset keeps the intended level differences between tracks
 - Chain X-Ray: a full-screen workbench showing the signal at every stage of the chain as waveform or spectrogram lanes, with in-place processor editing (changes ripple through downstream lanes) and instant visual A/B between saved setups
 - Loudness-matched A/B (original vs processed, trimmed to equal LUFS) and per-run gain-reduction stats
 - Every processor has two views: a picture you edit by dragging, and the classic knobs (see below)
