@@ -72,6 +72,8 @@ function App() {
 
   const playerRef = useRef<SequencePlayer>(new SequencePlayer());
   const runId = useRef(0);
+  /** The last shuffle: the sequence it made, and how many of its first tracks it kept */
+  const lastShuffle = useRef<{ result: string; keep: number } | null>(null);
 
   useEffect(() => {
     const player = playerRef.current;
@@ -284,19 +286,34 @@ function App() {
   };
 
   /**
-   * Shuffle the sequence, or make a random one of all the tracks when it
-   * is empty
+   * How many first tracks of the sequence Shuffle keeps: all of them, as you
+   * ordered them -- unless the sequence is still what the last shuffle made,
+   * whose kept part stays while its added part is drawn again
+   */
+  const shuffleKeep = () =>
+    lastShuffle.current?.result === sequence.join('\n') ? lastShuffle.current.keep : sequence.length;
+
+  /**
+   * Keep the order you set and add the other tracks after it in a random
+   * order (all of them, with an empty sequence); again, for another draw
    */
   const handleShuffle = () => {
     if (!playlist) return;
 
-    const source = sequence.length > 0 ? sequence : playlist.tracks.map(t => t.url);
-    let next = shuffled(source);
+    const keep = shuffleKeep();
+    const kept = sequence.slice(0, keep);
+    const rest = playlist.tracks.map(t => t.url).filter(url => !kept.includes(url));
+    if (rest.length === 0) return;
+
+    const current = sequence.slice(keep);
+    let added = shuffled(rest);
     // a shuffle that gives the same order back looks like a broken button
-    while (sequence.length > 1 && next.every((url, i) => url === sequence[i])) {
-      next = shuffled(source);
+    while (rest.length > 1 && added.every((url, i) => url === current[i])) {
+      added = shuffled(rest);
     }
 
+    const next = [...kept, ...added];
+    lastShuffle.current = { result: next.join('\n'), keep };
     stopAll();
     setSequence(next);
   };
@@ -380,6 +397,17 @@ function App() {
   // Hovering a track takes precedence over the currently playing one
   const footerTitle = hoveredTitle ?? playingTitle;
 
+  const shuffleKept = playlist ? shuffleKeep() : 0;
+  const shuffleRest = (playlist?.tracks.length ?? 0) - shuffleKept;
+  // nothing to add, or a single track already added: a press would change nothing
+  const shuffleUseless = shuffleRest === 0 || (shuffleRest === 1 && shuffleKept < sequence.length);
+  const shuffleTitle =
+    shuffleRest === 0 ? 'Every track is already in the sequence'
+    : shuffleUseless ? 'Only one track to add: nothing to shuffle'
+    : shuffleKept === 0 ? 'A random sequence of all the tracks'
+    : shuffleKept < sequence.length ? `Another random order after track ${shuffleKept}`
+    : `Keep your ${shuffleKept} tracks and add the others in a random order`;
+
   const titleOf = (url: string) => playlist?.tracks.find(t => t.url === url)?.title ?? url;
 
   return (
@@ -416,7 +444,8 @@ function App() {
               </button>
               <button
                 onClick={handleShuffle}
-                title={sequence.length > 0 ? 'Shuffle the sequence' : 'A random sequence of all the tracks'}
+                disabled={shuffleUseless}
+                title={shuffleTitle}
               >
                 Shuffle
               </button>

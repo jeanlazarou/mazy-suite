@@ -153,8 +153,13 @@ disabled).
 - Click next tile → plays previous end + new beginning (transition test)
 - Clicking the last tile of the sequence undoes it, even while playing
 - Tiles show sequence numbers (1, 2, 3...)
-- **Shuffle** reorders the sequence (an empty one becomes a random order of all
-  tracks); it never gives the current order back
+- **Shuffle** keeps the sequence as ordered and appends the tracks not in it,
+  in a random order (an empty sequence: all tracks). Pressed again while the
+  sequence is still what it made (`lastShuffle`), it draws the appended part
+  again and keeps the same kept part; any other change makes the whole
+  current sequence the kept part. A draw never repeats the current order.
+  Disabled when a press could change nothing: every track is in a sequence
+  you ordered, or the shuffle added a single track
 
 **Replay Mode**:
 - Click "Replay" → plays full sequence with transitions
