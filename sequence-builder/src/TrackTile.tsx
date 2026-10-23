@@ -6,10 +6,16 @@ interface TrackTileProps {
   color: string;
   sequenceNumber: number | null;
   isActive: boolean;
+  /** The track a run of transitions starts from */
+  isSource: boolean;
+  /** Its menu of runs is open, so its button stays shown */
+  tryOpen: boolean;
   progress: number | null;
   playingSegment: 'start' | 'end' | null;
   onClick: (track: Track) => void;
   onHover: (title: string | null) => void;
+  /** Open or close the menu of runs of transitions from this track */
+  onTryClick: (button: HTMLButtonElement) => void;
 }
 
 /**
@@ -17,7 +23,7 @@ interface TrackTileProps {
  *
  * Displays a single track as a colored tile
  */
-function TrackTile({ track, color, sequenceNumber, isActive, progress, playingSegment, onClick, onHover }: TrackTileProps) {
+function TrackTile({ track, color, sequenceNumber, isActive, isSource, tryOpen, progress, playingSegment, onClick, onHover, onTryClick }: TrackTileProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   const handleMouseEnter = () => {
@@ -41,6 +47,7 @@ function TrackTile({ track, color, sequenceNumber, isActive, progress, playingSe
     transform: isActive ? 'scale(1.05)' : isHovered ? 'scale(1.02)' : 'scale(1)',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
+    ...(isSource && { outline: '3px dashed #fff', outlineOffset: '3px' }),
   };
 
   return (
@@ -52,6 +59,25 @@ function TrackTile({ track, color, sequenceNumber, isActive, progress, playingSe
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
+      <button
+        className={`try-button${isSource || tryOpen ? ' shown' : ''}`}
+        onClick={e => {
+          e.stopPropagation(); // not a click on the tile
+          onTryClick(e.currentTarget);
+        }}
+        title="Try this track's ending into other tracks"
+        aria-label={`Try transitions from ${track.title}`}
+        aria-expanded={tryOpen}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          {/* one track (the dot) fanning out into three */}
+          <circle cx="5" cy="12" r="2.4" className="fill" />
+          <path d="M8 11l10-5M8 12h11M8 13l10 5" />
+          <circle cx="19.5" cy="5.5" r="1.6" className="fill" />
+          <circle cx="20.5" cy="12" r="1.6" className="fill" />
+          <circle cx="19.5" cy="18.5" r="1.6" className="fill" />
+        </svg>
+      </button>
       {sequenceNumber !== null && (
         <div className="sequence-number">{sequenceNumber}</div>
       )}

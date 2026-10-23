@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Album, DisplayedTrack, Track, Playlist, RawPlaylist } from './types';
 import { loadAlbums, loadAlbum } from './api';
-import TrackGrid from './TrackGrid';
+import TrackGrid, { TryMode } from './TrackGrid';
 import TrackListPopup from './TrackListPopup';
 import SequencesPopup from './SequencesPopup';
 import { SavedSequence, listSequences } from './savedSequences';
@@ -63,6 +63,8 @@ function App() {
   const [playingSegment, setPlayingSegment] = useState<'start' | 'end' | null>(null);
   const [showTrackList, setShowTrackList] = useState(false);
   const [showSequences, setShowSequences] = useState(false);
+  /** A run of transitions: one track's ending into each candidate's beginning */
+  const [audition, setAudition] = useState<{ source: string; candidates: string[]; index: number } | null>(null);
   /** Sequence index whose transition into it was asked for by its arrow */
   const [transitionTo, setTransitionTo] = useState<number | null>(null);
   /** Name the sequence was last saved or loaded under */
@@ -164,7 +166,11 @@ function App() {
     playerRef.current.stop();
     setPlaying(null);
     setActiveIndex(-1);
+    setAudition(null);
   };
+
+  /** The run of transitions playing, if one is */
+  const auditioning = playing === 'audition' ? audition : null;
 
   /**
    * Load an album from the suite's albums and pre-load its segments
@@ -199,6 +205,20 @@ function App() {
    * Handle track click - add to sequence and play transition
    */
   const handleTrackClick = async (track: Track) => {
+    // During a run of transitions, a click picks the track to follow the
+    // source: put right after it (the source joining the sequence first if
+    // needed). Nothing replays -- it was just heard.
+    if (auditioning) {
+      const { source } = auditioning;
+      stopAll();
+      if (track.url === source) return;
+      const next = sequence.filter(url => url !== track.url);
+      if (!next.includes(source)) next.push(source);
+      next.splice(next.indexOf(source) + 1, 0, track.url);
+      setSequence(next);
+      return;
+    }
+
     // Allow undo even when playing
     if (sequence.length > 0 && sequence[sequence.length - 1] === track.url) {
       stopAll();
@@ -242,6 +262,25 @@ function App() {
     stopAll();
     setTransitionTo(to);
     await run('transition', () => playerRef.current.playTransition(sequence[to - 1], sequence[to]));
+  };
+
+  /**
+   * Try a track's ending into the beginning of the others, one after the
+   * other, in the grid's order: all of them, or those not in the sequence
+   */
+  const handleTryFrom = async (source: string, mode: TryMode) => {
+    const candidates = displayed
+      .map(d => d.track.url)
+      .filter(url => url !== source && (mode === 'all' || !sequence.includes(url)));
+    if (candidates.length === 0) return;
+
+    stopAll();
+    setAudition({ source, candidates, index: 0 });
+    await run('audition', () =>
+      playerRef.current.playTransitionsFrom(source, candidates, index =>
+        setAudition(a => a && { ...a, index })
+      )
+    );
   };
 
   /**
@@ -341,6 +380,8 @@ function App() {
   // Hovering a track takes precedence over the currently playing one
   const footerTitle = hoveredTitle ?? playingTitle;
 
+  const titleOf = (url: string) => playlist?.tracks.find(t => t.url === url)?.title ?? url;
+
   return (
     <div className="app">
       <header className="header">
@@ -419,7 +460,10 @@ function App() {
             items={displayed}
             total={playlist.tracks.length}
             sequence={sequence}
-            activeIndex={activeIndex}
+            activeUrl={auditioning
+              ? auditioning.candidates[auditioning.index]
+              : activeIndex >= 0 ? sequence[activeIndex] : null}
+            sourceUrl={auditioning?.source ?? null}
             inSequenceOrder={gridOrder === 'sequence'}
             litArrow={playing === 'transition' ? transitionTo : null}
             playingUrl={playingUrl}
@@ -428,6 +472,7 @@ function App() {
             onTrackClick={handleTrackClick}
             onTrackHover={setHoveredTitle}
             onPlayTransition={handlePlayTransition}
+            onTryFrom={handleTryFrom}
           />
         )}
 
@@ -477,7 +522,22 @@ function App() {
         />
       )}
 
-      {footerTitle && (
+      {auditioning ? (
+        <footer className="footer run-bar">
+          <span className="run-pair">
+            <strong>{titleOf(auditioning.source)}</strong>
+            {' → '}
+            <strong>{titleOf(auditioning.candidates[auditioning.index])}</strong>
+          </span>
+          <span className="run-count">
+            {auditioning.index + 1} / {auditioning.candidates.length}
+          </span>
+          <button onClick={() => playerRef.current.skip()} title="Next candidate">
+            Skip ⏭
+          </button>
+          <span className="run-hint">Click a tile to pick it · Esc stops</span>
+        </footer>
+      ) : footerTitle && (
         <footer className="footer">
           {footerTitle}
         </footer>

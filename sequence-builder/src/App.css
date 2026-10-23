@@ -341,6 +341,91 @@ button:disabled {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
+/* Runs of transitions: the button on a tile, and its menu */
+.try-button {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.try-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: white;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.try-button svg .fill {
+  fill: white;
+  stroke: none;
+}
+
+.track-tile:hover .try-button,
+.try-button:focus-visible,
+.try-button.shown {
+  opacity: 1;
+}
+
+.try-button:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* no hover on a touch screen: always there */
+@media (hover: none) {
+  .try-button {
+    opacity: 0.85;
+  }
+}
+
+.try-menu {
+  position: absolute;
+  top: 42px;
+  left: 6px;
+  z-index: 50;
+  min-width: 13rem;
+  max-width: 18rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: linear-gradient(135deg, #5a6fd6 0%, #6a4292 100%);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+.try-menu.align-right {
+  left: auto;
+  right: 6px;
+}
+
+.try-menu-title {
+  padding: 0.2rem 0.5rem 0.4rem;
+  font-size: 0.8rem;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.try-menu button {
+  text-align: left;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.95rem;
+}
+
 /* Track List Popup */
 .track-list-overlay {
   position: fixed;
@@ -491,6 +576,29 @@ button:disabled {
   position: sticky;
   bottom: 0;
   z-index: 100;
+}
+
+/* The footer during a run of transitions */
+.run-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 1.25rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.run-count {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-size: 1rem;
+}
+
+.run-hint {
+  font-size: 0.85rem;
+  opacity: 0.7;
 }
 
 /* Responsive adjustments */
