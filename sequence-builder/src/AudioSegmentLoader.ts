@@ -16,6 +16,8 @@ class AudioSegmentLoader {
   private cache: Map<string, AudioSegments>;
   private currentAudio: HTMLAudioElement | null;
   private currentBlobUrl: string | null;
+  /** Settles the promise of the segment playing, when it is stopped early */
+  private currentResolve: (() => void) | null;
 
   /**
    * Called with the track URL, playback progress (0..1) and which segment
@@ -33,6 +35,7 @@ class AudioSegmentLoader {
     this.previewSeconds = 10;
     this.currentAudio = null;
     this.currentBlobUrl = null;
+    this.currentResolve = null;
     this.onProgress = null;
   }
 
@@ -183,7 +186,7 @@ class AudioSegmentLoader {
    * @param buffer - Buffer to play
    * @param trackUrl - URL of the track this segment belongs to (for progress reporting)
    * @param segment - Which segment of the track this buffer is ('start' or 'end')
-   * @returns Promise resolving when playback finishes
+   * @returns Promise resolving when playback finishes or is stopped
    */
   play(buffer: AudioBuffer, trackUrl?: string, segment?: 'start' | 'end'): Promise<void> {
     return new Promise((resolve) => {
@@ -198,6 +201,7 @@ class AudioSegmentLoader {
       const audio = new Audio(blobUrl);
 
       const cleanup = () => {
+        if (this.currentResolve === resolve) this.currentResolve = null;
         if (this.currentAudio === audio) {
           this.currentAudio = null;
           this.onProgress?.(null, 0, null);
@@ -228,6 +232,7 @@ class AudioSegmentLoader {
 
       this.currentAudio = audio;
       this.currentBlobUrl = blobUrl;
+      this.currentResolve = resolve;
 
       if (trackUrl && segment) {
         this.onProgress?.(trackUrl, 0, segment);
@@ -255,6 +260,12 @@ class AudioSegmentLoader {
       URL.revokeObjectURL(this.currentBlobUrl);
       this.currentBlobUrl = null;
     }
+
+    // A paused element never fires 'ended': settle its promise here, or
+    // whoever awaits it (a replay, a run of transitions) hangs forever
+    const resolve = this.currentResolve;
+    this.currentResolve = null;
+    resolve?.();
   }
 
   /**

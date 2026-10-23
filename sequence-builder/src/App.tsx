@@ -8,6 +8,9 @@ import PreviewDial, { MIN_PREVIEW, MAX_PREVIEW } from './PreviewDial';
 
 const PREVIEW_KEY = 'sequence-builder:preview-seconds';
 
+/** What is playing: a click while building, one transition, the replay, a run of transitions */
+type Playing = 'build' | 'transition' | 'replay' | 'audition';
+
 function savedPreviewSeconds(): number {
   try {
     const s = Number(localStorage.getItem(PREVIEW_KEY));
@@ -27,7 +30,7 @@ function App() {
   const [sequence, setSequence] = useState<string[]>([]);
   const [activeIndex, setActiveIndex] = useState<number>(-1);
   const [hoveredTitle, setHoveredTitle] = useState<string | null>(null);
-  const [isReplaying, setIsReplaying] = useState(false);
+  const [playing, setPlaying] = useState<Playing | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
   const [playProgress, setPlayProgress] = useState(0);
@@ -35,6 +38,7 @@ function App() {
   const [showTrackList, setShowTrackList] = useState(false);
 
   const playerRef = useRef<SequencePlayer>(new SequencePlayer());
+  const runId = useRef(0);
 
   useEffect(() => {
     const player = playerRef.current;
@@ -72,6 +76,45 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Esc stops whatever plays
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') stopAll();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Play something, marking what plays until it ends. A play that was
+   * stopped, or replaced by a newer one, leaves the newer state alone.
+   */
+  const run = async (kind: Playing, play: () => Promise<void>) => {
+    const id = ++runId.current;
+    setPlaying(kind);
+    try {
+      await play();
+    } catch (error) {
+      console.error('Playback error:', error);
+    } finally {
+      if (runId.current === id) {
+        setPlaying(null);
+        setActiveIndex(-1);
+      }
+    }
+  };
+
+  /**
+   * Stop whatever plays
+   */
+  const stopAll = () => {
+    runId.current++;
+    playerRef.current.stop();
+    setPlaying(null);
+    setActiveIndex(-1);
+  };
+
   /**
    * Load an album from the suite's albums and pre-load its segments
    */
@@ -79,13 +122,11 @@ function App() {
     if (!name) return;
 
     const player = playerRef.current;
-    player.stop();
+    stopAll();
     player.clearCache();
 
     setAlbumName(name);
     setSequence([]);
-    setActiveIndex(-1);
-    setIsReplaying(false);
     window.history.replaceState(null, '', `#album=${encodeURIComponent(name)}`);
 
     try {
@@ -108,13 +149,13 @@ function App() {
   const handleTrackClick = async (track: Track) => {
     // Allow undo even when playing
     if (sequence.length > 0 && sequence[sequence.length - 1] === track.url) {
-      playerRef.current.stop();
+      stopAll();
       setSequence(sequence.slice(0, -1));
       return;
     }
 
     // Don't allow adding new tracks while replaying or playing
-    if (isReplaying || playerRef.current.isPlaying) return;
+    if (playing) return;
 
     // Prevent adding duplicates
     if (sequence.includes(track.url)) {
@@ -124,18 +165,12 @@ function App() {
     const newSequence = [...sequence, track.url];
     setSequence(newSequence);
 
-    try {
-      if (newSequence.length === 1) {
-        // First track - play ending only
-        await playerRef.current.playEnding(track.url);
-      } else {
-        // Subsequent tracks - play transition
-        const previousUrl = newSequence[newSequence.length - 2];
-        await playerRef.current.playTransition(previousUrl, track.url);
-      }
-    } catch (error) {
-      console.error('Playback error:', error);
-    }
+    const player = playerRef.current;
+    await run('build', () =>
+      newSequence.length === 1
+        ? player.playEnding(track.url) // first track: its ending only
+        : player.playTransition(newSequence[newSequence.length - 2], track.url)
+    );
   };
 
   /**
@@ -144,24 +179,16 @@ function App() {
   const handleReplay = async () => {
     if (sequence.length === 0) return;
 
-    setIsReplaying(true);
     setActiveIndex(0);
-
-    await playerRef.current.playSequence(sequence, (index) => {
-      setActiveIndex(index);
-    });
-
-    setIsReplaying(false);
-    setActiveIndex(-1);
+    await run('replay', () => playerRef.current.playSequence(sequence, setActiveIndex));
   };
 
   /**
    * Clear the sequence
    */
   const handleClear = () => {
+    stopAll();
     setSequence([]);
-    setActiveIndex(-1);
-    playerRef.current.stop();
   };
 
   /**
@@ -229,12 +256,15 @@ function App() {
               <button onClick={handleClear} disabled={sequence.length === 0}>
                 Clear
               </button>
-              <button
-                onClick={handleReplay}
-                disabled={sequence.length === 0 || isReplaying}
-              >
-                {isReplaying ? 'Playing...' : 'Replay'}
-              </button>
+              {playing ? (
+                <button onClick={stopAll} title="Stop (Esc)">
+                  ■ Stop
+                </button>
+              ) : (
+                <button onClick={handleReplay} disabled={sequence.length === 0}>
+                  Replay
+                </button>
+              )}
               <button onClick={handleSave} disabled={sequence.length === 0}>
                 Save
               </button>

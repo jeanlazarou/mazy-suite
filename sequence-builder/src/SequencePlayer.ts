@@ -10,11 +10,13 @@ class SequencePlayer {
   private loader: AudioSegmentLoader;
   private isPlayingFlag: boolean;
   private currentSessionId: number;
+  private skipCount: number;
 
   constructor() {
     this.loader = new AudioSegmentLoader();
     this.isPlayingFlag = false;
     this.currentSessionId = 0;
+    this.skipCount = 0;
   }
 
   /**
@@ -139,6 +141,58 @@ class SequencePlayer {
       this.isPlayingFlag = false;
     }
     onTrackChange(-1); // Signal completion
+  }
+
+  /**
+   * Try one track against others: for each candidate in turn, the source's
+   * ending then the candidate's beginning
+   * @param source - URL of the track the transitions start from
+   * @param candidates - URLs of the tracks to try after it, in order
+   * @param onCandidate - Called with the index of the candidate being tried
+   */
+  async playTransitionsFrom(
+    source: string,
+    candidates: string[],
+    onCandidate: (index: number) => void
+  ): Promise<void> {
+    const sessionId = ++this.currentSessionId;
+    this.isPlayingFlag = true;
+
+    const from = await this.loader.loadSegments(source);
+
+    for (let i = 0; i < candidates.length; i++) {
+      if (sessionId !== this.currentSessionId) return;
+
+      onCandidate(i);
+      const skipAt = this.skipCount;
+
+      let to;
+      try {
+        to = await this.loader.loadSegments(candidates[i]);
+      } catch {
+        continue; // already logged by the loader; try the next one
+      }
+      if (sessionId !== this.currentSessionId) return;
+
+      await this.loader.play(from.end, source, 'end');
+      if (sessionId !== this.currentSessionId) return;
+      if (this.skipCount !== skipAt) continue; // skipped during the ending
+
+      await this.loader.play(to.start, candidates[i], 'start');
+    }
+
+    if (sessionId === this.currentSessionId) {
+      this.isPlayingFlag = false;
+    }
+  }
+
+  /**
+   * Move on to the next candidate of playTransitionsFrom, wherever the
+   * current one is (its source's ending or its own beginning)
+   */
+  skip(): void {
+    this.skipCount++;
+    this.loader.stopCurrentSource();
   }
 
   /**
