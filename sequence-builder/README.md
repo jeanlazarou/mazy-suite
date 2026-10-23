@@ -2,7 +2,7 @@
 
 A track transition tester for playlist curation. Test how tracks flow together by listening to endings and beginnings without loading entire files.
 
-![Testing a transition on the demo album "Back to Normal", with the preview-length dial at 10 s: the first track's ending has played (tile 1), the third track was clicked as number 2 and its beginning is now playing — the progress bar fills along the bottom of its tile and the footer shows "▶ Against Myself"](docs/screenshots/main-view.png)
+![The demo album "Back to Normal" in sequence order, preview dial at 10 s: three tracks with an arrow between each two; the arrow from 2 to 3 is lit because just that transition is playing — track 3's beginning fills its progress bar and the footer shows "▶ Born to Die"](docs/screenshots/main-view.png)
 
 ## Features
 
@@ -10,7 +10,11 @@ A track transition tester for playlist curation. Test how tracks flow together b
 - ⏱️ **Preview Length**: 5 to 15 seconds, set on a small timer dial
 - 🎨 **Colorful Grid**: Visual, easy-to-navigate track display
 - ▶️ **Transition Testing**: Click tracks to hear how they flow together
+- 🔀 **Try Many at Once**: Hear one track's ending into every other (or every remaining) track, and pick the one you like
+- ➡️ **One Transition**: In sequence order, an arrow between two tracks plays just their transition
 - 🔄 **Replay Mode**: Review your entire sequence with visual feedback
+- 🎲 **Shuffle**: A random order for the sequence, or for the whole album
+- 📌 **Saved Sequences**: Keep sequences by name in your browser and come back to them
 - 💾 **Export**: Save your curated sequence as a new playlist JSON
 
 ## Quick Start
@@ -33,8 +37,13 @@ Vite will automatically open [http://localhost:3000](http://localhost:3000) in y
 3. **Build a Sequence**: Click tiles to add tracks to your sequence
    - First click: Plays the track's ending
    - Subsequent clicks: Plays transition (previous ending → new beginning)
-4. **Review**: Click "Replay" to hear the full sequence with visual highlighting
-5. **Save**: Export your sequence as a new playlist JSON file
+   - Click the last track again to undo it
+4. **Find what comes next**: Hover a tile and click its fan button, then *All other tracks* or *Remaining tracks*: its ending plays into each candidate's beginning in turn (**Skip** moves on). Click the one you like to put it right after
+5. **Order**: Switch *Order: Album / Sequence*. In sequence order, click the arrow between two tracks to hear just that transition; **Shuffle** tries a random order
+6. **Review**: Click "Replay" to hear the full sequence with visual highlighting (**■ Stop** or Esc stops anything)
+7. **Keep it**: *Sequences* saves it by name in this browser, to load again later; **Export** downloads it as a playlist JSON file
+
+![A run of transitions: the first track (dashed outline) is tried into each of the others in turn; the second candidate is highlighted while its beginning plays, and the footer shows "Big Three → Against Myself · 2 / 2" with a Skip button and "Click a tile to pick it"](docs/screenshots/run.png)
 
 ## Albums
 

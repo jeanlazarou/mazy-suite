@@ -443,7 +443,7 @@ function App() {
                 Export
               </button>
               <span className="sequence-count">
-                Sequence: {sequence.length} tracks
+                Sequence: {sequence.length} track{sequence.length === 1 ? '' : 's'}
               </span>
             </>
           )}

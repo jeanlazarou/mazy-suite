@@ -38,9 +38,10 @@ When curating playlists, DJs and music enthusiasts need to test how tracks trans
 
 - **types.ts** — TypeScript type definitions for Track, Playlist, Album, AudioSegments
 - **api.ts** — Reads the suite's albums (`albums.json`, album files) and resolves track URLs
-- **App.tsx** — Main container, album chooser, manages sequence state and saving
-- **TrackGrid.tsx** — Grid display of colored tiles with hover titles
-- **TrackTile.tsx** — Individual tile component with color, sequence number, hover state
+- **App.tsx** — Main container, album chooser, sequence state, what is playing (`playing`, `run`, `stopAll`), shuffle, picking, export
+- **TrackGrid.tsx** — Grid of tiles in display order; in sequence order the transition arrows and the divider; the menu of runs (`TryMode`)
+- **TrackTile.tsx** — Individual tile: color, sequence number, progress, its run button, source outline
+- **savedSequences.ts** / **SequencesPopup.tsx** — Sequences saved by name in localStorage, per album, and the popup to save/load/delete them
 - **PreviewDial.tsx** — Preview length control, an analog 15-second timer face (also defines MIN/MAX_PREVIEW)
 - **SequencePlayer.ts** — Audio playback engine, manages segment loading and playback
 - **AudioSegmentLoader.ts** — Loads specific time ranges using HTTP Range requests
@@ -139,16 +140,45 @@ When `stop()` is called, it increments the session ID, causing all running async
 
 ### Interaction Modes
 
+What plays is one state in App, `playing`: `'build' | 'transition' | 'replay' |
+'audition'` (null when idle). Everything that plays goes through `run(kind,
+fn)`, which only clears the state if no newer play replaced it; `stopAll()`
+stops anything. While something plays, Replay becomes **■ Stop**; Esc stops too.
+`AudioSegmentLoader.stopCurrentSource()` settles the promise of the segment it
+stops, so a stopped replay or run returns (before, it hung and left Replay
+disabled).
+
 **Build Mode** (default):
 - Click tile → plays its ending (the preview length, 10 s by default), adds to sequence
 - Click next tile → plays previous end + new beginning (transition test)
+- Clicking the last tile of the sequence undoes it, even while playing
 - Tiles show sequence numbers (1, 2, 3...)
+- **Shuffle** reorders the sequence (an empty one becomes a random order of all
+  tracks); it never gives the current order back
 
 **Replay Mode**:
 - Click "Replay" → plays full sequence with transitions
 - Currently playing tile highlights
 - Track title displays at bottom
 - Auto-advances through sequence
+
+**Grid order**: a toggle (remembered, `sequence-builder:grid-order`) shows the
+album's order or the sequence first, in its order, then the others. Colors
+follow the album position (`DisplayedTrack.index`), so a track never changes
+color. Only in sequence order: an **arrow** between each two consecutive
+sequence tracks plays that one transition (lit while it plays), and a dashed
+divider ends the sequence. The arrows live in the widened column gap (the one
+before a row-starting tile in the left padding), not in the tiles, so tile
+clicks are unchanged.
+
+**Runs of transitions** (`'audition'`): a tile's fan button opens a menu — try
+its ending into **all other tracks** or the **remaining** ones (not in the
+sequence) — and `SequencePlayer.playTransitionsFrom` plays source end →
+candidate start for each, in the grid's order. The source is outlined, the
+candidate highlighted, the footer shows the pair, the count and **Skip**
+(`skip()` moves on even mid-way through the source's ending). Clicking a tile
+during a run **picks** it: it goes right after the source (which joins the
+sequence first if needed), nothing replays; clicking the source only stops.
 
 ### Preview Length
 
@@ -172,9 +202,12 @@ Formula: `hsl(${(index * 360 / totalTracks) % 360}, 70%, 60%)`
 
 ### Saving
 
-Export formats:
-1. **Ordered playlist JSON** — New JSON file with tracks in sequence order
-2. **Sequence metadata** — Track indices/URLs for later reference
+- **Sequences** (popup): save the sequence under a name, load or delete saved
+  ones. Kept in this browser, localStorage `sequence-builder:sequences:<album>`,
+  by `sourceUrl`. Loading asks first only if the current sequence is not one of
+  the saved ones; tracks no longer in the album are left out with a message.
+- **Export**: downloads the sequence as an album-shaped JSON (see above),
+  titled and named after the sequence's name once it has one.
 
 ## File Locations
 
@@ -200,7 +233,7 @@ Export formats:
 - Waveform visualization of segments
 - BPM detection for better matching
 - Drag-and-drop reordering
-- Multiple sequence slots (A/B comparison)
+- Runs of transitions *into* a track (what could come before it)
 - Export to M3U/PLS formats
 
 ## Dependencies
