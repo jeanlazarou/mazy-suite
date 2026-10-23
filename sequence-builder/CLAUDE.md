@@ -86,7 +86,9 @@ falls back to `../data/albums.json` (the suite's demo site, where apps live one
 folder down and share `/data` and `/music`). Track urls are used as the album
 writes them, as `player` does — `/music/files/...` from the server root, or
 `../music/files/...` as `build_site.sh` rewrites them for the portal — only
-segment by segment encoded. They are **not** rebased on the data root: on a
+encoded, with `encodeURI` as the player does (plus `#` and `?`): Vite's dev
+server does not decode `%2C`, so `encodeURIComponent` lost every track with a
+comma in its name. They are **not** rebased on the data root: on a
 site laid out `/music/{player,sequence,data,files}` the data is at `../data`
 but the audio is not at `../music/files`. `public/data` and
 `public/music/files` are symlinks made by `../scripts/link_data.sh demo|library sequence-builder`.

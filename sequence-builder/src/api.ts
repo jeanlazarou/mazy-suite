@@ -37,7 +37,10 @@ function dataRoot(): Promise<string> {
   return rootPromise;
 }
 
-const encodePath = (path: string) => path.split('/').map(encodeURIComponent).join('/');
+// encodeURI, as the player does, so commas and the like stay as they are:
+// some servers (Vite's among them) do not decode "%2C" and miss the file.
+// '#' and '?' would end the path, so they are encoded too.
+const encodePath = (path: string) => encodeURI(path).replace(/#/g, '%23').replace(/\?/g, '%3F');
 
 /**
  * A track url is used as the album writes it, as the player does: it is
@@ -45,8 +48,8 @@ const encodePath = (path: string) => path.split('/').map(encodeURIComponent).joi
  * root, or "../music/files/..." once the demo site rewrote it relative to the
  * app. Not rebased on the data root: the audio need not sit next to the data
  * (a site serving /music/sequence/ and /music/files/ has no
- * /music/music/files). Paths are human-readable and hold spaces, so every
- * segment is encoded.
+ * /music/music/files). Paths are human-readable and hold spaces, so they are
+ * encoded (encodePath).
  */
 function audioUrl(url: string): string {
   if (/^https?:\/\//.test(url)) return url;
