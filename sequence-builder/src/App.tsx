@@ -21,6 +21,16 @@ function savedPreviewSeconds(): number {
   return 10;
 }
 
+/** A random order of the items (Fisher–Yates) */
+function shuffled<T>(items: T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 function App() {
   const [previewSeconds, setPreviewSeconds] = useState(savedPreviewSeconds);
   const [albums, setAlbums] = useState<Album[] | null>(null);
@@ -184,6 +194,24 @@ function App() {
   };
 
   /**
+   * Shuffle the sequence, or make a random one of all the tracks when it
+   * is empty
+   */
+  const handleShuffle = () => {
+    if (!playlist) return;
+
+    const source = sequence.length > 0 ? sequence : playlist.tracks.map(t => t.url);
+    let next = shuffled(source);
+    // a shuffle that gives the same order back looks like a broken button
+    while (sequence.length > 1 && next.every((url, i) => url === sequence[i])) {
+      next = shuffled(source);
+    }
+
+    stopAll();
+    setSequence(next);
+  };
+
+  /**
    * Clear the sequence
    */
   const handleClear = () => {
@@ -252,6 +280,12 @@ function App() {
             <>
               <button onClick={() => setShowTrackList(true)}>
                 Tracks
+              </button>
+              <button
+                onClick={handleShuffle}
+                title={sequence.length > 0 ? 'Shuffle the sequence' : 'A random sequence of all the tracks'}
+              >
+                Shuffle
               </button>
               <button onClick={handleClear} disabled={sequence.length === 0}>
                 Clear
