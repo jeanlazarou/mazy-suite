@@ -46,6 +46,7 @@ function TrackTile({ track, color, sequenceNumber, isActive, progress, playingSe
   return (
     <div
       className="track-tile"
+      aria-label={track.title}
       style={tileStyle}
       onClick={() => onClick(track)}
       onMouseEnter={handleMouseEnter}

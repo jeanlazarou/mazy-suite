@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { Album, Track, Playlist, RawPlaylist } from './types';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { Album, DisplayedTrack, Track, Playlist, RawPlaylist } from './types';
 import { loadAlbums, loadAlbum } from './api';
 import TrackGrid from './TrackGrid';
 import TrackListPopup from './TrackListPopup';
@@ -9,6 +9,19 @@ import SequencePlayer from './SequencePlayer';
 import PreviewDial, { MIN_PREVIEW, MAX_PREVIEW } from './PreviewDial';
 
 const PREVIEW_KEY = 'sequence-builder:preview-seconds';
+
+const ORDER_KEY = 'sequence-builder:grid-order';
+
+/** The grid shows the album's order, or the sequence first in its order */
+type GridOrder = 'album' | 'sequence';
+
+function savedGridOrder(): GridOrder {
+  try {
+    return localStorage.getItem(ORDER_KEY) === 'sequence' ? 'sequence' : 'album';
+  } catch {
+    return 'album';
+  }
+}
 
 /** What is playing: a click while building, one transition, the replay, a run of transitions */
 type Playing = 'build' | 'transition' | 'replay' | 'audition';
@@ -35,6 +48,7 @@ function shuffled<T>(items: T[]): T[] {
 
 function App() {
   const [previewSeconds, setPreviewSeconds] = useState(savedPreviewSeconds);
+  const [gridOrder, setGridOrder] = useState<GridOrder>(savedGridOrder);
   const [albums, setAlbums] = useState<Album[] | null>(null);
   const [albumsError, setAlbumsError] = useState<string | null>(null);
   const [albumName, setAlbumName] = useState('');
@@ -75,6 +89,26 @@ function App() {
       // not remembered, still applied
     }
   }, [previewSeconds]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ORDER_KEY, gridOrder);
+    } catch {
+      // not remembered, still applied
+    }
+  }, [gridOrder]);
+
+  // The tracks as the grid shows them: the album's order, or the sequence
+  // first, in its order, then the others in the album's order
+  const displayed = useMemo<DisplayedTrack[]>(() => {
+    const all = (playlist?.tracks ?? []).map((track, index) => ({ track, index }));
+    if (gridOrder === 'album') return all;
+    const byUrl = new Map(all.map(d => [d.track.url, d]));
+    return [
+      ...sequence.map(url => byUrl.get(url)!).filter(Boolean),
+      ...all.filter(d => !sequence.includes(d.track.url))
+    ];
+  }, [playlist, sequence, gridOrder]);
 
   useEffect(() => {
     loadAlbums()
@@ -322,6 +356,13 @@ function App() {
                 Tracks
               </button>
               <button
+                onClick={() => setGridOrder(gridOrder === 'album' ? 'sequence' : 'album')}
+                aria-pressed={gridOrder === 'sequence'}
+                title="Show the tracks in the album's order, or the sequence first in its order"
+              >
+                Order: {gridOrder === 'album' ? 'Album' : 'Sequence'}
+              </button>
+              <button
                 onClick={handleShuffle}
                 title={sequence.length > 0 ? 'Shuffle the sequence' : 'A random sequence of all the tracks'}
               >
@@ -364,7 +405,8 @@ function App() {
 
         {playlist && !isLoading && (
           <TrackGrid
-            tracks={playlist.tracks}
+            items={displayed}
+            total={playlist.tracks.length}
             sequence={sequence}
             activeIndex={activeIndex}
             playingUrl={playingUrl}
@@ -401,7 +443,8 @@ function App() {
 
       {playlist && showTrackList && (
         <TrackListPopup
-          tracks={playlist.tracks}
+          items={displayed}
+          total={playlist.tracks.length}
           sequence={sequence}
           onTrackClick={handleTrackClick}
           onClose={() => setShowTrackList(false)}

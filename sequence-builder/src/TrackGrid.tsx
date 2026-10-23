@@ -1,10 +1,12 @@
-import React from 'react';
-import { Track } from './types';
+import { DisplayedTrack, Track } from './types';
 import TrackTile from './TrackTile';
 import { trackColor } from './trackColor';
 
 interface TrackGridProps {
-  tracks: Track[];
+  /** The tracks in display order */
+  items: DisplayedTrack[];
+  /** Number of tracks in the album (for the colors) */
+  total: number;
   sequence: string[];
   activeIndex: number;
   playingUrl: string | null;
@@ -17,9 +19,9 @@ interface TrackGridProps {
 /**
  * TrackGrid Component
  *
- * Displays all tracks in a responsive grid
+ * Displays all tracks in a responsive grid, in the order given
  */
-function TrackGrid({ tracks, sequence, activeIndex, playingUrl, playProgress, playingSegment, onTrackClick, onTrackHover }: TrackGridProps) {
+function TrackGrid({ items, total, sequence, activeIndex, playingUrl, playProgress, playingSegment, onTrackClick, onTrackHover }: TrackGridProps) {
   /**
    * Get sequence number for a track (1-based, or null if not in sequence)
    */
@@ -30,7 +32,7 @@ function TrackGrid({ tracks, sequence, activeIndex, playingUrl, playProgress, pl
 
   return (
     <div className="track-grid">
-      {tracks.map((track, index) => {
+      {items.map(({ track, index }) => {
         const isActive = activeIndex >= 0 && sequence[activeIndex] === track.url;
         const sequenceNumber = getSequenceNumber(track.url);
 
@@ -38,7 +40,7 @@ function TrackGrid({ tracks, sequence, activeIndex, playingUrl, playProgress, pl
           <TrackTile
             key={track.url}
             track={track}
-            color={trackColor(index, tracks.length)}
+            color={trackColor(index, total)}
             sequenceNumber={sequenceNumber}
             isActive={isActive}
             progress={playingUrl === track.url ? playProgress : null}

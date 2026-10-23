@@ -16,6 +16,12 @@ export interface Track {
   creationDate?: string;
 }
 
+/** A track as the grid shows it, with its place in the album (for its color) */
+export interface DisplayedTrack {
+  track: Track;
+  index: number;
+}
+
 export interface Playlist {
   title: string;
   tracks: Track[];

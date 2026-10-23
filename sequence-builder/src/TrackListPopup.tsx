@@ -1,9 +1,11 @@
-import React from 'react';
-import { Track } from './types';
+import { DisplayedTrack, Track } from './types';
 import { trackColor } from './trackColor';
 
 interface TrackListPopupProps {
-  tracks: Track[];
+  /** The tracks in display order */
+  items: DisplayedTrack[];
+  /** Number of tracks in the album (for the colors) */
+  total: number;
   sequence: string[];
   onTrackClick: (track: Track) => void;
   onClose: () => void;
@@ -16,7 +18,7 @@ interface TrackListPopupProps {
  * matching its tile in the grid. Clicking an entry behaves like
  * clicking the tile itself.
  */
-function TrackListPopup({ tracks, sequence, onTrackClick, onClose }: TrackListPopupProps) {
+function TrackListPopup({ items, total, sequence, onTrackClick, onClose }: TrackListPopupProps) {
   const getSequenceNumber = (trackUrl: string): number | null => {
     const index = sequence.findIndex(url => url === trackUrl);
     return index >= 0 ? index + 1 : null;
@@ -30,7 +32,7 @@ function TrackListPopup({ tracks, sequence, onTrackClick, onClose }: TrackListPo
           <button className="track-list-close" onClick={onClose}>×</button>
         </div>
         <ul className="track-list">
-          {tracks.map((track, index) => {
+          {items.map(({ track, index }) => {
             const sequenceNumber = getSequenceNumber(track.url);
 
             return (
@@ -41,7 +43,7 @@ function TrackListPopup({ tracks, sequence, onTrackClick, onClose }: TrackListPo
               >
                 <span
                   className="track-swatch"
-                  style={{ backgroundColor: trackColor(index, tracks.length) }}
+                  style={{ backgroundColor: trackColor(index, total) }}
                 />
                 <span className="track-list-title">{track.title}</span>
                 {sequenceNumber !== null && (
