@@ -3,6 +3,8 @@ import { Album, Track, Playlist, RawPlaylist } from './types';
 import { loadAlbums, loadAlbum } from './api';
 import TrackGrid from './TrackGrid';
 import TrackListPopup from './TrackListPopup';
+import SequencesPopup from './SequencesPopup';
+import { SavedSequence, listSequences } from './savedSequences';
 import SequencePlayer from './SequencePlayer';
 import PreviewDial, { MIN_PREVIEW, MAX_PREVIEW } from './PreviewDial';
 
@@ -46,6 +48,9 @@ function App() {
   const [playProgress, setPlayProgress] = useState(0);
   const [playingSegment, setPlayingSegment] = useState<'start' | 'end' | null>(null);
   const [showTrackList, setShowTrackList] = useState(false);
+  const [showSequences, setShowSequences] = useState(false);
+  /** Name the sequence was last saved or loaded under */
+  const [sequenceName, setSequenceName] = useState<string | null>(null);
 
   const playerRef = useRef<SequencePlayer>(new SequencePlayer());
   const runId = useRef(0);
@@ -137,6 +142,7 @@ function App() {
 
     setAlbumName(name);
     setSequence([]);
+    setSequenceName(null);
     window.history.replaceState(null, '', `#album=${encodeURIComponent(name)}`);
 
     try {
@@ -217,12 +223,46 @@ function App() {
   const handleClear = () => {
     stopAll();
     setSequence([]);
+    setSequenceName(null);
+  };
+
+  /** The sequence as the album writes its track urls (how it is saved) */
+  const sequenceSources = (urls: string[]) =>
+    urls.map(url => playlist?.tracks.find(t => t.url === url)?.sourceUrl ?? url);
+
+  /**
+   * Replace the sequence by a saved one. Asks first when the current
+   * sequence would be lost, i.e. it is not one of the saved ones.
+   */
+  const handleLoadSaved = (saved: SavedSequence) => {
+    if (!playlist) return;
+
+    const current = sequenceSources(sequence).join('\n');
+    const isSaved = listSequences(albumName).some(s => s.tracks.join('\n') === current);
+    if (sequence.length > 0 && !isSaved &&
+        !window.confirm(`Replace the current sequence (${sequence.length} tracks)? It is not saved.`)) {
+      return;
+    }
+
+    const bySource = new Map(playlist.tracks.map(t => [t.sourceUrl ?? t.url, t.url]));
+    const urls = Array.from(new Set(saved.tracks.map(u => bySource.get(u)).filter((u): u is string => !!u)));
+
+    stopAll();
+    setSequence(urls);
+    setSequenceName(saved.name);
+    setShowSequences(false);
+
+    const dropped = saved.tracks.length - urls.length;
+    if (dropped > 0) {
+      window.alert(`${dropped} track${dropped > 1 ? 's' : ''} of "${saved.name}" ` +
+        `${dropped > 1 ? 'are' : 'is'} no longer in this album and ${dropped > 1 ? 'were' : 'was'} left out.`);
+    }
   };
 
   /**
-   * Save the sequence as a new playlist
+   * Export the sequence as a new playlist file
    */
-  const handleSave = () => {
+  const handleExport = () => {
     if (!playlist || sequence.length === 0) return;
 
     // Same shape as the suite's album files, with the urls as they were written there
@@ -232,7 +272,7 @@ function App() {
     });
 
     const newPlaylist: RawPlaylist = {
-      title: `${playlist.title} - Sequenced`,
+      title: `${playlist.title} - ${sequenceName ?? 'Sequenced'}`,
       playlist: orderedTracks
     };
 
@@ -243,7 +283,7 @@ function App() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${playlist.title}-sequenced.json`;
+    a.download = sequenceName ? `${newPlaylist.title}.json` : `${playlist.title}-sequenced.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -299,8 +339,15 @@ function App() {
                   Replay
                 </button>
               )}
-              <button onClick={handleSave} disabled={sequence.length === 0}>
-                Save
+              <button onClick={() => setShowSequences(true)} title="Save the sequence by name, or load a saved one">
+                Sequences
+              </button>
+              <button
+                onClick={handleExport}
+                disabled={sequence.length === 0}
+                title="Download the sequence as a playlist file"
+              >
+                Export
               </button>
               <span className="sequence-count">
                 Sequence: {sequence.length} tracks
@@ -358,6 +405,18 @@ function App() {
           sequence={sequence}
           onTrackClick={handleTrackClick}
           onClose={() => setShowTrackList(false)}
+        />
+      )}
+
+      {playlist && showSequences && (
+        <SequencesPopup
+          album={albumName}
+          albumTitle={playlist.title}
+          current={sequenceSources(sequence)}
+          currentName={sequenceName}
+          onSaved={setSequenceName}
+          onLoad={handleLoadSaved}
+          onClose={() => setShowSequences(false)}
         />
       )}
 
