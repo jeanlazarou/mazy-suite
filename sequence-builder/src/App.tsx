@@ -63,6 +63,8 @@ function App() {
   const [playingSegment, setPlayingSegment] = useState<'start' | 'end' | null>(null);
   const [showTrackList, setShowTrackList] = useState(false);
   const [showSequences, setShowSequences] = useState(false);
+  /** Sequence index whose transition into it was asked for by its arrow */
+  const [transitionTo, setTransitionTo] = useState<number | null>(null);
   /** Name the sequence was last saved or loaded under */
   const [sequenceName, setSequenceName] = useState<string | null>(null);
 
@@ -231,6 +233,15 @@ function App() {
 
     setActiveIndex(0);
     await run('replay', () => playerRef.current.playSequence(sequence, setActiveIndex));
+  };
+
+  /**
+   * Play one transition of the sequence (from its arrow): `to - 1` into `to`
+   */
+  const handlePlayTransition = async (to: number) => {
+    stopAll();
+    setTransitionTo(to);
+    await run('transition', () => playerRef.current.playTransition(sequence[to - 1], sequence[to]));
   };
 
   /**
@@ -409,11 +420,14 @@ function App() {
             total={playlist.tracks.length}
             sequence={sequence}
             activeIndex={activeIndex}
+            inSequenceOrder={gridOrder === 'sequence'}
+            litArrow={playing === 'transition' ? transitionTo : null}
             playingUrl={playingUrl}
             playProgress={playProgress}
             playingSegment={playingSegment}
             onTrackClick={handleTrackClick}
             onTrackHover={setHoveredTitle}
+            onPlayTransition={handlePlayTransition}
           />
         )}
 

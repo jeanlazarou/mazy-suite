@@ -217,6 +217,80 @@ button:disabled {
   padding: 1rem;
 }
 
+/* In sequence order the column gap holds the transition arrows; a tile
+   starting a row has its arrow in the left padding */
+.track-grid.sequence-order {
+  --arrow-gap: 2.5rem;
+  column-gap: var(--arrow-gap);
+  padding-left: calc(var(--arrow-gap) + 0.25rem);
+}
+
+.tile-slot {
+  position: relative;
+}
+
+.transition-arrow {
+  position: absolute;
+  top: 50%;
+  left: calc(-1 * var(--arrow-gap));
+  width: var(--arrow-gap);
+  height: 2.25rem;
+  margin-top: -1.125rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border-radius: 999px;
+}
+
+.transition-arrow svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.transition-arrow:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.transition-arrow:hover svg {
+  stroke: white;
+}
+
+/* lit wins over hover: the pointer is usually still on the arrow it clicked */
+.transition-arrow.lit,
+.transition-arrow.lit:hover:not(:disabled) {
+  background: white;
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.8);
+}
+
+.transition-arrow.lit svg,
+.transition-arrow.lit:hover svg {
+  stroke: #5a4aa8;
+}
+
+.sequence-divider {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: calc(-1 * var(--arrow-gap));
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.sequence-divider::before,
+.sequence-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 2px dashed rgba(255, 255, 255, 0.5);
+}
+
 .track-tile {
   aspect-ratio: 1;
   border-radius: 12px;
@@ -436,6 +510,20 @@ button:disabled {
     grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     gap: 0.5rem;
     padding: 0.5rem;
+  }
+
+  .track-grid.sequence-order {
+    --arrow-gap: 1.75rem;
+  }
+
+  .transition-arrow {
+    height: 1.75rem;
+    margin-top: -0.875rem;
+  }
+
+  .transition-arrow svg {
+    width: 20px;
+    height: 20px;
   }
 
   .sequence-number {
