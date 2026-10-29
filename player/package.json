@@ -30,6 +30,7 @@
     "dev": "vite",
     "start": "vite",
     "build": "vite build",
+    "build:single-album": "vite build --mode single-album",
     "preview": "vite preview",
     "format": "npx prettier --write \"{,!(node_modules)/**/}*.{js,jsx}\"",
     "test": "vitest run",

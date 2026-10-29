@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 pnpm start          # Dev server (CRA, port 3000)
 pnpm build          # Production build
+pnpm build:single-album  # Build of a one-album player: ./data, default.json (MODE_FEATURES in features.js)
 pnpm test           # Vitest (single run)
 pnpm run format     # Prettier formatting
 ```
