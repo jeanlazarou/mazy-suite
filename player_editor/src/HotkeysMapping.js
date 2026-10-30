@@ -28,9 +28,20 @@ import { movePlaybackPositionForward } from "./actions/move_playback_position_fo
 import { movePlaybackPositionBackward } from "./actions/move_playback_position_backward";
 import { movePlaybackPositionHome } from "./actions/move_playback_position_home";
 
+const TEXT_INPUTS = ["text", "search", "url", "tel", "email", "password", "number"];
+
+// Keys pressed in a text field or a dialog are theirs: typing a file name must
+// not insert regions, and Esc closing a dialog must not cancel a region change
+const isForAControl = (target) => {
+  if (target.closest?.(".MuiDialog-root")) return true;
+  if (target.tagName === "TEXTAREA" || target.isContentEditable) return true;
+
+  return target.tagName === "INPUT" && TEXT_INPUTS.includes(target.type);
+};
+
 export const processHotkeys = async (e, get, set) => {
   const track = get(currentTrack);
-  const editing = get(editingLyrics);
+  const editing = get(editingLyrics) || isForAControl(e.target);
 
   if (e.key.toLowerCase() === "a") {
     if (editing) return;

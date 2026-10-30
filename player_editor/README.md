@@ -125,7 +125,8 @@ saved file.
 ## Keyboard shortcuts
 
 The keyboard icon in the bottom-left corner shows the same list in the app.
-Shortcuts are inactive while the lyrics textarea has focus.
+Shortcuts are inactive while the lyrics are being edited, while typing in a text
+field and while a dialog is open.
 
 **General**
 
