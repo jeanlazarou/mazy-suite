@@ -94,8 +94,9 @@ For shifting complete files offline, see [shift_timings.rb](#shift_timingsrb).
 
 ### Checking timings
 
-The **Timings** button (<kbd>Ctrl</kbd>+<kbd>v</kbd>) lists every verse with its
-start and end, flagging any region that starts before the previous one ends. A
+The **Timings** button (<kbd>Ctrl</kbd>+<kbd>v</kbd>) lists every region with its
+verse, start and end, flagging any region that starts before the previous one
+ends. Regions past the last lyrics line show *no lyrics line* as verse. A
 warning triangle appears on the waveform whenever such an overlap exists.
 
 In the dialog you can:
@@ -111,6 +112,15 @@ In the dialog you can:
 the file — nothing is written back to the server. Regions are sorted by start
 time and re-numbered on the way out, and the *n*-th region takes the *n*-th line
 of the lyrics panel as its text.
+
+When regions and lines do not match, a report comes first, listing the regions
+without a line, the regions whose line is empty and the lines without a region
+(empty lines at the end are dropped silently). **Fix and save** leaves them out
+of the file — a region with an empty line goes together with that line, so the
+next lines keep their regions — while the editor keeps everything as it is.
+Lines without a region cannot be stored in an SRT file: to go on another day,
+use **Copy lyrics** in the report and paste the lyrics back after loading the
+saved file.
 
 ## Keyboard shortcuts
 

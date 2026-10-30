@@ -21,6 +21,7 @@ import { currentSong } from "./Lyrics";
 import { mapTimings, timingsQuickFix, toSMPTETimecode } from "./utils";
 
 const warningCell = { backgroundColor: "#fffaf3", color: "#573a08" };
+const noLineCell = { color: "text.secondary", fontStyle: "italic" };
 
 function Timing({ text, start, end, warning, onClick, removed }) {
   return (
@@ -31,7 +32,9 @@ function Timing({ text, start, end, warning, onClick, removed }) {
       <TableCell sx={warning ? warningCell : undefined} width={40}>
         {warning ? <WarningAmberIcon fontSize="small" /> : null}
       </TableCell>
-      <TableCell>{text}</TableCell>
+      <TableCell sx={text === undefined ? noLineCell : undefined}>
+        {text === undefined ? "no lyrics line" : text}
+      </TableCell>
       <TableCell sx={warning ? warningCell : undefined}>
         {toSMPTETimecode(start)}
       </TableCell>

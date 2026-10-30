@@ -3,12 +3,15 @@ import { describe, expect, it } from "vitest";
 import {
   formatTime,
   hasAnomalies,
+  hasSrtProblems,
   isPositionAfterTiming,
   markerLabel,
+  shiftTimingsInRange,
   timingsQuickFix,
   toMarkers,
   toRegions,
   toSMPTETimecode,
+  toSrtEntries,
   updateTiming,
 } from "./utils";
 
@@ -159,5 +162,120 @@ describe("timingsQuickFix", () => {
       { text: "a", start: 1, end: 3 },
       { text: "b", start: 3, end: 7 },
     ]);
+  });
+
+  it("keeps regions past the last lyrics line", () => {
+    const fixed = timingsQuickFix({
+      lyrics: ["a"],
+      timings: [
+        [1, 1],
+        [2, null],
+        [3, 2],
+        [4, null],
+      ],
+    });
+
+    expect(fixed).toEqual([
+      { text: "a", start: 1, end: 2 },
+      { text: undefined, start: 3, end: 4 },
+    ]);
+  });
+});
+
+describe("hasAnomalies past the last lyrics line", () => {
+  it("detects an overlap between regions without a line", () => {
+    const song = {
+      lyrics: ["a"],
+      timings: [[1, 1], [2, null], [3, 2], [5, null], [4, 3], [6, null]],
+    };
+
+    expect(hasAnomalies(song)).toBe(true);
+  });
+});
+
+describe("shiftTimingsInRange", () => {
+  it("keeps regions past the last lyrics line", () => {
+    const song = {
+      lyrics: ["a"],
+      timings: [[1, 1], [2, null], [3, 2], [4, null]],
+    };
+
+    const shifted = shiftTimingsInRange(song, { start: 1, end: 2 }, 0.5, 10000);
+
+    expect(shifted.timings).toEqual([[0.5, 1], [1.5, null], [3, 2], [4, null]]);
+  });
+});
+
+describe("toSrtEntries", () => {
+  const timings = (...regions) =>
+    regions.flatMap(([start, end], i) => [[start, i + 1], [end, null]]);
+
+  it("pairs each region with the line of the same rank", () => {
+    const srt = toSrtEntries({
+      lyrics: ["a", "b"],
+      timings: timings([1, 2], [3, 4]),
+    });
+
+    expect(srt.entries).toEqual([
+      { start: 1, end: 2, text: "a" },
+      { start: 3, end: 4, text: "b" },
+    ]);
+    expect(hasSrtProblems(srt)).toBe(false);
+  });
+
+  it("pairs in time order", () => {
+    const srt = toSrtEntries({
+      lyrics: ["a", "b"],
+      timings: timings([3, 4], [1, 2]),
+    });
+
+    expect(srt.entries.map((e) => e.text)).toEqual(["a", "b"]);
+    expect(srt.entries[0].start).toBe(1);
+  });
+
+  it("leaves out regions without a line", () => {
+    const srt = toSrtEntries({
+      lyrics: ["a"],
+      timings: timings([1, 2], [3, 4], [5, 6]),
+    });
+
+    expect(srt.entries).toEqual([{ start: 1, end: 2, text: "a" }]);
+    expect(srt.regionsWithoutLine).toEqual([
+      { start: 3, end: 4 },
+      { start: 5, end: 6 },
+    ]);
+    expect(hasSrtProblems(srt)).toBe(true);
+  });
+
+  it("leaves out a region with an empty line, the next lines keep their regions", () => {
+    const srt = toSrtEntries({
+      lyrics: ["a", "  ", "b"],
+      timings: timings([1, 2], [3, 4], [5, 6]),
+    });
+
+    expect(srt.entries).toEqual([
+      { start: 1, end: 2, text: "a" },
+      { start: 5, end: 6, text: "b" },
+    ]);
+    expect(srt.regionsWithEmptyLine).toEqual([{ start: 3, end: 4 }]);
+  });
+
+  it("reports lines without a region, but not empty ones", () => {
+    const srt = toSrtEntries({
+      lyrics: ["a", "b", "", "c", ""],
+      timings: timings([1, 2]),
+    });
+
+    expect(srt.entries).toEqual([{ start: 1, end: 2, text: "a" }]);
+    expect(srt.linesWithoutRegion).toEqual(["b", "c"]);
+  });
+
+  it("drops trailing empty lines without reporting them", () => {
+    const srt = toSrtEntries({
+      lyrics: ["a", ""],
+      timings: timings([1, 2]),
+    });
+
+    expect(hasSrtProblems(srt)).toBe(false);
   });
 });

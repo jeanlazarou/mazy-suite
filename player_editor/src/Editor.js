@@ -30,12 +30,14 @@ import { processHotkeys } from "./HotkeysMapping";
 import {
   openRequest,
   saveRequest,
+  saveReport,
   checkTimings,
   projectOpenRequest,
 } from "./actions/requests";
 
 import { OpenBox } from "./OpenBox";
 import { SaveBox } from "./SaveBox";
+import { SaveReportBox } from "./SaveReportBox";
 import { ZoomInput } from "./ZoomInput";
 import { TimingsCheck } from "./TimingsCheck";
 import { PositionMemory } from "./PositionMemory";
@@ -128,6 +130,7 @@ export function Editor({ track: selectedTrack, onSidebarToggle, sideVisible }) {
   const [rotation, setRotation] = useState(0);
   const [showHandle, setShowHandle] = useState(0);
   const [saving, setSaving] = useAtom(saveRequest);
+  const [report, setReport] = useAtom(saveReport);
   const [checking, setChecking] = useAtom(checkTimings);
   const [loadFile, setLoadFile] = useAtom(openRequest);
   const [loadProject, setLoadProject] = useAtom(projectOpenRequest);
@@ -221,6 +224,14 @@ export function Editor({ track: selectedTrack, onSidebarToggle, sideVisible }) {
         }}
       />
 
+      <SaveReportBox
+        report={track && report}
+        onCancel={() => setReport(undefined)}
+        onFix={() => {
+          setReport(undefined);
+          setSaving(true);
+        }}
+      />
       <SaveBox open={track && saving} onClose={() => setSaving(false)} />
       <OpenBox open={track && loadFile} onClose={() => setLoadFile(false)} />
       <TimingsCheck

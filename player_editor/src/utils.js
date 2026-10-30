@@ -117,16 +117,11 @@ const groupPairs = (timings) => {
 };
 
 export const mapTimings = (song, callback) => {
-  return song.lyrics.reduce(
-    (acc, t, i) => {
-      if (!song.timings[i * 2]) return acc;
-
-      const start = song.timings[i * 2][0];
-      const end = song.timings[i * 2 + 1][0];
-
+  return flattenTimings(song).reduce(
+    (acc, { text, start, end }) => {
       const overlaps = start < acc.end;
 
-      acc.elements.push(callback(t, start, end, overlaps, acc.previous));
+      acc.elements.push(callback(text, start, end, overlaps, acc.previous));
 
       if (!overlaps || acc.end < end) acc.end = end;
 
@@ -139,13 +134,9 @@ export const mapTimings = (song, callback) => {
 };
 
 export const hasAnomalies = (song) => {
-  return song.lyrics.reduce(
-    (acc, t, i) => {
+  return flattenTimings(song).reduce(
+    (acc, { start, end }) => {
       if (acc.anomalies) return acc;
-      if (!song.timings[i * 2]) return acc;
-
-      const start = song.timings[i * 2][0];
-      const end = song.timings[i * 2 + 1][0];
 
       acc.anomalies = start < acc.end;
 
@@ -175,17 +166,53 @@ export const timingsQuickFix = (song) => {
   });
 };
 
+// Every region, with the line of the same rank as text (undefined past the last line)
 const flattenTimings = (song) => {
-  return song.lyrics.reduce((acc, text, i) => {
-    if (!song.timings[i * 2]) return acc;
+  return toRegions(song.timings).map(({ start, end }, i) => ({
+    text: song.lyrics[i],
+    start,
+    end,
+  }));
+};
 
-    const start = song.timings[i * 2][0];
-    const end = song.timings[i * 2 + 1][0];
+// Pairs the regions, in time order, with the lyrics lines and leaves out what
+// cannot go in an SRT file: regions without a line, regions whose line is empty
+// (with that line) and lines without a region (empty ones are not reported)
+export const toSrtEntries = (song) => {
+  const regions = toRegions(song.timings).sort((a, b) => a.start - b.start);
 
-    acc.push({ text, start, end });
+  const result = {
+    entries: [],
+    regionsWithoutLine: [],
+    regionsWithEmptyLine: [],
+    linesWithoutRegion: [],
+  };
 
-    return acc;
-  }, []);
+  regions.forEach((region, i) => {
+    const text = song.lyrics[i];
+
+    if (text === undefined) {
+      result.regionsWithoutLine.push(region);
+    } else if (text.trim() === "") {
+      result.regionsWithEmptyLine.push(region);
+    } else {
+      result.entries.push({ ...region, text });
+    }
+  });
+
+  song.lyrics.slice(regions.length).forEach((text) => {
+    if (text.trim() !== "") result.linesWithoutRegion.push(text);
+  });
+
+  return result;
+};
+
+export const hasSrtProblems = (srt) => {
+  return (
+    srt.regionsWithoutLine.length > 0 ||
+    srt.regionsWithEmptyLine.length > 0 ||
+    srt.linesWithoutRegion.length > 0
+  );
 };
 
 export const shiftTimingsInRange = (song, range, toPosition, duration) => {
