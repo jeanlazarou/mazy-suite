@@ -1,6 +1,8 @@
 package recipe
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/audiomaster/mastering/pkg/analysis"
@@ -129,5 +131,116 @@ func TestDynamicsFixIgnoresFades(t *testing.T) {
 	gentle, _ := Build(Choice{Destination: "streaming", Fix: false}, squashed)
 	if r.Fixes != 1 || r.Processors["Compressor"]["ratio"] >= gentle.Processors["Compressor"]["ratio"] {
 		t.Errorf("squashed master should get gentler compression, got %v", r.Notes)
+	}
+}
+
+// Clean is today's sound: the same recipe as no variant at all. The other
+// variants change color and movement but never the delivery.
+func TestVariantsKeepDelivery(t *testing.T) {
+	a := &analysis.AnalysisResult{
+		Spectrum: &analysis.SpectrumAnalysis{SpectralBalance: "balanced"},
+		Loudness: &analysis.LoudnessAnalysis{IntegratedLUFS: -18, LoudnessRange: 7},
+	}
+	none, _ := Build(Choice{Style: "rock", Destination: "car", Fix: true}, a)
+	clean, _ := Build(Choice{Style: "rock", Destination: "car", Fix: true, Variant: "clean"}, a)
+	if none.Variant != "clean" || clean.Summary != none.Summary {
+		t.Errorf("no variant should mean clean, got %q / %q vs %q", none.Variant, clean.Summary, none.Summary)
+	}
+	for proc, params := range none.Processors {
+		for p, v := range params {
+			if clean.Processors[proc][p] != v {
+				t.Errorf("clean %s.%s = %v, want %v", proc, p, clean.Processors[proc][p], v)
+			}
+		}
+	}
+	for _, id := range []string{"punch", "smooth", "warm"} {
+		r, err := Build(Choice{Style: "rock", Destination: "car", Fix: true, Variant: id}, a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if r.Processors["Loudness Normalizer"]["target_lufs"] != -12 || r.Processors["Limiter"]["ceiling"] != -0.3 {
+			t.Errorf("%s changed the delivery", id)
+		}
+		if !r.Enabled["Treble Exciter"] {
+			t.Errorf("%s dropped the car's treble exciter", id)
+		}
+		if r.Fixes != none.Fixes {
+			t.Errorf("%s: fixes %d, want %d", id, r.Fixes, none.Fixes)
+		}
+		v, _ := findVariant(id)
+		if last := r.Notes[len(r.Notes)-1]; last.Layer != "variant" || !strings.Contains(r.Summary, v.Name) {
+			t.Errorf("%s: should be named in the summary %q and explained in a note, got %+v", id, r.Summary, last)
+		}
+	}
+}
+
+func TestVariantsDoWhatTheySay(t *testing.T) {
+	build := func(v string) *Recipe {
+		r, err := Build(Choice{Style: "pop", Destination: "streaming", Variant: v}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r
+	}
+	clean, punch, smooth, warm := build("clean"), build("punch"), build("smooth"), build("warm")
+	eq := func(r *Recipe, band int) float64 {
+		return r.Processors["Parametric EQ"][fmt.Sprintf("band.%d.gain", band)]
+	}
+	comp := func(r *Recipe, p string) float64 { return r.Processors["Compressor"][p] }
+
+	if comp(punch, "attack") <= comp(clean, "attack") || eq(punch, 3) <= eq(clean, 3) {
+		t.Error("punch: slower attack and more presence expected")
+	}
+	if comp(smooth, "attack") >= comp(clean, "attack") || eq(smooth, 4) >= eq(clean, 4) || eq(smooth, 3) >= eq(clean, 3) {
+		t.Error("smooth: faster attack, less presence and air expected")
+	}
+	if eq(warm, 1) <= eq(clean, 1) || comp(warm, "release") <= comp(clean, "release") {
+		t.Error("warm: more lows and a slower release expected")
+	}
+	for _, r := range []*Recipe{clean, punch, smooth} {
+		if r.Enabled["Saturation"] || r.Processors["Saturation"]["enabled"] != 0 {
+			t.Errorf("%s: saturation should be off", r.Variant)
+		}
+	}
+	if !warm.Enabled["Saturation"] || warm.Processors["Saturation"]["enabled"] != 1 || !warm.Enabled["Bass Exciter"] {
+		t.Error("warm: saturation and bass harmonics expected")
+	}
+	if _, err := Build(Choice{Variant: "loud"}, nil); err == nil {
+		t.Error("expected error for unknown variant")
+	}
+}
+
+func TestSuggestion(t *testing.T) {
+	with := func(balance string, lra float64) *analysis.AnalysisResult {
+		return &analysis.AnalysisResult{
+			Spectrum: &analysis.SpectrumAnalysis{SpectralBalance: balance},
+			Loudness: &analysis.LoudnessAnalysis{IntegratedLUFS: -16, LoudnessRange: lra},
+		}
+	}
+	cases := []struct {
+		style string
+		a     *analysis.AnalysisResult
+		want  string
+	}{
+		{"", nil, "clean"},
+		{"rock", nil, "punch"},
+		{"jazz", with("balanced", 8), "warm"},
+		{"classical", with("balanced", 12), "clean"},
+		{"rock", with("bright", 8), "smooth"},    // what the analysis hears comes first
+		{"jazz", with("mid-heavy", 8), "punch"},  // clears crowded low-mids
+		{"hiphop", with("balanced", 3), "clean"}, // already squashed
+		{"acoustic", with("dark", 8), "clean"},   // not warmer than it is
+		{"electronic", with("dark", 8), "punch"}, // punch still suits a dark club track
+		{"pop", with("balanced", 0), "clean"},    // LRA 0 = unknown, not squashed
+	}
+	for _, c := range cases {
+		got := Suggest(c.style, c.a)
+		if got.Variant != c.want || got.Reason == "" {
+			t.Errorf("Suggest(%q, %v) = %+v, want %s", c.style, c.a != nil, got, c.want)
+		}
+	}
+	r, _ := Build(Choice{Style: "rock", Variant: "smooth"}, with("bright", 8))
+	if r.Suggested.Variant != "smooth" {
+		t.Errorf("recipe should carry the suggestion, got %+v", r.Suggested)
 	}
 }

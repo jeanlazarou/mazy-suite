@@ -18,10 +18,11 @@ import (
 // (--style), where it will be heard (--for) and whether to fix problems
 // found by analysis — or a saved preset instead.
 type settingsFlags struct {
-	style  string
-	dest   string
-	noFix  bool
-	preset string
+	style   string
+	dest    string
+	noFix   bool
+	preset  string
+	variant string // process only (registerVariant)
 }
 
 func (f *settingsFlags) register(cmd *cobra.Command) {
@@ -29,6 +30,12 @@ func (f *settingsFlags) register(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&f.dest, "for", "", "Where it will be heard; sets loudness and delivery (default streaming; see 'master options')")
 	cmd.Flags().BoolVar(&f.noFix, "no-fix", false, "Don't correct problems found by analysis (too dark, squashed, ...)")
 	cmd.Flags().StringVarP(&f.preset, "preset", "p", "", "Use a saved preset from ~/.audiomaster/presets instead of --style/--for")
+}
+
+// registerVariant adds --variant, for commands that master one track (an
+// album keeps one consistent sound, the clean one).
+func (f *settingsFlags) registerVariant(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&f.variant, "variant", "", "Which version: clean (default), punch, smooth or warm (see 'master options')")
 }
 
 // needsAnalysis tells whether resolve uses the audio's analysis, so
@@ -49,8 +56,8 @@ type settings struct {
 // whole record); they're only used for fixes.
 func (f *settingsFlags) resolve(analyses ...*analysis.AnalysisResult) (*settings, error) {
 	if f.preset != "" {
-		if f.style != "" || f.dest != "" {
-			return nil, fmt.Errorf("use either --preset or --style/--for, not both")
+		if f.style != "" || f.dest != "" || f.variant != "" {
+			return nil, fmt.Errorf("use either --preset or --style/--for/--variant, not both")
 		}
 		p, err := getPresetManager().Get(f.preset)
 		if err != nil {
@@ -62,7 +69,7 @@ func (f *settingsFlags) resolve(analyses ...*analysis.AnalysisResult) (*settings
 	if !f.noFix {
 		a = analysis.Aggregate(analyses)
 	}
-	r, err := recipe.Build(recipe.Choice{Style: f.style, Destination: f.dest, Fix: !f.noFix}, a)
+	r, err := recipe.Build(recipe.Choice{Style: f.style, Destination: f.dest, Fix: !f.noFix, Variant: f.variant}, a)
 	if err != nil {
 		return nil, err
 	}
@@ -123,13 +130,14 @@ func (s *settings) print(indent string) {
 
 var optionsCmd = &cobra.Command{
 	Use:   "options",
-	Short: "List the styles (--style) and destinations (--for)",
-	Long: `Lists what --style and --for accept. The two combine: the style sets the
-character (tone, how the compressor moves), the destination sets delivery
+	Short: "List the styles (--style), destinations (--for) and versions (--variant)",
+	Long: `Lists what --style, --for and --variant accept. They combine: the style sets
+the character (tone, how the compressor moves), the destination sets delivery
 (loudness, peak ceiling, device tuning). Problems found by analysing the
-audio are corrected on top unless --no-fix is given.
+audio are corrected on top unless --no-fix is given. The version (process
+only) is a finish on top that keeps the delivery.
 
-  master process song.wav -o out.wav --style rock --for podcast`,
+  master process song.wav -o out.wav --style rock --for podcast --variant punch`,
 	Run: func(cmd *cobra.Command, args []string) {
 		opts := recipe.ListOptions()
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -145,6 +153,17 @@ audio are corrected on top unless --no-fix is given.
 				def = " (default)"
 			}
 			fmt.Fprintf(w, "  %s%s\t%.0f LUFS\t%.1f dBTP\t%s\n", d.ID, def, d.TargetLUFS, d.CeilingDBTP, firstSentence(d.Description))
+		}
+		w.Flush()
+		fmt.Println()
+		w = tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(w, "VERSION (--variant)\tFINISH")
+		for _, v := range opts.Variants {
+			def := ""
+			if v.ID == recipe.DefaultVariant {
+				def = " (default)"
+			}
+			fmt.Fprintf(w, "  %s%s\t%s\n", v.ID, def, v.Description)
 		}
 		w.Flush()
 	},

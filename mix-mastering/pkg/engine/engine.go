@@ -45,10 +45,14 @@ func NewWithDefaults(sampleRate, channels int) *MasteringEngine {
 // for them (e.g. phone/bluetooth). Bass excitement sits before the
 // Stereo Widener so the synthesized low end stays centered; treble
 // excitement sits after the Compressor to restore sparkle that gain
-// reduction tends to dull.
+// reduction tends to dull. Saturation (the "Warm" version's analog-style
+// color) also starts disabled; it follows the EQ, so the tone is shaped
+// before it's driven, and comes before the Compressor, which then glues
+// the saturated sound.
 func NewFullChain(sampleRate, channels int) *MasteringEngine {
 	e := New(sampleRate, channels)
 	e.AddProcessor(dsp.NewParametricEQ(float64(sampleRate), channels))
+	e.AddProcessor(dsp.NewSaturation(float64(sampleRate)))
 	bassExciter := dsp.NewBassExciter(float64(sampleRate))
 	bassExciter.SetEnabled(false)
 	e.AddProcessor(bassExciter)

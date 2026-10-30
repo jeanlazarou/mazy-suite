@@ -12,10 +12,11 @@ import { DynamicsHistogram } from './components/visualizers/DynamicsHistogram';
 import { MasterPanel } from './components/master/MasterPanel';
 import { AlbumView } from './components/album/AlbumView';
 import { ChainXRayView } from './components/xray/ChainXRayView';
-import { useAudioEngine } from './hooks/useAudioEngine';
+import { useAudioEngine, variantPending } from './hooks/useAudioEngine';
 import { useStore } from './store/store';
 import { getAnalyserNode, audioBufferToFloat32Array } from './audio/context';
 import { engine } from './wasm/engine';
+import { renderVariants, stopVariants } from './wasm/variantPool';
 import { startLivePreview } from './audio/livePreview';
 
 const App: React.FC = () => {
@@ -24,7 +25,7 @@ const App: React.FC = () => {
   const originalBuffer = useStore((s) => s.originalBuffer);
   const wasmReady = useStore((s) => s.wasmReady);
   const setError = useStore((s) => s.setError);
-  const { analyzeAudio, processAudio, syncRecipe, syncEngineToActive } = useAudioEngine();
+  const { analyzeAudio, processAudio, syncRecipe, syncEngineToActive, showCurrentRender } = useAudioEngine();
   const workspace = useStore((s) => s.workspace);
   const xrayOpen = useStore((s) => s.xrayOpen);
   const analyser = getAnalyserNode();
@@ -92,6 +93,16 @@ const App: React.FC = () => {
     if (wasmReady) syncRecipe();
   }, [wasmReady, choice, customPreset, recipeKey, activeAnalysis, tracks, activeTrackId]);
 
+  // Track workspace: render the four versions of the choice in parallel
+  // (wasm/variantPool.ts) so picking one while listening is instant.
+  // Restarts when what they're built from changes — not when another
+  // version is picked.
+  const recipeOptions = useStore((s) => s.recipeOptions);
+  useEffect(() => {
+    if (wasmReady && workspace === 'track' && activeAnalysis && recipeOptions) renderVariants();
+    else stopVariants();
+  }, [wasmReady, workspace, activeTrackId, activeAnalysis, recipeOptions, choice.style, choice.destination, choice.fix]);
+
   // The engine holds the active track's settings (knob edits read them
   // back), so switching tracks loads the new one's.
   useEffect(() => {
@@ -104,6 +115,9 @@ const App: React.FC = () => {
   // settings exist (a recipe or saved preset), so a freshly loaded file
   // isn't first processed with bare engine defaults. In an album, other
   // tracks' changes (albumRev) move the shared offset, so they count too.
+  // A version that is already rendered is shown at once (even over a run
+  // in flight, whose result is then dropped); one still being rendered by
+  // the version renderer is waited for, not rendered twice.
   // The Chain X-Ray view does its own processing.
   const paramsDirty = useStore((s) => s.paramsDirty);
   const isProcessing = useStore((s) => s.isProcessing);
@@ -112,11 +126,15 @@ const App: React.FC = () => {
   const processorEnabled = useStore((s) => s.processorEnabled);
   const albumMode = useStore((s) => s.albumMode);
   const albumRev = useStore((s) => s.albumRev);
+  const renders = useStore((s) => s.renders);
+  const variants = useStore((s) => s.variants);
   useEffect(() => {
-    if (!wasmReady || !originalBuffer || !paramsDirty || isProcessing || xrayOpen || !settingsReady) return;
+    if (!wasmReady || !originalBuffer || !paramsDirty || xrayOpen || !settingsReady) return;
+    if (showCurrentRender()) return;
+    if (isProcessing || variantPending(useStore.getState())) return;
     const timer = setTimeout(() => processAudio(), 400);
     return () => clearTimeout(timer);
-  }, [wasmReady, originalBuffer, paramsDirty, isProcessing, xrayOpen, settingsReady, params, processorEnabled, albumMode, albumRev]);
+  }, [wasmReady, originalBuffer, paramsDirty, isProcessing, xrayOpen, settingsReady, params, processorEnabled, albumMode, albumRev, renders, variants]);
 
   if (loading && !wasmReady) {
     return (

@@ -29,7 +29,7 @@ cd web && npx vite
 | ---------------------------------------- | ------------------------------------------------------------ |
 | `master process <file> -o <out>`         | Master a single file                                          |
 | `master analyze <file>`                  | Analyze audio and show what mastering would do and fix        |
-| `master options`                         | List the styles (`--style`) and destinations (`--for`)        |
+| `master options`                         | List the styles (`--style`), destinations (`--for`) and versions (`--variant`) |
 | `master batch <dir> -o <outdir>`         | Master every file in a directory independently                 |
 | `master album <dir> -o <outdir>`         | Master a directory as one album: the album's style and destination for every track, each corrected for its own problems, loudness normalized by a single offset computed from the album's integrated loudness (preserves relative track levels) — use this instead of `batch` for related tracks |
 | `master preset list\|search\|show`        | Your saved presets in `~/.audiomaster/presets`                 |
@@ -50,6 +50,7 @@ The limiter ceiling is a true-peak ceiling: `--for streaming` delivers at most �
 
 - `-b, --bit-depth` — Output bit depth (16, 24, 32; default: same as input)
 - `-r, --sample-rate` — Output sample rate in Hz (default: same as input)
+- `--variant` — Which version: `clean` (default), `punch`, `smooth` or `warm` — a finish on top of the settings that keeps their loudness and peaks. Without it, the version that suits the track is suggested
 - `--eq`, `--comp`, `--limit` — Toggle individual processors
 
 ## Web UI
@@ -64,6 +65,7 @@ The web interface runs the Go DSP engine via WebAssembly in a Web Worker (so pro
 - EQ and stereo width changes are heard instantly while playing; EQ band solo and a mono check let you hear what a change does
 - Spectrum analyzer, waveform display, stereo field (Lissajous), LUFS meter
 - Master settings in three questions — *What is it?* (style, optional), *Where will it be heard?* (destination), *Fix problems found?* — that combine (a rock song for a podcast keeps rock's tone at podcast loudness), with a plain-language list of what the settings do
+- Four versions of a track to pick from by ear — Clean, Punch, Smooth, Warm — rendered in parallel in the background, so switching between them while listening is instant; all at the same loudness, with the one that suits the track suggested from the analysis
 - The preview updates by itself after every change, no Process step; fine-tune any stage in the chain, and save the result as your own preset
 
 ### Editing by ear: the visual views
@@ -90,7 +92,9 @@ Each processor panel opens on a visual view; **Knobs** is one click away for exa
 
 **Bass and Treble Exciter — Harmonics.** The band the exciter feeds on and where its added overtones land, over the track's spectrum. Drag the dot sideways for where and up for how much.
 
-Only the EQ and stereo width are heard instantly, because they can be applied on top of the playing preview exactly. The compressor, limiter and exciters respond to the signal over time, so their sound follows when the preview re-renders, about a second later. Their pictures and numbers still update instantly while you drag.
+**Saturation — Curve.** The saturation curve against a straight line, and the overtones it gives a loud note (mostly the warm 2nd). Drag up or down on the curve for more or less drive.
+
+Only the EQ and stereo width are heard instantly, because they can be applied on top of the playing preview exactly. The compressor, limiter, exciters and saturation respond to the signal over time, so their sound follows when the preview re-renders, about a second later. Their pictures and numbers still update instantly while you drag.
 
 ### Chain X-Ray
 
@@ -107,15 +111,16 @@ Save the current settings as a named setup, tweak further, save another — clic
 The full chain used by the web UI and CLI (`engine.NewFullChain`) runs in this order — the limiter stays last so its ceiling holds on the actual output:
 
 1. **Parametric EQ** — 6-band (HPF, low shelf, 2× peak, high shelf, LPF)
-2. **Bass Exciter** — Harmonic exciter isolating lows, generating harmonics audible on speakers that can't reproduce true sub-bass (disabled by default)
-3. **Stereo Widener** — Mid/side width control
-4. **Compressor** — Soft-knee with attack/release envelope
-5. **Treble Exciter** — Harmonic exciter isolating highs, restoring presence gain reduction tends to dull (disabled by default)
-6. **Loudness Normalizer** — LUFS-based normalization (disabled by default; the web UI enables it, the CLI enables it when a preset configures it)
-7. **Gain** — Unity by default; carries the shared album loudness offset in album mastering
-8. **Limiter** — Lookahead brickwall limiter, zero added latency
+2. **Saturation** — Gentle analog-style waveshaping, mostly 2nd harmonic, 2× oversampled so high notes don't alias; the Warm version's color (disabled by default)
+3. **Bass Exciter** — Harmonic exciter isolating lows, generating harmonics audible on speakers that can't reproduce true sub-bass (disabled by default)
+4. **Stereo Widener** — Mid/side width control
+5. **Compressor** — Soft-knee with attack/release envelope
+6. **Treble Exciter** — Harmonic exciter isolating highs, restoring presence gain reduction tends to dull (disabled by default)
+7. **Loudness Normalizer** — LUFS-based normalization (disabled by default; the web UI enables it, the CLI enables it when a preset configures it)
+8. **Gain** — Unity by default; carries the shared album loudness offset in album mastering
+9. **Limiter** — Lookahead brickwall limiter, zero added latency
 
-Both exciters start disabled — they add harmonic content that isn't in the source (a creative choice, not a corrective one) — and are switched on by the target-device recommendations (phone, bluetooth, car) or explicitly via their `enabled` param.
+Saturation and both exciters start disabled — they add harmonic content that isn't in the source (a creative choice, not a corrective one) — and are switched on by the Warm version, the target-device recommendations (phone, bluetooth, car) or explicitly via their `enabled` param.
 
 `pkg/dsp` also implements a Multiband Compressor, a (separate, unused) Harmonic Exciter, and a De-Esser — functional and tested, but not yet wired into any chain or preset.
 

@@ -3,6 +3,7 @@ import { Box, Paper, Typography, Collapse, Switch, Tooltip } from '@mui/material
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { EQPanel } from './EQPanel';
 import { BassExciterPanel, TrebleExciterPanel } from './ExciterPanel';
+import { SaturationPanel } from './SaturationPanel';
 import { CompressorPanel } from './CompressorPanel';
 import { LimiterPanel } from './LimiterPanel';
 import { StereoPanel } from './StereoPanel';
@@ -29,6 +30,7 @@ interface StageMeta {
 // did (wrong order, missing the Normalizer and Gain stages entirely).
 const STAGE_META: Record<string, StageMeta> = {
   'Parametric EQ': { label: 'EQ', color: '#6C63FF', panel: EQPanel },
+  'Saturation': { label: 'Saturation', color: '#F97316', panel: SaturationPanel, enhance: true },
   'Bass Exciter': { label: 'Bass Exciter', color: '#F59E0B', panel: BassExciterPanel, enhance: true },
   'Stereo Widener': { label: 'Stereo', color: '#A78BFA', panel: StereoPanel },
   'Compressor': { label: 'Compressor', color: '#FF6584', panel: CompressorPanel },
@@ -84,8 +86,8 @@ export const ProcessorPipeline: React.FC = () => {
   const visible = order.filter((name) => {
     const meta = STAGE_META[name];
     if (!meta?.enhance) return true;
-    // Hidden until enabled — either via the Enhance switch above or a
-    // destination (e.g. phone) that turned it on directly.
+    // Hidden until enabled — via the Enhance switch above (exciters), a
+    // destination (e.g. phone) or the Warm version (saturation).
     return processorEnabled[name] ?? false;
   });
 

@@ -175,12 +175,12 @@ func TestEngineProcessWithTaps(t *testing.T) {
 // just a doc comment: the limiter must stay last, and the exciters sit
 // where they were designed to (bass before widening so synthesized lows
 // stay centered, treble after compression to restore what gain
-// reduction dulls).
+// reduction dulls), and saturation between EQ and compression.
 func TestFullChainOrder(t *testing.T) {
 	eng := NewFullChain(44100, 2)
 
 	want := []string{
-		"Parametric EQ", "Bass Exciter", "Stereo Widener", "Compressor",
+		"Parametric EQ", "Saturation", "Bass Exciter", "Stereo Widener", "Compressor",
 		"Treble Exciter", "Loudness Normalizer", "Gain", "Limiter",
 	}
 	got := make([]string, len(eng.Processors()))
@@ -199,10 +199,10 @@ func TestFullChainOrder(t *testing.T) {
 
 // TestFullChainDefaultTransparent verifies the chain-level analogue of
 // TestDefaultEQTransparent (pkg/dsp/conformance_test.go): a freshly
-// constructed NewFullChain, with the normalizer and both exciters
-// disabled by default, must not audibly alter the signal. The signal is
-// kept quiet (well under the compressor's -18dB threshold and the
-// limiter's ceiling) so this test isolates the exciter/normalizer
+// constructed NewFullChain, with the normalizer, saturation and both
+// exciters disabled by default, must not audibly alter the signal. The
+// signal is kept quiet (well under the compressor's -18dB threshold and
+// the limiter's ceiling) so this test isolates the exciter/normalizer
 // defaults rather than exercising dynamics processing, which is
 // expected to engage at normal mastering levels.
 func TestFullChainDefaultTransparent(t *testing.T) {

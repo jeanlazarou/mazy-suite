@@ -4,7 +4,8 @@ import { audioBufferToFloat32Array, float32ArrayToAudioBuffer, encodeWav } from 
 import { createZip } from '../audio/zip';
 import type { ZipEntry } from '../audio/zip';
 import {
-  useStore, trackSettingsOf, type AppState, type AlbumTrack, type RenderedSettings, type TrackSettings,
+  useStore, trackSettingsOf, renderKey, findRender,
+  type AppState, type AlbumTrack, type CachedRender, type RenderedSettings, type TrackSettings,
 } from '../store/store';
 import { playTransition } from '../audio/transition';
 import { stopPlayback } from './usePlayback';
@@ -38,12 +39,38 @@ function styleFor(s: AppState, st: TrackSettings): string {
   return s.workspace === 'album' && st.style !== null ? st.style : s.choice.style;
 }
 
+// The version a track is built with: the chosen one in the track
+// workspace; an album keeps one consistent sound, the clean one.
+export function variantFor(s: Pick<AppState, 'workspace' | 'choice'>): string {
+  return s.workspace === 'album' ? 'clean' : s.choice.variant;
+}
+
 // Identity of what a track's recipe depends on: the choice (with the
 // track's style) and the track, whose own analysis the fixes come from.
 function recipeKeyFor(s: AppState, t: AlbumTrack, st: TrackSettings): string {
   return JSON.stringify({
-    s: styleFor(s, st), d: s.choice.destination, f: s.choice.fix, t: t.id,
+    s: styleFor(s, st), d: s.choice.destination, f: s.choice.fix, v: variantFor(s), t: t.id,
   });
+}
+
+// renderKey of the active track's current settings.
+function liveRenderKey(s: AppState): string {
+  return renderKey({ params: s.params, enabled: s.processorEnabled }, s.activeTrackId);
+}
+
+/** A finished render of exactly the current settings (one of the four
+ *  versions), if there is one. */
+export function currentRender(s: AppState): CachedRender | undefined {
+  return s.workspace === 'track' && s.renders.length > 0 ? findRender(s, liveRenderKey(s)) : undefined;
+}
+
+/** The version renderer (variantPool) is still making the current
+ *  settings: one of the four versions, unedited. The preview then waits
+ *  for it instead of rendering the same thing a second time. */
+export function variantPending(s: AppState): boolean {
+  if (s.workspace !== 'track' || s.customPreset !== null || s.paramsEdited) return false;
+  const v = s.variants[s.choice.variant];
+  return !!v?.rendering && (v.key === null || v.key === liveRenderKey(s));
 }
 
 // What album levels are computed from.
@@ -215,6 +242,22 @@ export function useAudioEngine() {
   };
   const syncEngineToActive = useCallback(() => restoreActiveEngine(), []);
 
+  // Show a finished render as the preview — no engine work.
+  const showRender = (r: CachedRender) => {
+    setProcessedBuffer(r.buffer, r.rendered);
+    setMeters(r.meters);
+    setProcessedAnalysis(r.analysis);
+    setMatchGainDB(r.matchGainDB);
+  };
+
+  /** Show the render of the current settings if one is finished (picking
+   *  a version). Returns whether it did. */
+  const showCurrentRender = useCallback((): boolean => {
+    const r = currentRender(useStore.getState());
+    if (r) showRender(r);
+    return !!r;
+  }, []);
+
   // Full processing pass: chain + meters + result analysis + match gain.
   const runProcess = async () => {
     const originalBuffer = useStore.getState().originalBuffer;
@@ -245,6 +288,9 @@ export function useAudioEngine() {
       const processed = await engine.processBuffer(
         audioBufferToFloat32Array(originalBuffer), channels, sampleRate);
       if (useStore.getState().originalBuffer !== originalBuffer) return; // track switched
+      // A version picked meanwhile is already rendered: it is shown
+      // instead (App's auto-preview), this stale result is dropped.
+      if (!stillCurrent() && currentRender(useStore.getState())) return;
       const processedAudioBuffer = float32ArrayToAudioBuffer(processed, channels, sampleRate);
 
       setProcessedBuffer(processedAudioBuffer, rendered);
@@ -265,10 +311,17 @@ export function useAudioEngine() {
         ?? await engine.measureLoudness(
           audioBufferToFloat32Array(originalBuffer), channels, sampleRate);
       const processedLufs = processedAnalysis.loudness.integrated_lufs;
-      if (originalLufs > -100 && processedLufs > -100) {
-        setMatchGainDB(originalLufs - processedLufs);
-      } else {
-        setMatchGainDB(null);
+      const matchGainDB = originalLufs > -100 && processedLufs > -100 ? originalLufs - processedLufs : null;
+      setMatchGainDB(matchGainDB);
+
+      // One of the four versions (the version renderer failed on it, or
+      // wasn't running): keep it for switching back to.
+      const key = renderKey(rendered, start.activeTrackId);
+      const now = useStore.getState();
+      if (now.workspace === 'track' && Object.values(now.variants).some((v) => v.key === key)) {
+        now.addRender({
+          key, rendered, buffer: processedAudioBuffer, meters: now.meters, analysis: processedAnalysis, matchGainDB,
+        });
       }
     } catch (err: any) {
       setError(`Processing failed: ${err.message}`);
@@ -402,8 +455,9 @@ export function useAudioEngine() {
       const key = recipeKeyFor(s, t, st);
       if (key === st.recipeKey) continue;
 
-      const r = await engine.buildRecipe(
-        { style: styleFor(s, st), destination: s.choice.destination, fix: s.choice.fix }, [analysis]);
+      const r = await engine.buildRecipe({
+        style: styleFor(s, st), destination: s.choice.destination, fix: s.choice.fix, variant: variantFor(s),
+      }, [analysis]);
       if (mySeq !== recipeSeq) return;
       if ('error' in r) {
         setError(`Settings: ${r.error}`);
@@ -414,18 +468,14 @@ export function useAudioEngine() {
       });
       if (t.id !== useStore.getState().activeTrackId) continue;
       // The store is the source of truth (every run re-initializes the
-      // engine from it); the engine is updated too so getParams-based
-      // paths agree.
-      for (const [proc, procParams] of Object.entries(r.processors)) {
-        for (const [param, value] of Object.entries(procParams)) {
-          if (mySeq !== recipeSeq) return;
-          await engine.setParam(proc, param, value);
-        }
-      }
-      for (const [name, enabled] of Object.entries(r.enabled)) {
-        if (mySeq !== recipeSeq) return;
-        await engine.setProcessorEnabled(name, enabled);
-      }
+      // engine from it), but knob edits read the engine's params back, so
+      // the engine must hold the new settings right away — not only at the
+      // next run: a version already rendered is shown without one. Not
+      // cancelled by a newer sync (setTrackSettings itself triggers one,
+      // which finds this recipe current and skips); it applies whatever
+      // settings are live when it runs.
+      await restoreActiveEngine();
+      if (mySeq !== recipeSeq) return;
     }
   }, []);
 
@@ -589,6 +639,14 @@ export function useAudioEngine() {
         await engine.setParam(proc, param, value);
       }
     }
+    // A preset saved before a stage existed doesn't mention it; the
+    // switchable stages all start off, so it is turned off rather than
+    // left as the previous settings had it (e.g. Warm's saturation).
+    for (const [proc, procParams] of Object.entries(useStore.getState().params)) {
+      if (!(proc in preset.processors) && 'enabled' in procParams) {
+        await engine.setParam(proc, 'enabled', 0);
+      }
+    }
     setParams(await engine.getParams());
     setParamsEdited(false);
   }, []);
@@ -608,6 +666,7 @@ export function useAudioEngine() {
     analyzeAudio,
     syncRecipe,
     syncEngineToActive,
+    showCurrentRender,
     resetToRecipe,
     exportAlbum,
     calibrateAlbum,

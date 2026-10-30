@@ -62,8 +62,9 @@ export interface StageSummary {
   spec_freqs?: number[]; // band centers in Hz
 }
 
-// One style ("what is it?") or destination ("where will it be heard?")
-// offered by the Go recipe builder (pkg/recipe).
+// One style ("what is it?"), destination ("where will it be heard?") or
+// variant (one of the four versions) offered by the Go recipe builder
+// (pkg/recipe).
 export interface RecipeOption {
   id: string;
   name: string;
@@ -76,12 +77,20 @@ export interface RecipeOption {
 export interface RecipeOptions {
   styles: RecipeOption[];
   destinations: RecipeOption[];
+  variants: RecipeOption[];
 }
 
 export interface RecipeChoice {
   style: string; // '' = no style
   destination: string;
   fix: boolean;
+  variant: string; // track workspace only; an album is built clean
+}
+
+/** The variant that suits the material best, and why (pkg/recipe.Suggest). */
+export interface VariantSuggestion {
+  variant: string;
+  reason: string;
 }
 
 /** Complete chain settings for a RecipeChoice: every param of every
@@ -89,12 +98,13 @@ export interface RecipeChoice {
  *  behind from an earlier choice. */
 export interface Recipe extends RecipeChoice {
   summary: string;
-  notes: { layer: 'style' | 'destination' | 'fix'; text: string }[];
+  notes: { layer: 'style' | 'destination' | 'fix' | 'variant'; text: string }[];
   fixes: number;
   target_lufs: number;
   ceiling_dbtp: number;
   processors: ProcessorParams;
   enabled: Record<string, boolean>;
+  suggested: VariantSuggestion;
 }
 
 interface PendingCall {
@@ -106,6 +116,9 @@ interface PendingCall {
  * Async client for the Go WASM engine, which runs in a Web Worker so heavy
  * processing never blocks the UI thread. Float32Array arguments are
  * transferred to the worker (consumed); create a fresh copy per call.
+ * `engine` below is the app's engine; extra instances (each its own
+ * worker and Go runtime) render the four versions in parallel
+ * (variantPool.ts).
  */
 export class AudioEngine {
   private worker: Worker | null = null;
@@ -143,6 +156,17 @@ export class AudioEngine {
 
   isReady(): boolean {
     return this.ready;
+  }
+
+  /** Stop the worker — the only way to cancel a call in flight — and
+   *  free its memory. Pending calls fail. */
+  terminate(): void {
+    this.worker?.terminate();
+    this.worker = null;
+    this.ready = false;
+    const err = new Error('engine stopped');
+    for (const call of this.pending.values()) call.reject(err);
+    this.pending.clear();
   }
 
   private call<T>(method: string, args: any[], transfer: Transferable[] = []): Promise<T> {

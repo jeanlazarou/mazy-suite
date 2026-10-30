@@ -34,6 +34,8 @@ Say what the material is and where it will be heard:
 --style sets the character, --for sets loudness and delivery (default:
 streaming, -14 LUFS); 'master options' lists both. The file is analyzed and
 problems (too dark, squashed, ...) are corrected unless --no-fix is given.
+--variant picks one of four versions (clean, punch, smooth, warm); without
+it the clean one is made and the one that suits the track is suggested.
 --preset uses a saved preset instead.`,
 	Args: cobra.ExactArgs(1),
 	RunE: runProcess,
@@ -44,6 +46,7 @@ func init() {
 	processCmd.Flags().IntVarP(&bitDepth, "bit-depth", "b", 0, "Output bit depth (16, 24, 32; default: same as input)")
 	processCmd.Flags().IntVarP(&sampleRate, "sample-rate", "r", 0, "Output sample rate in Hz (default: same as input)")
 	processSet.register(processCmd)
+	processSet.registerVariant(processCmd)
 	processCmd.Flags().BoolVar(&eqEnabled, "eq", true, "Enable EQ")
 	processCmd.Flags().BoolVar(&compEnabled, "comp", true, "Enable compressor")
 	processCmd.Flags().BoolVar(&limitEnabled, "limit", true, "Enable limiter")
@@ -82,6 +85,9 @@ func runProcess(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	set.print("  ")
+	if r := set.recipe; r != nil && processSet.variant == "" && a != nil && r.Suggested.Variant != r.Variant {
+		fmt.Printf("  Tip: try --variant %s. %s\n", r.Suggested.Variant, r.Suggested.Reason)
+	}
 	set.apply(eng)
 
 	// Toggle processors

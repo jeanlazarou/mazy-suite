@@ -8,6 +8,10 @@
 //     device compensation and harmonic excitement.
 //   - Fix (on/off): corrections derived from the analysis of the source
 //     (too dark/bright/muddy, too dynamic or already squashed).
+//   - Variant (clean, punch, smooth, warm): one of four versions of the
+//     same choice, offered side by side — a finish on top of the style
+//     (more or less presence and air, how the compressor moves, analog
+//     color) that keeps the delivery and the fixes. Clean adds nothing.
 //
 // The choices combine instead of overwriting each other: EQ bands have
 // fixed roles and every layer adds dB to them; the compressor's character
@@ -123,15 +127,51 @@ var destinations = []Destination{
 // DefaultDestination is used when none is given.
 const DefaultDestination = "streaming"
 
-// Options lists the available styles and destinations, in display order.
+// Variant is one of the four versions of a choice: a finish that changes
+// the sound's color and movement, never its delivery (loudness, peaks).
+type Variant struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Note        string  `json:"-"` // what it does, for the recipe notes
+	Tone        Tone    `json:"-"`
+	AttackMul   float64 `json:"-"` // compressor attack ×
+	ReleaseMul  float64 `json:"-"` // compressor release ×
+	RatioAdd    float64 `json:"-"`
+	KneeAdd     float64 `json:"-"` // dB
+	Saturation  float64 `json:"-"` // drive 0-1, 0 = off
+	BassExcite  float64 `json:"-"` // at least this much (the destination may ask for more)
+}
+
+var variants = []Variant{
+	{ID: "clean", Name: "Clean", Description: "Transparent and modern: the settings as built, nothing added.",
+		AttackMul: 1, ReleaseMul: 1},
+	{ID: "punch", Name: "Punch", Description: "More impact: the compressor lets each hit through, mids forward.",
+		Note: "slower attack lets each hit through, more presence, tighter low-mids",
+		Tone: Tone{Low: 0.5, Mud: -0.5, Presence: 1.5}, AttackMul: 2, ReleaseMul: 0.7, RatioAdd: 0.5},
+	{ID: "smooth", Name: "Smooth", Description: "Easier on the ear: harsh highs tamed, edges rounded.",
+		Note: "softer presence and highs; faster attack and a softer knee round the edges",
+		Tone: Tone{Mud: 0.5, Presence: -1.5, Air: -1.5}, AttackMul: 0.5, ReleaseMul: 1.5, KneeAdd: 4},
+	{ID: "warm", Name: "Warm", Description: "Weight and glue: richer lows, gentle analog-style saturation.",
+		Note: "richer lows, analog-style saturation, slower and softer compression",
+		Tone: Tone{Low: 1.5, Mud: 0.5, Presence: -0.5, Air: -1}, AttackMul: 1, ReleaseMul: 1.5,
+		RatioAdd: -0.5, KneeAdd: 4, Saturation: 0.25, BassExcite: 0.15},
+}
+
+// DefaultVariant is used when none is given.
+const DefaultVariant = "clean"
+
+// Options lists the available styles, destinations and variants, in
+// display order.
 type Options struct {
 	Styles       []Style       `json:"styles"`
 	Destinations []Destination `json:"destinations"`
+	Variants     []Variant     `json:"variants"`
 }
 
-// ListOptions returns every style and destination.
+// ListOptions returns every style, destination and variant.
 func ListOptions() Options {
-	return Options{Styles: styles, Destinations: destinations}
+	return Options{Styles: styles, Destinations: destinations, Variants: variants}
 }
 
 // Choice is what the user picked.
@@ -139,10 +179,17 @@ type Choice struct {
 	Style       string `json:"style"`       // "" = no style
 	Destination string `json:"destination"` // "" = DefaultDestination
 	Fix         bool   `json:"fix"`
+	Variant     string `json:"variant"` // "" = DefaultVariant
+}
+
+// Suggestion is the variant that suits the material best, and why.
+type Suggestion struct {
+	Variant string `json:"variant"`
+	Reason  string `json:"reason"`
 }
 
 // Note explains one thing the recipe does, attributed to the layer that
-// caused it ("style", "destination" or "fix").
+// caused it ("style", "destination", "fix" or "variant").
 type Note struct {
 	Layer string `json:"layer"`
 	Text  string `json:"text"`
@@ -158,6 +205,7 @@ type Recipe struct {
 	CeilingDBTP float64                       `json:"ceiling_dbtp"`
 	Processors  map[string]map[string]float64 `json:"processors"` // every param of every processor
 	Enabled     map[string]bool               `json:"enabled"`    // bypass state of every processor
+	Suggested   Suggestion                    `json:"suggested"`  // the variant to try first
 }
 
 func findStyle(id string) (Style, error) {
@@ -192,6 +240,57 @@ func findDestination(id string) (Destination, error) {
 	return Destination{}, fmt.Errorf("unknown destination %q (available: %s)", id, strings.Join(ids, ", "))
 }
 
+func findVariant(id string) (Variant, error) {
+	if id == "" {
+		id = DefaultVariant
+	}
+	for _, v := range variants {
+		if strings.EqualFold(v.ID, id) {
+			return v, nil
+		}
+	}
+	ids := make([]string, len(variants))
+	for i, v := range variants {
+		ids[i] = v.ID
+	}
+	return Variant{}, fmt.Errorf("unknown variant %q (available: %s)", id, strings.Join(ids, ", "))
+}
+
+// Suggest picks the variant to try first: from what the analysis hears
+// (tone, density) when it calls for one, else from the style. a may be
+// nil.
+func Suggest(styleID string, a *analysis.AnalysisResult) Suggestion {
+	style, _ := findStyle(styleID)
+	byStyle := Suggestion{Variant: "clean", Reason: "Nothing calls for a particular color: Clean keeps the mix as it is."}
+	switch style.ID {
+	case "rock", "hiphop", "electronic":
+		byStyle = Suggestion{"punch", fmt.Sprintf("%s usually wants impact: Punch lets the drums hit.", style.Name)}
+	case "jazz", "acoustic":
+		byStyle = Suggestion{"warm", fmt.Sprintf("%s usually suits a warm, rounded sound.", style.Name)}
+	case "":
+	default:
+		byStyle.Reason = fmt.Sprintf("%s usually sounds best transparent: Clean adds nothing.", style.Name)
+	}
+	if a == nil {
+		return byStyle
+	}
+	balance := ""
+	if a.Spectrum != nil {
+		balance = a.Spectrum.SpectralBalance
+	}
+	switch {
+	case balance == "bright":
+		return Suggestion{"smooth", "The mix is bright: Smooth tames the harsh highs."}
+	case balance == "mid-heavy":
+		return Suggestion{"punch", "The low-mids are crowded: Punch clears them and brings the hits forward."}
+	case a.Loudness != nil && a.Loudness.LoudnessRange > 0 && a.Loudness.LoudnessRange < 4:
+		return Suggestion{"clean", "The mix is already heavily compressed: Clean adds nothing more."}
+	case balance == "dark" && byStyle.Variant == "warm":
+		return Suggestion{"clean", "The mix is already dark: Clean keeps it clear rather than warmer."}
+	}
+	return byStyle
+}
+
 // Build computes the complete chain settings for a choice. a is the
 // analysis of the source (for an album, analysis.Aggregate of all tracks);
 // it may be nil, in which case no fixes are applied.
@@ -204,7 +303,11 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.Style, c.Destination = style.ID, dest.ID
+	variant, err := findVariant(c.Variant)
+	if err != nil {
+		return nil, err
+	}
+	c.Style, c.Destination, c.Variant = style.ID, dest.ID, variant.ID
 
 	r := &Recipe{
 		Choice:      c,
@@ -212,6 +315,7 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 		CeilingDBTP: dest.CeilingDBTP,
 		Processors:  defaults(),
 		Enabled:     map[string]bool{},
+		Suggested:   Suggest(style.ID, a),
 	}
 	for name := range r.Processors {
 		r.Enabled[name] = true
@@ -287,8 +391,13 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 		}
 	}
 
+	// --- Variant: the finish ---
+	if variant.Note != "" {
+		note("variant", "%s: %s", variant.Name, variant.Note)
+	}
+
 	// --- EQ: fixed band roles, layers add up ---
-	tone := style.Tone.add(dest.Tone).add(fixTone)
+	tone := style.Tone.add(dest.Tone).add(fixTone).add(variant.Tone)
 	eq := r.Processors["Parametric EQ"]
 	setBand := func(i int, freq, gain, q float64) {
 		eq[fmt.Sprintf("band.%d.freq", i)] = freq
@@ -305,9 +414,10 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 		eq["band.0.enabled"] = 1
 	}
 
-	// --- Compressor: character from style, amount from destination ---
+	// --- Compressor: character from style, amount from destination,
+	// movement adjusted by the variant ---
 	comp := r.Processors["Compressor"]
-	ratio := clamp(1.5+dest.Density*3+style.RatioAdd+ratioFix, 1.2, 8)
+	ratio := clamp(1.5+dest.Density*3+style.RatioAdd+ratioFix+variant.RatioAdd, 1.2, 8)
 	threshold := clamp(-10-dest.Density*10+style.ThreshAdd+threshFix, -40, -4)
 	attack := style.Attack
 	if attackCap > 0 {
@@ -315,9 +425,9 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 	}
 	comp["ratio"] = round1(ratio)
 	comp["threshold"] = round1(threshold)
-	comp["attack"] = attack
-	comp["release"] = style.Release
-	comp["knee"] = style.Knee
+	comp["attack"] = round1(clamp(attack*variant.AttackMul, 1, 100))
+	comp["release"] = math.Round(clamp(style.Release*variant.ReleaseMul, 20, 1000))
+	comp["knee"] = style.Knee + variant.KneeAdd
 	comp["makeup"] = round1(math.Max(0, -threshold/ratio))
 	comp["auto_makeup"] = 0
 
@@ -327,10 +437,11 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 	r.Processors["Gain"]["gain_db"] = 0
 	r.Processors["Limiter"]["ceiling"] = dest.CeilingDBTP
 	r.Processors["Limiter"]["release"] = 50
-	setExciter(r, "Bass Exciter", dest.BassExcite)
+	setExciter(r, "Bass Exciter", math.Max(dest.BassExcite, variant.BassExcite))
 	setExciter(r, "Treble Exciter", dest.TrebleExcite)
+	setSaturation(r, variant.Saturation)
 
-	r.Summary = summary(style, dest, r.Fixes, c.Fix)
+	r.Summary = summary(style, dest, variant, r.Fixes, c.Fix)
 	return r, nil
 }
 
@@ -357,10 +468,25 @@ func setExciter(r *Recipe, name string, amount float64) {
 	r.Enabled[name] = true
 }
 
-func summary(s Style, d Destination, fixes int, fix bool) string {
+func setSaturation(r *Recipe, drive float64) {
+	p := r.Processors["Saturation"]
+	if drive <= 0 {
+		p["enabled"] = 0
+		r.Enabled["Saturation"] = false
+		return
+	}
+	p["enabled"] = 1
+	p["drive"] = drive
+	r.Enabled["Saturation"] = true
+}
+
+func summary(s Style, d Destination, v Variant, fixes int, fix bool) string {
 	parts := []string{}
 	if s.ID != "" {
 		parts = append(parts, s.Name)
+	}
+	if v.ID != DefaultVariant {
+		parts = append(parts, v.Name)
 	}
 	parts = append(parts, fmt.Sprintf("for %s (%.0f LUFS)", d.Name, d.TargetLUFS))
 	switch {

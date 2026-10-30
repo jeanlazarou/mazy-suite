@@ -1,5 +1,7 @@
 import { create } from 'zustand';
-import type { AnalysisResult, ProcessorParams, MeterData, StageSummary, Recipe, RecipeChoice, RecipeOptions } from '../wasm/engine';
+import type {
+  AnalysisResult, ProcessorParams, MeterData, StageSummary, Recipe, RecipeChoice, RecipeOptions, VariantSuggestion,
+} from '../wasm/engine';
 import { type CustomPreset, loadCustomPresets } from '../audio/customPresets';
 
 export interface AudioFileInfo {
@@ -31,6 +33,43 @@ export interface XraySetup {
 export interface RenderedSettings {
   params: ProcessorParams;
   enabled: Record<string, boolean>;
+}
+
+/** Identity of what a render sounds like: its settings (keys sorted, so
+ *  equal settings built in different workers match) and the track. */
+export function renderKey(settings: RenderedSettings, trackId: string | null): string {
+  const sorted = (o: Record<string, unknown>) => Object.keys(o).sort().map((k) => [k, o[k]]);
+  return JSON.stringify({
+    t: trackId,
+    p: Object.keys(settings.params).sort().map((proc) => [proc, sorted(settings.params[proc])]),
+    e: sorted(settings.enabled),
+  });
+}
+
+// A finished render of the active track: everything a preview run
+// produces, so showing it again needs no engine work. Playable as soon as
+// the audio is there; its analysis (and the match gain from it) can
+// follow (completeRender).
+export interface CachedRender {
+  key: string; // renderKey
+  buffer: AudioBuffer;
+  rendered: RenderedSettings;
+  meters: MeterData;
+  analysis: AnalysisResult | null;
+  matchGainDB: number | null;
+}
+
+// One of the four versions being prepared (variantPool.ts): the
+// renderKey of its settings once its recipe is built.
+export interface VariantState {
+  key: string | null;
+  rendering: boolean;
+  failed: boolean;
+}
+
+/** The render made with exactly these settings, if any. */
+export function findRender(s: Pick<AppState, 'renders'>, key: string): CachedRender | undefined {
+  return s.renders.find((r) => r.key === key);
 }
 
 // What the user is working on: one track, or an album. Chosen explicitly
@@ -170,6 +209,15 @@ export interface AppState {
   // store creation, independent of WASM being ready.
   customPresets: CustomPreset[];
 
+  // Track workspace: the four versions of the current choice (by variant
+  // id), rendered in parallel by variantPool.ts, and the finished renders
+  // (theirs, and the normal preview's when it made one of them) — so
+  // picking a version while listening swaps buffers instead of
+  // re-rendering. Plus the version the analysis suggests.
+  variants: Record<string, VariantState>;
+  renders: CachedRender[];
+  variantSuggestion: VariantSuggestion | null;
+
   // UI
   loading: boolean;
   error: string | null;
@@ -243,6 +291,14 @@ export interface AppState {
   // Replace all params and bypass state at once (recipe / custom preset).
   applySettings: (params: ProcessorParams, enabled: Record<string, boolean>) => void;
   setCustomPresets: (p: CustomPreset[]) => void;
+  // A new set of versions is being rendered: drops the previous renders.
+  startVariants: (ids: string[]) => void;
+  setVariant: (id: string, patch: Partial<VariantState>) => void;
+  addRender: (r: CachedRender) => void;
+  // A render's analysis arrived (shown too if the render is).
+  completeRender: (key: string, analysis: AnalysisResult, matchGainDB: number | null) => void;
+  setVariantSuggestion: (v: VariantSuggestion | null) => void;
+  clearVariants: () => void;
   setLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
   requestSeek: (position: number) => void;
@@ -354,12 +410,15 @@ export const useStore = create<AppState>((set) => ({
   processedAnalysis: null,
   isAnalyzing: false,
   recipeOptions: null,
-  choice: { style: '', destination: 'streaming', fix: true },
+  choice: { style: '', destination: 'streaming', fix: true, variant: 'clean' },
   recipe: null,
   recipeKey: null,
   customPreset: null,
   paramsEdited: false,
   customPresets: loadCustomPresets(),
+  variants: {},
+  renders: [],
+  variantSuggestion: null,
   loading: true,
   error: null,
   paramsDirty: true,
@@ -531,6 +590,25 @@ export const useStore = create<AppState>((set) => ({
     params, processorEnabled: enabled, paramsDirty: true, xrayActiveSetupId: null,
   }),
   setCustomPresets: (p) => set({ customPresets: p }),
+  startVariants: (ids) => set({
+    variants: Object.fromEntries(ids.map((id) => [id, { key: null, rendering: true, failed: false }])),
+    renders: [],
+    variantSuggestion: null,
+  }),
+  setVariant: (id, patch) => set((s) => (s.variants[id]
+    ? { variants: { ...s.variants, [id]: { ...s.variants[id], ...patch } } } : {})),
+  addRender: (r) => set((s) => (findRender(s, r.key) ? {} : { renders: [...s.renders, r] })),
+  completeRender: (key, analysis, matchGainDB) => set((s) => {
+    const r = findRender(s, key);
+    if (!r) return {};
+    return {
+      renders: s.renders.map((x) => (x === r ? { ...r, analysis, matchGainDB } : x)),
+      ...(s.processedBuffer === r.buffer ? { processedAnalysis: analysis, matchGainDB } : {}),
+    };
+  }),
+  setVariantSuggestion: (v) => set({ variantSuggestion: v }),
+  clearVariants: () => set((s) => (Object.keys(s.variants).length === 0 && s.renders.length === 0
+    ? {} : { variants: {}, renders: [], variantSuggestion: null })),
   setLoading: (v) => set({ loading: v }),
   setError: (e) => set({ error: e }),
   requestSeek: (position) => set({ seekRequest: position }),

@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { useAudioEngine } from '../../hooks/useAudioEngine';
+import { useAudioEngine, variantFor } from '../../hooks/useAudioEngine';
 import { useStore } from '../../store/store';
 import { saveCustomPreset, deleteCustomPreset, type CustomPreset } from '../../audio/customPresets';
 import type { RecipeOption } from '../../wasm/engine';
@@ -19,6 +19,8 @@ import type { RecipeOption } from '../../wasm/engine';
 //   3. Fix problems?             → corrections from the analysis
 // The choices combine — a rock song for a podcast keeps rock's tone and
 // gets podcast loudness — and any change updates the preview by itself.
+// Then 4. Pick a version: four finishes of that choice, rendered in
+// parallel so they can be compared while listening (track only).
 // The album screens reuse the pieces below (components/album).
 export const MasterPanel: React.FC = () => {
   const options = useStore((s) => s.recipeOptions);
@@ -48,6 +50,8 @@ export const MasterPanel: React.FC = () => {
       >
         <FixList subject="track" expectStyle={choice.style} />
       </Step>
+
+      <VariantStep n={4} />
 
       <Divider />
 
@@ -112,13 +116,89 @@ export const DestinationStep: React.FC<{ n: number; hint?: string }> = ({ n, hin
   );
 };
 
+/** "Pick a version": the four versions of the choice above. They are
+ *  rendered in parallel in the background (wasm/variantPool.ts); a
+ *  rendered one plays at once when picked, so they compare by ear. */
+const VariantStep: React.FC<{ n: number }> = ({ n }) => {
+  const options = useStore((s) => s.recipeOptions);
+  const selected = useStore((s) => (s.customPreset === null ? s.choice.variant : null));
+  const variants = useStore((s) => s.variants);
+  const renders = useStore((s) => s.renders);
+  const suggestion = useStore((s) => s.variantSuggestion);
+  const setChoice = useStore((s) => s.setChoice);
+  const setListenMode = useStore((s) => s.setListenMode);
+  const list = options?.variants ?? [];
+  const ready = (id: string) => {
+    const key = variants[id]?.key;
+    return !!key && renders.some((r) => r.key === key);
+  };
+  const readyCount = list.filter((v) => ready(v.id)).length;
+  const started = Object.keys(variants).length > 0;
+  const suggested = list.find((v) => v.id === suggestion?.variant);
+
+  return (
+    <Step n={n} title="Pick a version" hint="same loudness, different finish">
+      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.75, mb: 0.75 }}>
+        {list.map((v) => {
+          const on = selected === v.id;
+          const st = variants[v.id];
+          return (
+            <Box
+              key={v.id}
+              onClick={() => { setChoice({ variant: v.id }); setListenMode('processed'); }}
+              sx={{
+                p: 0.9, borderRadius: 1, cursor: 'pointer', userSelect: 'none',
+                border: 1, borderColor: on ? 'primary.main' : 'rgba(255,255,255,0.12)',
+                bgcolor: on ? 'rgba(108,99,255,0.14)' : 'rgba(255,255,255,0.03)',
+                transition: 'all 0.15s',
+                '&:hover': { borderColor: on ? 'primary.main' : 'rgba(108,99,255,0.5)' },
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.25 }}>
+                <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: on ? 'primary.main' : 'text.primary' }}>
+                  {v.name}
+                </Typography>
+                {suggestion?.variant === v.id && (
+                  <Chip label="Suggested" size="small" color="secondary" variant="outlined"
+                    sx={{ height: 16, fontSize: '0.58rem', '& .MuiChip-label': { px: 0.6 } }} />
+                )}
+                <Box sx={{ ml: 'auto', display: 'flex' }}>
+                  {st?.rendering && (
+                    <Tooltip title="Rendering this version…"><CircularProgress size={10} /></Tooltip>
+                  )}
+                </Box>
+              </Box>
+              <Typography variant="body2" sx={{ fontSize: '0.64rem', color: 'text.secondary', lineHeight: 1.35 }}>
+                {v.description}
+              </Typography>
+            </Box>
+          );
+        })}
+      </Box>
+      {suggested && suggestion && (
+        <Caption><strong>Suggested: {suggested.name}.</strong> {suggestion.reason}</Caption>
+      )}
+      <Caption sx={{ mt: 0.25 }}>
+        {selected === null
+          ? 'A saved preset is loaded — pick a version to go back to the choices above.'
+          : !started
+            ? 'The versions are prepared once the track is analyzed.'
+            : readyCount < list.length
+              ? `Preparing the versions… ${readyCount} of ${list.length} ready.`
+              : 'All ready: pick one while playing to hear it at once.'}
+      </Caption>
+    </Step>
+  );
+};
+
 // The applied recipe of the active track, once it matches what is
 // selected (expectStyle: the style the track should be built with).
 function useCurrentRecipe(expectStyle: string) {
   return useStore((s) => {
     const r = s.recipe;
     if (s.customPreset !== null || !r) return null;
-    return r.style === expectStyle && r.destination === s.choice.destination && r.fix === s.choice.fix ? r : null;
+    return r.style === expectStyle && r.destination === s.choice.destination && r.fix === s.choice.fix
+      && r.variant === variantFor(s) ? r : null;
   });
 }
 
