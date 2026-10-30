@@ -153,7 +153,8 @@ export function Lyrics({ track }) {
                   }}
                 />
               )}
-              {line}
+              {/* An empty line keeps its height, to show it and its highlight */}
+              {line.trim() === "" ? " " : line}
             </div>
           ))}
         </div>
