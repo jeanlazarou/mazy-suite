@@ -148,6 +148,7 @@ Shortcuts are inactive while the lyrics textarea has focus.
 | <kbd>Esc</kbd> | Cancel the change |
 | <kbd>Shift</kbd>+<kbd>←</kbd> / <kbd>→</kbd> | Move the region |
 | <kbd>↑</kbd> / <kbd>↓</kbd> | Move the region end later / earlier |
+| <kbd>End</kbd> / <kbd>e</kbd> | Move the region end to the playback position — ignored if it would cross the next region or leave the region empty |
 | <kbd>Shift</kbd>+<kbd>↓</kbd> / <kbd>↑</kbd> | Move the region start earlier / later |
 | <kbd>s</kbd> | Store the region range (**R** memory) |
 | <kbd>Shift</kbd>+<kbd>S</kbd> | Shift the stored range to the playback position |

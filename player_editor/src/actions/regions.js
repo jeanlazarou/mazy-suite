@@ -11,6 +11,10 @@ export const isUpdatingRegion = () => {
   return updatingRegion !== undefined;
 };
 
+export const updatingRegionStart = () => {
+  return updatingRegion?.start;
+};
+
 export const selectRegion = (region) => {
   updatingRegion = region;
 };

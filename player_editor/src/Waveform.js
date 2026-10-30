@@ -208,6 +208,8 @@ class AudioEngine {
     }
   };
 
+  hasRegion = () => timingRegion !== undefined;
+
   getRegion = () => {
     return timingRegion
       ? { start: timingRegion.start, end: timingRegion.end }

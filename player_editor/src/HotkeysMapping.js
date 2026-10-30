@@ -12,6 +12,7 @@ import { gotoMemorizedPosition } from "./actions/goto_memorized_position";
 import { memorizePosition } from "./actions/memorize_position";
 import { moveRegionToTheLeft } from "./actions/move_region_to_the_left";
 import { moveRegionToTheRight } from "./actions/move_region_to_the_right";
+import { moveRegionEndToPosition } from "./actions/move_region_end_to_position";
 import { playPause } from "./actions/toggle_play";
 import { requestCheck } from "./actions/check_request";
 import { requestOpen } from "./actions/open_files_request";
@@ -106,6 +107,9 @@ export const processHotkeys = async (e, get, set) => {
     acceptRegionChange(get, set);
   } else if (e.key === "Home") {
     movePlaybackPositionHome(get, set);
+  } else if (e.key === "End" || e.key === "e") {
+    moveRegionEndToPosition(get, set);
+    e.preventDefault();
   } else if (e.key === "ArrowLeft") {
     if (e.shiftKey) {
       moveRegionToTheLeft(get, set);

@@ -55,6 +55,7 @@ const groups = [{
     aliasesKeys("Insert", ["Insert"], ["I"]),
     simpleKey("Move to the left", SHIFT, "LeftArrow"),
     simpleKey("Move to the right", SHIFT, "RightArrow"),
+    aliasesKeys("Move upper to playback position", ["End"], ["E"]),
     simpleKey("Select", "S"),
     simpleKey("Shift", SHIFT, "S"),
   ]
