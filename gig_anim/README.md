@@ -140,6 +140,9 @@ a camera and a page served over `https` or from `localhost`; on a plain `http`
 page from another machine, copy and paste the codes instead (AirDrop or the
 Universal Clipboard between Apple devices, for instance).
 
+How the link works, and why it is built that way:
+[docs/peer-link.md](../docs/peer-link.md).
+
 ## Stating in edit mode
 
 You can pass `edit` parameter in the url to enter edit mode. Example: `http://localhost:5173/?edit=true`.

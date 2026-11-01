@@ -46,7 +46,7 @@ App (state: albums, selected album/track, playback)
 
 **Keyboard shortcuts** (defined in `App.tsx`): Space = play/pause, ← = previous track, → = next track.
 
-**gig_anim link:** no server — `utils/peerLink.ts` makes the invite (offer) and takes the reply (answer); codes carry only the SDP fields that change (kind, mid, ICE ufrag/pwd, sha-256 fingerprint, UDP host candidates), ~175 characters, and the other side rebuilds the SDP. No STUN/TURN: same-network only. `utils/peerLink.ts` and `utils/qrCode.ts` are shared with gig_anim and must stay identical in both apps.
+**gig_anim link:** no server — `utils/peerLink.ts` makes the invite (offer) and takes the reply (answer); codes carry only the SDP fields that change (kind, mid, ICE ufrag/pwd, sha-256 fingerprint, UDP host candidates), ~175 characters, and the other side rebuilds the SDP. No STUN/TURN: same-network only. `utils/peerLink.ts` and `utils/qrCode.ts` are shared with gig_anim and must stay identical in both apps. The full design is in `docs/peer-link.md` at the suite root.
 
 ## Data Files
 

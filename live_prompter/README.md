@@ -19,3 +19,6 @@ back; the button turns green once linked. The steps on the gig_anim side are in
 
 Reloading either page ends the link. Scanning a reply needs a camera and a page
 served over `https` or from `localhost`; otherwise copy and paste the codes.
+
+How the link works, and why it is built that way:
+[docs/peer-link.md](../docs/peer-link.md).
