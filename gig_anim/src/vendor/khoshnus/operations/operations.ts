@@ -7,6 +7,11 @@ import {
   EraseConfiguration
 } from '../types';
 
+// Ids for the written texts: crypto.randomUUID() is missing on plain http
+// pages, and an id starting with a digit isn't a valid "#id" selector
+let textCount = 0;
+const nextTextId = (): string => `khoshnus-text-${++textCount}`;
+
 export const checkDeclaration = (svgId: string): void => {
   const svg = document.getElementById(svgId) || document.getElementById(KHOSHNUS_SVG_ID);
   if (!svg) throw new Error("Khoshnus SVG not initiated.");
@@ -162,7 +167,7 @@ export const write = (
   checkDeclaration(svgId);
   const { textElementAttributes, writeConfiguration } = validateAndReturnConfiguration(writingConfiguration);
   const svg = document.getElementById(svgId) || document.getElementById(KHOSHNUS_SVG_ID);
-  const textId = crypto.randomUUID();
+  const textId = nextTextId();
 
   if (!svg) {
     throw new Error("SVG element not found");

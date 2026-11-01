@@ -81,12 +81,10 @@ export const ManuscriptAnimation: React.FC<ManuscriptAnimationProps> = ({ lyrics
   useEffect(() => {
     const loadFonts = async () => {
       try {
+        // Declared in khoshnus/style.css, from files next to it or Google
+        // Fonts: loaded before writing, since the layout measures the letters
         await Promise.all(
-          SELECTED_FONTS.map(async (fontName) => {
-            const font = new FontFace(fontName, `url("/fonts/${fontName}.ttf")`);
-            await font.load();
-            document.fonts.add(font);
-          })
+          SELECTED_FONTS.map(fontName => document.fonts.load(`16px "${fontName}"`))
         );
         setIsReady(true);
       } catch (error) {
