@@ -1,0 +1,52 @@
+.split-flap-board {
+  display: grid;
+  gap: calc(var(--cell) * 0.08);
+}
+
+.split-flap-cell {
+  position: relative;
+  width: var(--cell);
+  height: calc(var(--cell) * 1.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: calc(var(--cell) * 0.08);
+  background: linear-gradient(#1d1d1f 50%, #151517 50%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 2px 4px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  perspective: 300px;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-weight: 700;
+  font-size: calc(var(--cell) * 0.95);
+  line-height: 1;
+}
+
+/* The split between the two halves of a flap */
+.split-flap-cell::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: rgba(0, 0, 0, 0.85);
+}
+
+/* Each new character drops in, as the next flap falls */
+.split-flap-char {
+  display: block;
+  transform-origin: 50% 50%;
+  animation: split-flap-drop 70ms ease-in;
+}
+
+@keyframes split-flap-drop {
+  from {
+    transform: rotateX(80deg);
+    opacity: 0.5;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}

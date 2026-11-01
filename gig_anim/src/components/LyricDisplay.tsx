@@ -20,6 +20,14 @@ import WaveAnimation from './WaveAnimation';
 import ConstellationAnimation from './ConstellationAnimation';
 import TypographyAnimation from './TypographyAnimation';
 import ManuscriptAnimation from './ManuscriptAnimation';
+import SplitFlapAnimation from './SplitFlapAnimation';
+import EchoAnimation from './EchoAnimation';
+import WordCloudAnimation from './WordCloudAnimation';
+import WarpAnimation from './WarpAnimation';
+import NeonAnimation from './NeonAnimation';
+import MosaicAnimation from './MosaicAnimation';
+import GlitchAnimation from './GlitchAnimation';
+import SpotlightAnimation from './SpotlightAnimation';
 
 import '../vendor/khoshnus/style.css'
 
@@ -104,6 +112,22 @@ export const LyricDisplay: React.FC<LyricDisplayProps> = ({ performanceData, cur
                 return <ConstellationAnimation lyrics={lyrics} theme={currentTheme} />;
             case 'typography':
                 return <TypographyAnimation lyrics={lyrics} theme={currentTheme} />;
+            case 'splitflap':
+                return <SplitFlapAnimation lyrics={lyrics} theme={currentTheme} />;
+            case 'echo':
+                return <EchoAnimation lyrics={lyrics} theme={currentTheme} />;
+            case 'cloud':
+                return <WordCloudAnimation lyrics={lyrics} theme={currentTheme} />;
+            case 'warp':
+                return <WarpAnimation lyrics={lyrics} theme={currentTheme} />;
+            case 'neon':
+                return <NeonAnimation lyrics={lyrics} theme={currentTheme} />;
+            case 'mosaic':
+                return <MosaicAnimation lyrics={lyrics} theme={currentTheme} album={currentAlbum!} />;
+            case 'glitch':
+                return <GlitchAnimation lyrics={lyrics} theme={currentTheme} />;
+            case 'spotlight':
+                return <SpotlightAnimation lyrics={lyrics} theme={currentTheme} />;
             default:
                 return (
                     <>

@@ -1,0 +1,50 @@
+.warp-space {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  perspective: 800px;
+  perspective-origin: 50% 50%;
+}
+
+/* Lines and stars hang from the vanishing point, at the center */
+.warp-anchor {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+
+.warp-line {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font-size: 3rem;
+  font-weight: 700;
+}
+
+.warp-star {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: warp-star linear infinite;
+  opacity: 0;
+}
+
+@keyframes warp-star {
+  0% {
+    transform: translate3d(var(--x), var(--y), -3000px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate3d(var(--x), var(--y), 780px);
+    opacity: 0.9;
+  }
+}

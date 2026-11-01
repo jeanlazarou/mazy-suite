@@ -227,18 +227,26 @@ export const EditMode: React.FC<EditModeProps> = ({
                     >
                         <MenuItem value="carousel">Carousel</MenuItem>
                         <MenuItem value="constellation">Constellation</MenuItem>
+                        <MenuItem value="mosaic">Cover mosaic</MenuItem>
                         <MenuItem value="default">Default</MenuItem>
+                        <MenuItem value="echo">Echo</MenuItem>
                         <MenuItem value="fade">Fade</MenuItem>
                         <MenuItem value="falling">Falling</MenuItem>
+                        <MenuItem value="glitch">Glitch</MenuItem>
                         <MenuItem value="manuscript">Manuscript</MenuItem>
+                        <MenuItem value="neon">Neon</MenuItem>
                         <MenuItem value="none">None</MenuItem>
                         <MenuItem value="grid">Grid</MenuItem>
                         <MenuItem value="spiral">Spiral</MenuItem>
+                        <MenuItem value="splitflap">Split-flap board</MenuItem>
+                        <MenuItem value="spotlight">Spotlight (follows the prompter)</MenuItem>
                         <MenuItem value="teletype">Teletype</MenuItem>
                         <MenuItem value="typewriter">Typewriter</MenuItem>
                         <MenuItem value="typography">Typography</MenuItem>
                         <MenuItem value="wall">Wall</MenuItem>
+                        <MenuItem value="warp">Warp</MenuItem>
                         <MenuItem value="wave">Wave</MenuItem>
+                        <MenuItem value="cloud">Word cloud</MenuItem>
                     </Select>
                 </FormControl>
                 <TextField
