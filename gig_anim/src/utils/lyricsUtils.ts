@@ -11,7 +11,8 @@ export const parseSRT = (srtContent: string): Lyric[] => {
 
 const timeToSeconds = (time: string): number => {
   const [hours, minutes, seconds] = time.split(":");
+  // SRT writes the milliseconds after a comma: "00:01:23,459"
   return (
-    parseFloat(hours) * 3600 + parseFloat(minutes) * 60 + parseFloat(seconds)
+    parseFloat(hours) * 3600 + parseFloat(minutes) * 60 + parseFloat(seconds.replace(",", "."))
   );
 };
