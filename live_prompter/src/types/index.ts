@@ -1,5 +1,6 @@
 export interface Album {
   name: string;
+  image?: string; // cover file extension, "jpg" when missing
 }
 
 export interface Track {

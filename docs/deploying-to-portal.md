@@ -13,7 +13,8 @@ workflow, which only works once the app can actually run from a subpath
 instead of the domain root. That's the part that needs per-app checking.
 
 This was done for `player`, `massembler`, `mix-mastering`, `gig_anim`,
-`lyrics-cards` and `player_editor`, and (below) surveyed for the rest. Use
+`lyrics-cards`, `player_editor`, `lyrics_book`, `twin_diff`,
+`sequence-builder` and `live_prompter`, and (below) surveyed for the rest. Use
 this doc to bring the remaining ones online.
 
 ## Why a subpath breaks apps that weren't built for it
@@ -152,9 +153,8 @@ allowBuilds:
   esbuild: true
 ```
 
-`gig_anim`, `lyrics-cards` and `live_prompter` have no `pnpm-workspace.yaml`
-at all, so watch the CI install step for a blocked-build warning when you get
-to them.
+Every deployed app has one now; for a new app without it, watch the CI install
+step for a blocked-build warning.
 
 ### 4. Verify locally before pushing
 
@@ -240,7 +240,7 @@ proves what GitHub actually serves.
 | gig_anim | `./` | `API_BASE_URL = "/data"` in `endpoints.ts`, plus the same literal inline in 8 components | **deployed**; needed the demo `default_performance.json` file too (see below), the app has no album-browsing mode, only a performance-file mode |
 | lyrics-cards | `./` | `fetch('/data/albums.json')` ×2 in `DataPathHelper.ts` | **deployed**; no source fix needed — those are self-probing fallback attempts in an existing `../data`-first detection hook, confirmed by watching actual network requests rather than trusting the static grep |
 | player_editor | `./` (in `vite.config.js`, a `.js` file — the earlier survey only grepped `.ts` and missed it) | absolute favicon/apple-touch-icon/manifest in `index.html` | **deployed**; same class of fix as massembler, base was already fine |
-| live_prompter | default (`/`) | `fetch('/data/albums.json')` in `App.tsx` | needs both fixes |
+| live_prompter | `./` | `/data/...` in 3 fetches in `App.tsx`, the lyrics fetch in `useLyrics.ts` and the covers in `Sidebar.tsx`; absolute `/vite.svg` favicon (a file it never had) in `index.html` | **deployed**; one `DATA = '../data'` constant in `utils/paths.ts`, covers take the extension from `albums.json`'s `image` (the demo's Back to Normal is a png), an inline favicon, and it joins sequence-builder's `SUITE_SITE` branch since its `public/` holds only the data/music links. `AlbumTrackSelector.tsx` still has a `/data/` literal but nothing imports it |
 | track_mixer | default (`/`) | `fetch('/__suite/list')` in `api.js` | needs base fix; confirm the `/__suite/list` call is dev-only before touching it |
 | groove_lab | default (`/`) | none found | needs `base: './'` |
 | sequence-builder | `./` | none — it had no album loading at all, only a local file picker | **deployed**; now reads the shared albums (`./data` probe, `../data` fallback, like twin_diff), has its own `build_site.sh` branch (`SUITE_SITE=1` skips copying `public/`, whose music link can be a whole collection); verified on a locally assembled site under `/mazy-suite/` |

@@ -26,6 +26,8 @@ No test framework is configured.
 4. SRT files are parsed into timed `LyricLine` objects (`srtParser.ts`)
 5. WaveSurfer renders waveform with lyric regions; `LyricDisplay` shows current + upcoming lyrics
 
+Data URLs go through `DATA = '../data'` (`utils/paths.ts`), never a literal `/data`: the app is also deployed on the portal site under `/mazy-suite/live_prompter/`, with the shared data one level up (see `docs/deploying-to-portal.md` at the suite root). Album covers are `{albumName}.{image}`, `image` from `albums.json`, `jpg` by default.
+
 **Key hooks:**
 - `useAudioPlayer` — Wraps WaveSurfer instance, manages playback state, volume, regions
 - `useLyrics` — Fetches/parses SRT files, provides `getCurrentLyric()` and `getUpcomingLyrics()`

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { LyricLine } from '../types';
 import { parseSRT, getLyricFileName } from '../utils/srtParser';
+import { DATA } from '../utils/paths';
 
 export function useLyrics(trackTitle: string | null) {
   const [lyrics, setLyrics] = useState<LyricLine[]>([]);
@@ -19,7 +20,7 @@ export function useLyrics(trackTitle: string | null) {
       
       try {
         const fileName = getLyricFileName(trackTitle);
-        const response = await fetch(`/data/lyrics/${fileName}.srt`);
+        const response = await fetch(`${DATA}/lyrics/${fileName}.srt`);
         
         if (!response.ok) {
           throw new Error(`Lyrics not found for "${fileName}"`);

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Album, AlbumData, Track, CustomPlaylistTrack } from './types';
 import { PrompterState } from './utils/peerLink';
+import { DATA } from './utils/paths';
 import { arrayMove } from '@dnd-kit/sortable';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
 import { useLyrics } from './hooks/useLyrics';
@@ -79,7 +80,7 @@ function App() {
   useEffect(() => {
     const loadAlbums = async () => {
       try {
-        const response = await fetch('/data/albums.json');
+        const response = await fetch(`${DATA}/albums.json`);
         if (!response.ok) {
           throw new Error('Failed to load albums');
         }
@@ -89,7 +90,7 @@ function App() {
         const albumsWithTitles = await Promise.all(
           albumsData.map(async (album: Album) => {
             try {
-              const albumResponse = await fetch(`/data/${album.name}.json`);
+              const albumResponse = await fetch(`${DATA}/${album.name}.json`);
               if (albumResponse.ok) {
                 const albumInfo = await albumResponse.json();
                 return { ...album, title: albumInfo.title };
@@ -129,7 +130,7 @@ function App() {
       try {
         setAlbumData(null);
 
-        const response = await fetch(`/data/${selectedAlbum}.json`);
+        const response = await fetch(`${DATA}/${selectedAlbum}.json`);
         if (!response.ok) {
           throw new Error(`Failed to load album: ${selectedAlbum}`);
         }

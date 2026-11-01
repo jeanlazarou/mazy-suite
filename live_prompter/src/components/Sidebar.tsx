@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Album, AlbumData, Track, CustomPlaylistTrack } from '../types';
 import { CustomPlaylistView } from './CustomPlaylistView';
 import { usePlaylistDuration, formatDuration } from '../hooks/usePlaylistDuration';
+import { DATA } from '../utils/paths';
 import {
   Music,
   ChevronRight,
@@ -79,8 +80,8 @@ export function Sidebar({
     setImageErrors(prev => new Set(prev).add(albumName));
   };
 
-  const getAlbumCoverUrl = (albumName: string) => {
-    return `/data/${albumName}.jpg`;
+  const getAlbumCoverUrl = (album: Album) => {
+    return `${DATA}/${album.name}.${album.image || 'jpg'}`;
   };
 
   const handleAlbumSelect = (albumName: string) => {
@@ -337,7 +338,7 @@ export function Sidebar({
                             <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md flex-shrink-0">
                               {!hasImageError ? (
                                 <img
-                                  src={getAlbumCoverUrl(album.name)}
+                                  src={getAlbumCoverUrl(album)}
                                   alt={`${displayName} album cover`}
                                   className="w-full h-full object-cover transition-transform duration-200 hover:scale-110"
                                   onError={() => handleImageError(album.name)}

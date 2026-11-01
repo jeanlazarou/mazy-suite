@@ -2,7 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <!-- Lyric lines, the one being sung lit up. Inline: public/ isn't part of
+         the portal build, and an absolute "/..." would escape its /mazy-suite/
+         prefix. -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%234F46E5%22/><rect x=%2216%22 y=%2214%22 width=%2232%22 height=%226%22 rx=%223%22 fill=%22%23A5B4FC%22/><rect x=%228%22 y=%2227%22 width=%2248%22 height=%2210%22 rx=%225%22 fill=%22%23FFFFFF%22/><rect x=%2220%22 y=%2244%22 width=%2224%22 height=%226%22 rx=%223%22 fill=%22%23A5B4FC%22/></svg>"
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Live Concert Lyric Prompter</title>
   </head>
