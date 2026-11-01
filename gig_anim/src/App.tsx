@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { PerformanceData } from './types';
+import { PerformanceData, Track } from './types';
 import { fetchPerformanceData } from './api/endpoints';
 import { EditMode } from './components/EditMode';
 import { LyricDisplay } from './components/LyricDisplay';
-import { useWebSocket } from './hooks/useWebSocket';
 import { ExternalCommandsProvider, useExternalCommands } from './context/ExternalCommandsContext';
 import { PlaybackProvider, usePlayback } from './context/PlaybackContext';
 
@@ -15,15 +14,21 @@ type Command =
   | { type: 'START' }
   | { type: 'NEXT' }
   | { type: 'PREVIOUS' }
-  | { type: 'PLAY_TRACK', trackName: string }
   | { type: 'TOGGLE_EDIT_MODE' };
+
+// By url first, then by title: the performance usually plays the live
+// playback files while the prompter's albums point at the studio ones
+const findTrackIndex = (tracks: Track[], track: { url: string; title: string }) => {
+  const byUrl = tracks.findIndex(t => t.id === track.url);
+  return byUrl !== -1 ? byUrl : tracks.findIndex(t => t.title.toLowerCase() === track.title.toLowerCase());
+};
 
 const AppContent: React.FC = () => {
   const [performanceData, setPerformanceData] = useState<PerformanceData | null>(null);
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [performanceFile, setPerformanceFile] = useState<string>('default_performance.json');
 
-  const { wsUrl, enabled, setEnabled, setWsUrl } = useExternalCommands();
+  const { enabled, setEnabled, prompterState } = useExternalCommands();
 
   const {
     isPlaying,
@@ -54,41 +59,23 @@ const AppContent: React.FC = () => {
           );
         }
         break;
-      case 'PLAY_TRACK':
-        if (performanceData) {
-          const trackIndex = performanceData.tracks.findIndex(
-            track => track.title.toLowerCase() === command.trackName.toLowerCase()
-          );
-          if (trackIndex !== -1) {
-            setCurrentTrackIndex(trackIndex);
-            setIsPlaying(true);
-          }
-        }
-        break;
       case 'TOGGLE_EDIT_MODE':
-        setEnabled(false);
-        setIsEditMode(prev => !prev);
+        // Follow the prompter in show mode only, the link stays up meanwhile
+        setEnabled(isEditMode);
+        setIsEditMode(!isEditMode);
         break;
     }
-  }, [enabled, performanceData, setIsPlaying, currentTrackIndex, setCurrentTrackIndex]);
+  }, [isEditMode, performanceData, setIsPlaying, currentTrackIndex, setCurrentTrackIndex, setEnabled]);
 
-  const handleWebSocketMessage = useCallback((message: { type: string; trackId?: string }) => {
-    if (!enabled) return;
+  // Follow the linked prompter: its track, shown while it plays. A track that
+  // isn't in the performance shows nothing rather than another song's words.
+  useEffect(() => {
+    if (!enabled || !performanceData || !prompterState) return;
 
-    switch (message.type) {
-      case 'trackStart':
-        if (message.trackId && performanceData) {
-          const track = performanceData.tracks.find(t => t.id === message.trackId);
-          if (track) {
-            executeCommand({ type: 'PLAY_TRACK', trackName: track.title });
-          }
-        }
-        break;
-      case 'trackStop':
-        executeCommand({ type: 'STOP' });
-        break;
-    }
-  }, [executeCommand, performanceData, enabled]);
+    const index = prompterState.track ? findTrackIndex(performanceData.tracks, prompterState.track) : -1;
+    if (index !== -1) setCurrentTrackIndex(index);
+    setIsPlaying(index !== -1 && prompterState.playing);
+  }, [prompterState, enabled, performanceData, setCurrentTrackIndex, setIsPlaying]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -97,12 +84,6 @@ const AppContent: React.FC = () => {
 
     const file = urlParams.get("performance") || "default_performance.json";
     setPerformanceFile(file);
-
-    // Get WebSocket URL from URL parameters or use default
-    const wsUrl = urlParams.get("wsUrl");
-    if (wsUrl) {
-      setWsUrl(`ws://${wsUrl}`);
-    }
 
     const loadPerformanceData = async () => {
       try {
@@ -120,6 +101,11 @@ const AppContent: React.FC = () => {
     if (!isEditMode) document.body.style.cursor = 'none';
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Typing in a field, like the prompter link's invite, isn't a command
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
       if (event.key === 'ArrowRight') {
         executeCommand({ type: 'NEXT' });
       } else if (event.key === 'ArrowLeft') {
@@ -147,39 +133,16 @@ const AppContent: React.FC = () => {
     setCurrentTrack(performanceData.tracks[currentTrackIndex]);
   }, [performanceData, currentTrackIndex, setCurrentTrack]);
 
-  const { error } = useWebSocket({
-    wsUrl,
-    onMessage: handleWebSocketMessage,
-  });
-
   if (!performanceData) {
     return <div>Loading...</div>;
   }
 
   if (isEditMode) {
-    return <EditMode
-      performanceFile={performanceFile}
-      wsUrl={wsUrl}
-      onWsUrlChange={setWsUrl}
-    />;
+    return <EditMode performanceFile={performanceFile} />;
   }
 
   return (
     <div className="app">
-      {error && (
-        <div style={{
-          position: 'fixed',
-          top: 10,
-          right: 10,
-          padding: '8px',
-          background: 'rgba(255, 0, 0, 0.2)',
-          color: 'white',
-          borderRadius: '4px',
-          fontSize: '12px'
-        }}>
-          {error}
-        </div>
-      )}
       <AnimatePresence mode="wait">
         {isPlaying && (
           <motion.div

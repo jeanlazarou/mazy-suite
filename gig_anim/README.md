@@ -95,25 +95,45 @@ It starts playing the animations on load but you can enter the editor mode.
 
 ## Keyboard shortcuts
 
-| Shortcut    | Description                 |
-| ----------- | --------------------------- |
-| ctrl + e    | enter editor mode           |
-| ctrl + r    | reload, to exit editor mode |
-| left arrow  | navigate to previous track  |
-| right arrow | navigate to next track      |
-| space       | stop/start animation        |
+| Shortcut    | Description                                    |
+| ----------- | ---------------------------------------------- |
+| ctrl + e    | enter editor mode, and back to the show        |
+| ctrl + r    | reload, to exit editor mode (drops the link)   |
+| left arrow  | navigate to previous track                     |
+| right arrow | navigate to next track                         |
+| space       | stop/start animation                           |
 
-## Connection with a player server
+## Following the live_prompter
 
-Register to a player server WebSocket to receive start/stop commands, using a channel named `player`.
+The [live_prompter](../live_prompter/), running in another browser, on
+another device of the same network, can drive the show: gig_anim then shows
+the animation of the track the prompter is on, while it plays, and hides it
+while it is paused or stopped. Both apps can be plain static builds: they talk
+directly to each other over WebRTC, with no server in between and no internet
+needed.
 
-By default the app connects with the following URL
+The link is optional and made by hand, in two hand-offs:
 
-```
-ws://localhost:51987
-```
+1. In the prompter, click **Link gig_anim**: it shows an invite, as a QR code
+   and as text.
+2. In gig_anim, press ctrl + e and, under **Prompter link** at the bottom of
+   the panel, scan the QR code or paste the text, then click **Link**: it
+   shows a reply.
+3. Back in the prompter, scan or paste the reply and click **Connect**.
 
-You can pass `wsUrl` parameter in the url to set the player server URL. Example: `http://localhost:5173/?wsUrl=localhost:8080`.
+Press ctrl + e again to go back to the show: the link stays up. The prompter's
+commands are ignored while the editor is open, except in its fullscreen
+preview.
+
+Tracks are matched by url first, then by title (case-insensitive), because a
+performance usually plays the live playback files while the prompter's albums
+point at the studio ones. While the prompter is on a track that isn't in the
+performance, gig_anim shows nothing.
+
+Reloading either page ends the link: link again the same way. Scanning needs
+a camera and a page served over `https` or from `localhost`; on a plain `http`
+page from another machine, copy and paste the codes instead (AirDrop or the
+Universal Clipboard between Apple devices, for instance).
 
 ## Stating in edit mode
 

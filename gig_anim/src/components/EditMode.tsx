@@ -17,6 +17,7 @@ import { PerformanceData, Track, Album, AnimationType } from '../types';
 import { fetchPerformanceData, savePerformanceData, fetchAlbums, API_BASE_URL } from '../api/endpoints';
 import { defaultTheme, themes } from '../themes';
 import { AlbumSelectionDialog } from './AlbumSelectionDialog';
+import { PrompterLink } from './PrompterLink';
 import { useExternalCommands } from '../context/ExternalCommandsContext';
 import { usePlayback } from '../context/PlaybackContext';
 
@@ -24,14 +25,10 @@ import './EditMode.css';
 
 interface EditModeProps {
     performanceFile: string;
-    wsUrl: string;
-    onWsUrlChange: (url: string) => void;
 }
 
 export const EditMode: React.FC<EditModeProps> = ({
-    performanceFile,
-    wsUrl,
-    onWsUrlChange
+    performanceFile
 }) => {
     const [performanceData, setPerformanceData] = useState<PerformanceData | null>(null);
     const [albums, setAlbums] = useState<Album[]>([]);
@@ -279,16 +276,7 @@ export const EditMode: React.FC<EditModeProps> = ({
                     </Button>
                 </Box>
                 <Divider variant="middle" component="li" />
-                <Box mt={2}>
-                    <TextField
-                        fullWidth
-                        margin="normal"
-                        label="WebSocket URL"
-                        value={wsUrl}
-                        onChange={(e) => onWsUrlChange(e.target.value)}
-                        helperText="WebSocket server URL for player integration"
-                    />
-                </Box>
+                <PrompterLink />
             </div>
             <Dialog
                 open={isAlbumDialogOpen}
