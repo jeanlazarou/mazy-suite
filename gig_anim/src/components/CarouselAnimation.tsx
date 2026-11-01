@@ -70,7 +70,8 @@ export const CarouselAnimation: React.FC<CarouselAnimationProps> = ({ lyrics, th
                         textShadow: '2px 2px 4px rgba(0,0,0,0.5)'
                     }}
                 >
-                    {lyrics[currentIndex].text}
+                    {/* No lyrics until they load, or ever if the SRT is missing */}
+                    {lyrics[currentIndex]?.text}
                 </motion.div>
             </AnimatePresence>
             <motion.img

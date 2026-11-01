@@ -41,27 +41,35 @@ export const FadeAnimation: React.FC<FadeAnimationProps> = ({ lyrics, theme, alb
         return gridPositions;
     }, []);
 
-    const getNextItem = (currentId: number): PositionedItem => {
+    // Each grid spot keeps its position while its lyric changes
+    const getNextItem = (spot: number, currentId: number): PositionedItem => {
         const nextId = (currentId + 1) % lyrics.length;
         const isAlbumCover = (Math.random() * 100) <= 13;
         return {
             id: nextId,
             content: isAlbumCover ? album.coverImage : lyrics[nextId].text,
-            position: positions[currentId % NUM_POSITIONS],
+            position: positions[spot % NUM_POSITIONS],
             isImage: isAlbumCover
         };
     };
 
     useEffect(() => {
+        // The lyrics load after the first render (and never if the SRT is
+        // missing): with none, there is nothing to show yet
+        if (lyrics.length === 0) {
+            setVisibleItems([]);
+            return;
+        }
+
         // Initialize positions with lyrics and album cover
-        setVisibleItems(positions.map((_pos, index) => getNextItem(index)));
+        setVisibleItems(positions.map((_pos, index) => getNextItem(index, index)));
 
         // Set up intervals for each position
         const intervals = positions.map((_, index) => {
             return setInterval(() => {
                 setVisibleItems(prev => {
                     const newItems = [...prev];
-                    newItems[index] = getNextItem(newItems[index].id);
+                    newItems[index] = getNextItem(index, newItems[index].id);
                     return newItems;
                 });
             }, 5000 + Math.random() * 2000); // Change every 5-7 seconds
