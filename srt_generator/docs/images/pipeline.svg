@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 700" width="820" height="700" role="img" aria-label="Pipeline diagram: the song is optionally separated into a vocal stem by demucs, decoded once to a 16 kHz mono array, force-aligned against the lyrics file, trimmed against that same decoded array by an energy gate, passed through the invariant pass, and written as SRT for player_editor.">
+  <title>srt_generator pipeline</title>
+
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5A6B73"/>
+    </marker>
+    <marker id="ar-sig" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#A96A06"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="820" height="700" fill="#F1F3F2"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12" fill="#121A20">
+
+    <!-- inputs -->
+    <rect x="40" y="37" width="176" height="44" fill="#E6EAE9" stroke="#B3BFBE"/>
+    <text x="128" y="64" text-anchor="middle">song.mp3 · full mix</text>
+    <line x1="216" y1="59" x2="248" y2="59" stroke="#5A6B73" stroke-width="1.4" marker-end="url(#ar)"/>
+
+    <rect x="40" y="233" width="176" height="44" fill="#E6EAE9" stroke="#B3BFBE"/>
+    <text x="128" y="260" text-anchor="middle">lyrics.txt</text>
+    <text x="128" y="294" text-anchor="middle" font-size="11" fill="#5A6B73">omit → transcribe()</text>
+    <line x1="216" y1="255" x2="248" y2="255" stroke="#5A6B73" stroke-width="1.4" marker-end="url(#ar)"/>
+
+    <!-- 1. separate -->
+    <rect x="260" y="30" width="300" height="58" fill="#FFFFFF" stroke="#B3BFBE" stroke-dasharray="4 3"/>
+    <text x="278" y="52">separate.separate_vocals</text>
+    <text x="278" y="72" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" fill="#5A6B73">htdemucs, two-stem · --mix only</text>
+    <line x1="410" y1="88" x2="410" y2="122" stroke="#5A6B73" stroke-width="1.4" marker-end="url(#ar)"/>
+    <text x="422" y="112" font-size="11" fill="#5A6B73">vocals.wav — cached in separated/</text>
+
+    <!-- 2. decode -->
+    <rect x="260" y="128" width="300" height="58" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="278" y="150">align.load_audio</text>
+    <text x="278" y="170" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" fill="#5A6B73">decode once → 16 kHz mono</text>
+    <line x1="410" y1="186" x2="410" y2="220" stroke="#5A6B73" stroke-width="1.4" marker-end="url(#ar)"/>
+    <text x="422" y="210" font-size="11" fill="#5A6B73">float32 array</text>
+
+    <!-- the shared array -->
+    <path d="M 560 157 H 664 V 353 H 570" fill="none" stroke="#A96A06" stroke-width="1.4" stroke-dasharray="5 3" marker-end="url(#ar-sig)"/>
+    <text x="676" y="246" font-size="11" fill="#A96A06">the same</text>
+    <text x="676" y="262" font-size="11" fill="#A96A06">array, not</text>
+    <text x="676" y="278" font-size="11" fill="#A96A06">a re-decode</text>
+
+    <!-- 3. align -->
+    <rect x="260" y="226" width="300" height="58" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="278" y="248">align.align_lyrics</text>
+    <text x="278" y="268" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" fill="#5A6B73">stable-ts forced alignment</text>
+    <line x1="410" y1="284" x2="410" y2="318" stroke="#5A6B73" stroke-width="1.4" marker-end="url(#ar)"/>
+    <text x="422" y="308" font-size="11" fill="#5A6B73">(start, end, text) × N lines</text>
+
+    <!-- 4. trim -->
+    <rect x="260" y="324" width="300" height="58" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="278" y="346">trim.trim_segments</text>
+    <text x="278" y="366" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" fill="#5A6B73">RMS gate snaps edges inward</text>
+    <line x1="410" y1="382" x2="410" y2="416" stroke="#5A6B73" stroke-width="1.4" marker-end="url(#ar)"/>
+    <text x="422" y="406" font-size="11" fill="#5A6B73">edges on real singing</text>
+
+    <!-- 5. invariants -->
+    <rect x="260" y="422" width="300" height="58" fill="#DCEDEE" stroke="#136B77"/>
+    <text x="278" y="444" fill="#136B77">srt_writer.postprocess</text>
+    <text x="278" y="464" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" fill="#136B77">the four invariants, by construction</text>
+    <line x1="410" y1="480" x2="410" y2="514" stroke="#5A6B73" stroke-width="1.4" marker-end="url(#ar)"/>
+    <text x="422" y="504" font-size="11" fill="#5A6B73">ordered, non-overlapping</text>
+
+    <!-- 6. write -->
+    <rect x="260" y="520" width="300" height="58" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="278" y="542">srt_writer.write_srt</text>
+    <text x="278" y="562" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" fill="#5A6B73">HH:MM:SS,mmm · LF · UTF-8</text>
+    <line x1="410" y1="578" x2="410" y2="612" stroke="#5A6B73" stroke-width="1.4" marker-end="url(#ar)"/>
+    <text x="422" y="602" font-size="11" fill="#5A6B73">song.srt</text>
+
+    <!-- consumer -->
+    <rect x="290" y="618" width="240" height="46" fill="#E6EAE9" stroke="#B3BFBE"/>
+    <text x="410" y="646" text-anchor="middle">player_editor</text>
+
+  </g>
+</svg>

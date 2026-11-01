@@ -30,7 +30,7 @@ def trim_segments(audio, segments, threshold_db=-40.0, pad=0.12,
     singing from the region — harder to repair in player_editor than an
     over-long region, which is a quick edge drag.
     """
-    voiced = _voiced_frames(audio, threshold_db)
+    voiced = voiced_frames(audio, threshold_db)
 
     if voiced is None:
         return segments
@@ -40,7 +40,32 @@ def trim_segments(audio, segments, threshold_db=-40.0, pad=0.12,
     )
 
 
-def _voiced_frames(audio, threshold_db):
+def silent_frames(audio, floor=1e-7):
+    """Frames that are digital silence — exact zeros, not quiet audio.
+
+    A recorded stem always has a noise floor, so a run of true zeros
+    means no track was playing there.
+    """
+    import numpy as np
+    from whisper.audio import SAMPLE_RATE
+
+    if not isinstance(audio, np.ndarray):
+        from whisper.audio import load_audio
+
+        audio = load_audio(str(audio))
+
+    frame_len = int(FRAME * SAMPLE_RATE)
+    count = len(audio) // frame_len
+
+    if count == 0:
+        return None
+
+    frames = audio[: count * frame_len].reshape(count, frame_len)
+
+    return np.sqrt(np.mean(frames**2, axis=1)) < floor
+
+
+def voiced_frames(audio, threshold_db):
     """Return a boolean array, one entry per FRAME, True where there is
     signal above the threshold. audio is a decoded 16 kHz mono array
     (align.load_audio) or a path to decode."""

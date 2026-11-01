@@ -60,3 +60,4 @@ examples/**/.DS_Store
 # --- deliberate exception: hand-written SRT fixtures for the player_editor
 # parser tests (no song lyrics, invented content)
 !player_editor/test/*.srt
+srt_generator/tmp/

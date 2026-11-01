@@ -62,7 +62,9 @@ timings with **srt_generator** → fine-tune them in **player_editor** → enjoy
 is still called whatever the collaboration was named, **song_finder** takes you
 back to it.
 
-All formats are documented in [docs/data-formats.md](docs/data-formats.md), and
+All formats are documented in [docs/data-formats.md](docs/data-formats.md); how
+the lyric timings get drafted in the first place is written up in
+[srt_generator/docs/how-it-works.md](srt_generator/docs/how-it-works.md). And
 a real **demo album** ships in [examples/](examples/) — three original songs
 ("Back to Normal", © Jean Lazarou, published here on purpose) with covers,
 playlist JSON, metadata cache and synchronized SRT lyrics — plus

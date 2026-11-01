@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 268" width="880" height="268" role="img" aria-label="Two panels. On the left, four lyrics lines each span exactly two cells of the flat timings array, so line i binds to timings i times two and i times two plus one. On the right, one region was never generated, so after the missing line is restored by hand every remaining line binds to the following line's region and the last line has no region at all.">
+  <title>Lyrics bind to regions by position alone</title>
+
+  <rect x="0" y="0" width="880" height="268" fill="#F1F3F2"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" fill="#121A20">
+
+    <!-- panel A -->
+    <text x="40" y="40" fill="#136B77">as generated — 4 lines, 4 regions</text>
+    <text x="40" y="66" fill="#5A6B73">lyrics[i]</text>
+    <text x="200" y="66" fill="#5A6B73">timings[]</text>
+
+    <rect x="40" y="76"  width="140" height="34" fill="#E6EAE9" stroke="#B3BFBE"/>
+    <text x="50" y="97" fill="#5A6B73">0</text><text x="74" y="97">line 1</text>
+    <rect x="40" y="110" width="140" height="34" fill="#E6EAE9" stroke="#B3BFBE"/>
+    <text x="50" y="131" fill="#5A6B73">1</text><text x="74" y="131">line 2</text>
+    <rect x="40" y="144" width="140" height="34" fill="#E6EAE9" stroke="#B3BFBE"/>
+    <text x="50" y="165" fill="#5A6B73">2</text><text x="74" y="165">line 3</text>
+    <rect x="40" y="178" width="140" height="34" fill="#E6EAE9" stroke="#B3BFBE"/>
+    <text x="50" y="199" fill="#5A6B73">3</text><text x="74" y="199">line 4</text>
+
+    <rect x="200" y="76"  width="160" height="17" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="210" y="88" fill="#5A6B73">0</text><text x="234" y="88">R1 start</text>
+    <rect x="200" y="93"  width="160" height="17" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="210" y="105" fill="#5A6B73">1</text><text x="234" y="105">R1 end</text>
+    <rect x="200" y="110" width="160" height="17" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="210" y="122" fill="#5A6B73">2</text><text x="234" y="122">R2 start</text>
+    <rect x="200" y="127" width="160" height="17" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="210" y="139" fill="#5A6B73">3</text><text x="234" y="139">R2 end</text>
+    <rect x="200" y="144" width="160" height="17" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="210" y="156" fill="#5A6B73">4</text><text x="234" y="156">R3 start</text>
+    <rect x="200" y="161" width="160" height="17" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="210" y="173" fill="#5A6B73">5</text><text x="234" y="173">R3 end</text>
+    <rect x="200" y="178" width="160" height="17" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="210" y="190" fill="#5A6B73">6</text><text x="234" y="190">R4 start</text>
+    <rect x="200" y="195" width="160" height="17" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="210" y="207" fill="#5A6B73">7</text><text x="234" y="207">R4 end</text>
+
+    <line x1="180" y1="93"  x2="200" y2="93"  stroke="#136B77" stroke-width="1.4"/>
+    <line x1="180" y1="127" x2="200" y2="127" stroke="#136B77" stroke-width="1.4"/>
+    <line x1="180" y1="161" x2="200" y2="161" stroke="#136B77" stroke-width="1.4"/>
+    <line x1="180" y1="195" x2="200" y2="195" stroke="#136B77" stroke-width="1.4"/>
+
+    <text x="40" y="234" fill="#136B77">line i owns timings[i*2] and timings[i*2+1]</text>
+
+    <!-- panel B -->
+    <text x="500" y="40" fill="#9E3A50">one line dropped, then restored by hand</text>
+    <text x="500" y="66" fill="#5A6B73">lyrics[i]</text>
+    <text x="660" y="66" fill="#5A6B73">timings[]</text>
+
+    <rect x="500" y="76"  width="140" height="34" fill="#E6EAE9" stroke="#B3BFBE"/>
+    <text x="510" y="97" fill="#5A6B73">0</text><text x="534" y="97">line 1</text>
+    <rect x="500" y="110" width="140" height="34" fill="#F6E1E4" stroke="#9E3A50"/>
+    <text x="510" y="131" fill="#5A6B73">1</text><text x="534" y="131">line 2</text>
+    <rect x="500" y="144" width="140" height="34" fill="#F6E1E4" stroke="#9E3A50"/>
+    <text x="510" y="165" fill="#5A6B73">2</text><text x="534" y="165">line 3</text>
+    <rect x="500" y="178" width="140" height="34" fill="#F6E1E4" stroke="#9E3A50"/>
+    <text x="510" y="199" fill="#5A6B73">3</text><text x="534" y="199">line 4</text>
+
+    <rect x="660" y="76"  width="160" height="17" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="670" y="88" fill="#5A6B73">0</text><text x="694" y="88">R1 start</text>
+    <rect x="660" y="93"  width="160" height="17" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="670" y="105" fill="#5A6B73">1</text><text x="694" y="105">R1 end</text>
+    <rect x="660" y="110" width="160" height="17" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="670" y="122" fill="#5A6B73">2</text><text x="694" y="122">R3 start</text>
+    <rect x="660" y="127" width="160" height="17" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="670" y="139" fill="#5A6B73">3</text><text x="694" y="139">R3 end</text>
+    <rect x="660" y="144" width="160" height="17" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="670" y="156" fill="#5A6B73">4</text><text x="694" y="156">R4 start</text>
+    <rect x="660" y="161" width="160" height="17" fill="#FFFFFF" stroke="#B3BFBE"/>
+    <text x="670" y="173" fill="#5A6B73">5</text><text x="694" y="173">R4 end</text>
+
+    <line x1="640" y1="93"  x2="660" y2="93"  stroke="#136B77" stroke-width="1.4"/>
+    <line x1="640" y1="127" x2="660" y2="127" stroke="#9E3A50" stroke-width="1.4"/>
+    <line x1="640" y1="161" x2="660" y2="161" stroke="#9E3A50" stroke-width="1.4"/>
+    <line x1="640" y1="195" x2="656" y2="195" stroke="#9E3A50" stroke-width="1.4" stroke-dasharray="3 2"/>
+    <path d="M 660 191 L 668 199 M 668 191 L 660 199" stroke="#9E3A50" stroke-width="1.4"/>
+    <text x="678" y="199" fill="#9E3A50">no region</text>
+
+    <text x="500" y="234" fill="#9E3A50">R2 was never generated, so lines 2–4 are all wrong</text>
+
+  </g>
+</svg>

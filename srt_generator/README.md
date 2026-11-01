@@ -19,6 +19,10 @@ Part of the mazy_suite.
   first and alignment runs on that. The stem is cached in a `separated/`
   folder next to the audio, so re-runs skip separation.
 
+[docs/how-it-works.md](docs/how-it-works.md) walks the whole pipeline stage by
+stage and explains why each one behaves the way it does — the energy gate, the
+region cap, and the pass that guarantees player_editor can open the result.
+
 ## Setup
 
 Requires [uv](https://docs.astral.sh/uv/) and ffmpeg (both via Homebrew).
@@ -46,6 +50,71 @@ uv run srt_generator song.mp3 -o song.srt --mix
 
 Useful options: `--language fr`, `--model medium` (faster, less accurate),
 `--device cpu`, `--min-duration 0.3`, `--max-duration 8`.
+
+## When a draft goes wrong
+
+Across long instrumental passages the aligner can lose sync, and because it
+must place every line in order it cannot recover: the rest of the song gets
+crammed into whatever audio is left, often into silence.
+
+Every run checks the finished file for the two fingerprints of that failure
+and says where to look:
+
+```
+Wrote 40 entries to song.srt
+
+This draft has signs of a lost alignment:
+  - entries 22-36 look collapsed: 15 regions packed into 3.7s around 2:22
+  - 26 of 40 regions sit where nothing is sung: 1:30, 1:39, 1:59, 2:01, +22 more
+  Re-running with --anchor repairs some of these
+```
+
+Read it as *look here*, not as a verdict — a draft with no warning can still
+have lines a second or two out, and that is normal nudging work.
+
+## Rescuing a song the aligner lost (`--anchor`)
+
+`--anchor` adds a second pass. The audio is also transcribed freely, the
+transcript is matched against your lyrics, and the lines it recognises become
+control points the alignment is re-warped onto — independent evidence of
+*when*, from a pass that is not bound to the lyrics. Both drafts are then
+compared, and the one leaving fewer regions in silence is kept, so a song the
+first pass got right is left alone.
+
+```sh
+uv run srt_generator vocals.wav lyrics.txt -o song.srt --anchor
+```
+
+It is worth most on the songs that went worst. On a whole album where the
+first pass struggled, it cut regions needing to be re-placed from scratch by
+56% (218 → 95) and made no song worse; six songs improved, the seven that were
+already fine kept their original timings. The single worst song in the corpus
+went from 40 re-placed regions to 4.
+
+It is off by default because it runs the model twice, so expect roughly double
+the time — and because applying it unconditionally is a net loss on material
+the first pass already handles. Details, and the experiments that ruled out
+the simpler alternatives, in [docs/how-it-works.md](docs/how-it-works.md).
+
+Two things it cannot fix: a song the transcript cannot hear either (then there
+are no control points to work from), and numbers written as digits — `87` in
+the lyrics file is matched as digits but sung as *eighty-seven*. Spelling them
+out costs nothing and removes a measurable hazard.
+
+## Seeing what happened (`--debug`)
+
+When a draft is wrong, the SRT only shows the end of the pipeline. `--debug`
+writes a self-contained HTML timeline beside it — the voiced audio and every
+stage on one time axis, each region hovering to show its index, times and
+text, and the lines the aligner failed outright marked in red.
+
+```sh
+uv run srt_generator vocals.wav lyrics.txt -o song.srt --debug
+```
+
+Open `song.debug.html` in a browser. Where a lane stops lining up with the
+voiced lane is where the alignment went wrong, and which lane it happens on
+tells you which stage did it.
 
 ## Silence trimming
 

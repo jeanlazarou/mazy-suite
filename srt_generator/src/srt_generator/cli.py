@@ -100,6 +100,26 @@ def build_parser():
         ),
     )
     parser.add_argument(
+        "--anchor",
+        action="store_true",
+        help=(
+            "experimental: also transcribe the audio freely and use the "
+            "lines it recognises as control points to correct the "
+            "alignment. Roughly doubles the run. Helps when the aligner "
+            "loses sync across a long instrumental passage; it cannot "
+            "help when the transcript recognises nothing"
+        ),
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help=(
+            "also write a self-contained HTML timeline next to the SRT, "
+            "showing the voiced audio and what every stage produced on one "
+            "time axis — for seeing where an alignment went wrong"
+        ),
+    )
+    parser.add_argument(
         "--version", action="version", version=f"%(prog)s {__version__}"
     )
 
@@ -154,15 +174,62 @@ def main(argv=None):
 
         audio = separate_vocals(audio, demucs_device)
 
-    from .align import align_lyrics, load_audio, load_lyrics, transcribe
+    from .align import (
+        LyricsCountMismatch,
+        align_lyrics,
+        load_audio,
+        load_lyrics,
+        transcribe,
+    )
 
     audio_data = load_audio(audio)
 
+    stages = []
+    failed = set()
+    heard_segments = None
+    matched = []
+
     if args.lyrics is not None:
         lines = load_lyrics(args.lyrics)
-        segments = align_lyrics(
-            audio_data, lines, args.model, whisper_device, args.language
-        )
+        try:
+            segments = align_lyrics(
+                audio_data, lines, args.model, whisper_device, args.language
+            )
+        except LyricsCountMismatch as error:
+            sys.exit(str(error))
+
+        from .align import failed_indexes
+
+        failed = failed_indexes(segments)
+        stages.append(("aligned", list(segments)))
+
+        if args.anchor:
+            from .anchor import anchor_segments, better_draft
+            from .trim import voiced_frames
+
+            print("Transcribing again to cross-check the alignment...")
+            heard = transcribe(
+                audio_data, args.model, whisper_device, args.language
+            )
+            from .anchor import control_points
+
+            rewarped, used = anchor_segments(segments, lines, heard)
+            matched = control_points(segments, lines, heard)
+
+            # anchoring helps some songs and harms others, so keep the
+            # draft that leaves fewer regions sitting in silence
+            segments, kept = better_draft(
+                segments, rewarped, voiced_frames(audio_data, args.trim_db)
+            )
+
+            heard_segments = heard
+            if kept == "anchored":
+                stages.append(("anchored", list(segments)))
+
+            print(
+                f"Matched {used}/{len(lines)} lines to the transcript; "
+                f"kept the {kept} timings"
+            )
     else:
         segments = transcribe(
             audio_data, args.model, whisper_device, args.language
@@ -180,6 +247,8 @@ def main(argv=None):
             max_duration=max_duration,
         )
 
+        stages.append(("trimmed", list(segments)))
+
     segments = postprocess(
         segments,
         min_duration=args.min_duration,
@@ -189,8 +258,101 @@ def main(argv=None):
     if not segments:
         sys.exit("No segments produced; nothing to write")
 
+    stages.append(("final", list(segments)))
+
     write_srt(segments, output)
     print(f"Wrote {len(segments)} entries to {output}")
+
+    notes = report_warnings(segments, audio_data, args)
+
+    if args.debug:
+        if heard_segments is None and args.lyrics is not None:
+            # the transcript is independent evidence of where the singing
+            # is; worth the extra pass when the point is to investigate
+            print("Transcribing for the debug timeline...")
+            heard_segments = transcribe(
+                audio_data, args.model, whisper_device, args.language
+            )
+
+        write_debug(
+            output, audio_data, args, stages, notes, heard_segments, failed,
+            matched, lines if args.lyrics is not None else None,
+        )
+
+
+def report_warnings(segments, audio_data, args):
+    """Point at the parts of the draft that look wrong.
+
+    The aligner cannot flag its own failures — it returns a complete,
+    legal, confidently-wrong answer — but the damage leaves fingerprints
+    in the finished file. Saying where to look is the difference between
+    a five-minute edit and hunting through a whole song.
+    """
+    from .diagnose import warnings
+    from .trim import FRAME, silent_frames, voiced_frames
+
+    notes = warnings(
+        segments,
+        voiced_frames(audio_data, args.trim_db),
+        frame=FRAME,
+        min_duration=args.min_duration,
+        silent=silent_frames(audio_data),
+    )
+
+    if notes:
+        print("\nThis draft has signs of a lost alignment:")
+        for note in notes:
+            print(f"  - {note}")
+        print(
+            "  Re-running with --anchor repairs some of these; see "
+            "docs/how-it-works.md"
+        )
+
+    return notes
+
+
+def write_debug(output, audio_data, args, stages, notes, heard, failed,
+                matched=(), lines=None):
+    """Write the HTML timeline, and the transcript, beside the SRT."""
+    from whisper.audio import SAMPLE_RATE
+
+    from . import debug_view
+    from .anchor import match_lines
+    from .trim import FRAME, voiced_frames
+
+    path = output.with_suffix(".debug.html")
+    pairs = ()
+
+    if heard:
+        transcript = output.with_suffix(".transcript.txt")
+        transcript.write_text(
+            "".join(
+                f"{start:8.2f}  {end:8.2f}  {text.strip()}\n"
+                for start, end, text in heard
+            ),
+            encoding="utf-8",
+        )
+        print(f"Wrote what the model heard to {transcript}")
+
+        if lines:
+            pairs = match_lines(lines, [text for _, _, text in heard])
+
+    debug_view.write(
+        path,
+        output.stem,
+        len(audio_data) / SAMPLE_RATE,
+        voiced_frames(audio_data, args.trim_db),
+        FRAME,
+        stages,
+        notes,
+        heard,
+        failed,
+        matched,
+        lines,
+        pairs,
+    )
+
+    print(f"Wrote the stage timeline to {path}")
 
 
 if __name__ == "__main__":

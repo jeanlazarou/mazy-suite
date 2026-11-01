@@ -1,3 +1,7 @@
+class LyricsCountMismatch(RuntimeError):
+    """The aligner did not return exactly one segment per lyrics line."""
+
+
 def load_lyrics(path):
     """Read a lyrics text file: one line per SRT entry, in singing order.
 
@@ -46,9 +50,51 @@ def align_lyrics(audio, lyrics_lines, model_name, device, language):
         original_split=True,
     )
 
+    timings = [(segment.start, segment.end) for segment in result.segments]
+
+    return pair_with_lyrics(timings, lyrics_lines)
+
+
+def failed_indexes(segments):
+    """Which lines the aligner could not place at all.
+
+    stable-ts counts a segment as failed when it comes back with zero or
+    negative duration, and warns with the count but not the identities.
+    The same test applied to the raw segments recovers which lines they
+    were — and those are exactly the ones the invariant pass has to
+    legalise into minimum-length regions, so they are the seed of every
+    collapsed run.
+    """
+    return {
+        i for i, (start, end, _) in enumerate(segments) if end - start <= 0
+    }
+
+
+def pair_with_lyrics(timings, lyrics_lines):
+    """Give every lyrics line its timing, in order.
+
+    The lyrics file is the source of truth for *what* is sung; the aligner
+    only decides *when*. So the text comes from the file rather than from
+    the model's echo of it, and the two counts have to match exactly.
+
+    A mismatch is refused instead of written out. player_editor binds
+    lyrics to regions by position alone — line i to timings i*2 and
+    i*2+1 — so one missing segment does not cost one bad region, it
+    shifts every line after it onto the wrong region, and the SRT still
+    looks perfectly well formed.
+    """
+    if len(timings) != len(lyrics_lines):
+        raise LyricsCountMismatch(
+            f"Aligner returned {len(timings)} segments for "
+            f"{len(lyrics_lines)} lyrics lines. Refusing to write a draft "
+            f"that drops or duplicates lines: player_editor binds lyrics to "
+            f"regions by position, so every line after the mismatch would "
+            f"sit on the wrong region."
+        )
+
     return [
-        (segment.start, segment.end, segment.text)
-        for segment in result.segments
+        (start, end, line)
+        for (start, end), line in zip(timings, lyrics_lines)
     ]
 
 
