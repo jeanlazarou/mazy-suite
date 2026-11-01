@@ -260,9 +260,11 @@ function App() {
   }, [setCustomPlaylistVisible]);
 
   const handleAddToCustomPlaylist = useCallback((track: Track, albumName: string) => {
+    // Not crypto.randomUUID(): it is missing on plain http pages
+    const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     setCustomPlaylist(prev => [
       ...prev,
-      { id: crypto.randomUUID(), track, sourceAlbum: albumName }
+      { id, track, sourceAlbum: albumName }
     ]);
     setCustomPlaylistVisible(true);
   }, [setCustomPlaylist, setCustomPlaylistVisible]);
