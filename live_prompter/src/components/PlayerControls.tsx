@@ -1,4 +1,5 @@
 import { PlayerState, Track } from '../types';
+import { LinkStatus } from '../utils/peerLink';
 import {
   Play,
   Pause,
@@ -6,12 +7,14 @@ import {
   SkipBack,
   SkipForward,
   RotateCcw,
-  Volume2
+  Volume2,
+  Cast
 } from 'lucide-react';
 
 interface PlayerControlsProps {
   playerState: PlayerState;
   currentTrack: Track | null;
+  gigAnimStatus: LinkStatus;
   onPlay: () => void;
   onPause: () => void;
   onStop: () => void;
@@ -19,19 +22,32 @@ interface PlayerControlsProps {
   onPrevious: () => void;
   onNext: () => void;
   onVolumeChange: (volume: number) => void;
+  onGigAnimLink: () => void;
 }
+
+const GIG_ANIM_LABELS: Record<LinkStatus, { label: string; dot: string }> = {
+  off: { label: 'Link gig_anim', dot: 'bg-gray-300' },
+  waiting: { label: 'gig_anim: linking…', dot: 'bg-amber-400' },
+  linked: { label: 'gig_anim linked', dot: 'bg-green-500' },
+  interrupted: { label: 'gig_anim: network dropped', dot: 'bg-amber-400 animate-pulse' },
+  lost: { label: 'gig_anim link lost', dot: 'bg-red-500' },
+};
 
 export function PlayerControls({
   playerState,
   currentTrack,
+  gigAnimStatus,
   onPlay,
   onPause,
   onStop,
   onRestart,
   onPrevious,
   onNext,
-  onVolumeChange
+  onVolumeChange,
+  onGigAnimLink
 }: PlayerControlsProps) {
+  const gigAnim = GIG_ANIM_LABELS[gigAnimStatus];
+
   return (
     <div className="bg-white rounded-xl shadow-lg p-4 h-full flex flex-col">
       {/* Current track info */}
@@ -100,6 +116,17 @@ export function PlayerControls({
           </button>
         </div>
       </div>
+
+      {/* Optional link to gig_anim on another device */}
+      <button
+        onClick={onGigAnimLink}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-sm text-gray-700 transition-colors"
+        title="Let gig_anim follow the prompter"
+      >
+        <Cast className="w-4 h-4 text-gray-600" />
+        {gigAnim.label}
+        <span className={`ml-auto w-2 h-2 rounded-full ${gigAnim.dot}`} />
+      </button>
 
       {/* Volume control */}
       <div className="mt-auto">

@@ -30,17 +30,21 @@ No test framework is configured.
 - `useAudioPlayer` — Wraps WaveSurfer instance, manages playback state, volume, regions
 - `useLyrics` — Fetches/parses SRT files, provides `getCurrentLyric()` and `getUpcomingLyrics()`
 - `useWaveform` — Initializes WaveSurfer in a container element
+- `useGigAnimLink` — Optional WebRTC link to gig_anim; sends a `PrompterState` (track url/title, playing) on linking and on every change
 
 **Component hierarchy:**
 ```
 App (state: albums, selected album/track, playback)
 ├── Sidebar (collapsible album/track navigation)
 ├── Waveform (audio visualization with click-to-seek)
-├── PlayerControls (play/pause/stop/prev/next, volume slider)
-└── LyricDisplay (current lyric + upcoming queue with countdown timers)
+├── PlayerControls (play/pause/stop/prev/next, volume slider, "Link gig_anim" button)
+├── LyricDisplay (current lyric + upcoming queue with countdown timers)
+└── GigAnimLinkDialog (invite QR/text out, gig_anim's reply in, by paste or QrScanner)
 ```
 
 **Keyboard shortcuts** (defined in `App.tsx`): Space = play/pause, ← = previous track, → = next track.
+
+**gig_anim link:** no server — `utils/peerLink.ts` makes the invite (offer) and takes the reply (answer); codes carry only the SDP fields that change (kind, mid, ICE ufrag/pwd, sha-256 fingerprint, UDP host candidates), ~175 characters, and the other side rebuilds the SDP. No STUN/TURN: same-network only. `utils/peerLink.ts` and `utils/qrCode.ts` are shared with gig_anim and must stay identical in both apps.
 
 ## Data Files
 

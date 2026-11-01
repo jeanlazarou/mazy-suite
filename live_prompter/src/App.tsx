@@ -1,13 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Album, AlbumData, Track, CustomPlaylistTrack } from './types';
+import { PrompterState } from './utils/peerLink';
 import { arrayMove } from '@dnd-kit/sortable';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
 import { useLyrics } from './hooks/useLyrics';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { useGigAnimLink } from './hooks/useGigAnimLink';
 import { Sidebar } from './components/Sidebar';
 import { PlayerControls } from './components/PlayerControls';
 import { LyricDisplay } from './components/LyricDisplay';
 import { Waveform } from './components/Waveform';
+import { GigAnimLinkDialog } from './components/GigAnimLinkDialog';
 
 interface AlbumWithTitle extends Album {
   title?: string;
@@ -53,6 +56,24 @@ function App() {
     getCurrentLyric,
     getUpcomingLyrics
   } = useLyrics(currentTrack?.title || null);
+
+  // What gig_anim follows when linked
+  const trackUrl = currentTrack?.url;
+  const trackTitle = currentTrack?.title;
+  const prompterState = useMemo<PrompterState>(() => ({
+    type: 'state',
+    track: trackUrl && trackTitle ? { url: trackUrl, title: trackTitle } : null,
+    playing: playerState.isPlaying,
+  }), [trackUrl, trackTitle, playerState.isPlaying]);
+
+  const gigAnimLink = useGigAnimLink(prompterState);
+  const [gigAnimDialogOpen, setGigAnimDialogOpen] = useState(false);
+  const closeGigAnimDialog = useCallback(() => setGigAnimDialogOpen(false), []);
+
+  const handleGigAnimLink = useCallback(() => {
+    if (gigAnimLink.status === 'off' || gigAnimLink.status === 'lost') gigAnimLink.start();
+    setGigAnimDialogOpen(true);
+  }, [gigAnimLink]);
 
   // Load albums on mount
   useEffect(() => {
@@ -329,6 +350,8 @@ function App() {
 
   return (
     <div className="h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex overflow-hidden">
+      {gigAnimDialogOpen && <GigAnimLinkDialog link={gigAnimLink} onClose={closeGigAnimDialog} />}
+
       {/* Error display for audio issues */}
       {audioError && (
         <div className="fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50 max-w-md">
@@ -412,6 +435,8 @@ function App() {
                 onPrevious={handlePrevious}
                 onNext={handleNext}
                 onVolumeChange={setVolume}
+                gigAnimStatus={gigAnimLink.status}
+                onGigAnimLink={handleGigAnimLink}
               />
             </div>
 
