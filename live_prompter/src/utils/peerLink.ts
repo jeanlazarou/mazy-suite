@@ -1,7 +1,8 @@
 // A direct link between live_prompter and gig_anim over WebRTC, with no server
 // in between: the prompter creates an invite code, gig_anim answers it with a
 // reply code, and the user carries each code across (QR code or copied text).
-// Then the prompter tells gig_anim which track it is on and whether it plays.
+// Then the prompter tells gig_anim which track it is on, whether it plays and
+// where it is in the song.
 //
 // Shared file: keep live_prompter/src/utils/peerLink.ts and
 // gig_anim/src/utils/peerLink.ts identical.
@@ -10,6 +11,16 @@
 export interface PrompterState {
   type: 'state';
   track: { url: string; title: string } | null;
+  playing: boolean;
+}
+
+/**
+ * Where the prompter is in the song, for animations synced to it: sent on
+ * every change of track or play state, then every second while playing.
+ */
+export interface PrompterTime {
+  type: 'time';
+  position: number; // seconds into the track
   playing: boolean;
 }
 
@@ -22,6 +33,10 @@ export type LinkStatus =
 
 export function isPrompterState(data: unknown): data is PrompterState {
   return typeof data === 'object' && data !== null && (data as PrompterState).type === 'state';
+}
+
+export function isPrompterTime(data: unknown): data is PrompterTime {
+  return typeof data === 'object' && data !== null && (data as PrompterTime).type === 'time';
 }
 
 // Both devices are on the same network, so no STUN or TURN server: host

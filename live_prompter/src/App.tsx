@@ -67,7 +67,7 @@ function App() {
     playing: playerState.isPlaying,
   }), [trackUrl, trackTitle, playerState.isPlaying]);
 
-  const gigAnimLink = useGigAnimLink(prompterState);
+  const gigAnimLink = useGigAnimLink(prompterState, playerState.currentTime);
   const [gigAnimDialogOpen, setGigAnimDialogOpen] = useState(false);
   const closeGigAnimDialog = useCallback(() => setGigAnimDialogOpen(false), []);
 

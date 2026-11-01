@@ -32,7 +32,7 @@ Data URLs go through `DATA = '../data'` (`utils/paths.ts`), never a literal `/da
 - `useAudioPlayer` — Wraps WaveSurfer instance, manages playback state, volume, regions
 - `useLyrics` — Fetches/parses SRT files, provides `getCurrentLyric()` and `getUpcomingLyrics()`
 - `useWaveform` — Initializes WaveSurfer in a container element
-- `useGigAnimLink` — Optional WebRTC link to gig_anim; sends a `PrompterState` (track url/title, playing) on linking and on every change
+- `useGigAnimLink` — Optional WebRTC link to gig_anim; sends a `PrompterState` (track url/title, playing) on linking and on every change, then a `PrompterTime` (position in the song) after each state and every second while playing, for gig_anim's synced `spotlight` animation
 
 **Component hierarchy:**
 ```

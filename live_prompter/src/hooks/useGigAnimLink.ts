@@ -1,15 +1,23 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { PeerLink, LinkStatus, PrompterState } from '../utils/peerLink';
+import { PeerLink, LinkStatus, PrompterState, PrompterTime } from '../utils/peerLink';
+
+const TIME_EVERY = 1000; // ms, while playing
 
 /**
  * The optional link to gig_anim: `start` makes an invite, `acceptReply` takes
- * gig_anim's reply. Once linked, `state` is sent each time it changes.
+ * gig_anim's reply. Once linked, `state` is sent each time it changes, and the
+ * `position` in the song with it, then every second while playing.
  */
-export function useGigAnimLink(state: PrompterState) {
+export function useGigAnimLink(state: PrompterState, position: number) {
   const [status, setStatus] = useState<LinkStatus>('off');
   const [invite, setInvite] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const linkRef = useRef<PeerLink | null>(null);
+  const positionRef = useRef(position);
+
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
 
   const unlink = useCallback(() => {
     linkRef.current?.close();
@@ -39,6 +47,21 @@ export function useGigAnimLink(state: PrompterState) {
 
   useEffect(() => {
     if (status === 'linked') linkRef.current?.send(state);
+  }, [state, status]);
+
+  // After the state, so gig_anim is on the new track when its time comes
+  useEffect(() => {
+    if (status !== 'linked') return;
+
+    const sendTime = () => {
+      const time: PrompterTime = { type: 'time', position: positionRef.current, playing: state.playing };
+      linkRef.current?.send(time);
+    };
+    sendTime();
+    if (!state.playing) return;
+
+    const interval = setInterval(sendTime, TIME_EVERY);
+    return () => clearInterval(interval);
   }, [state, status]);
 
   useEffect(() => () => linkRef.current?.close(), []);
