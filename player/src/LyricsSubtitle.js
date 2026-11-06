@@ -73,12 +73,12 @@ export function LyricVerse({ title }) {
   );
 }
 
-export function LyricsSubtitle() {
+export function LyricsSubtitle({ mobile = false }) {
   const showLyrics = useAtomValue(lyricsActive);
   const current = useAtomValue(playingTrack);
 
   return showLyrics ? (
-    <div className="lyrics">
+    <div className={mobile ? "lyrics lyrics-mobile" : "lyrics"}>
       <div className="message">
         <React.Suspense fallback={null}>
           <LyricVerse title={current.title} />

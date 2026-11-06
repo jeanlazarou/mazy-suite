@@ -234,7 +234,7 @@ function MobileView() {
     <div style={styles}>
       <List />
     </div>
-    <LyricsSubtitle />
+    <LyricsSubtitle mobile />
 
     <FilterModal />
     <DescriptionModal />

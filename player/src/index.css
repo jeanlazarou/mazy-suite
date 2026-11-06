@@ -997,6 +997,10 @@ div.inverted.transition.active {
   background-color: rgb(34, 33, 33) !important;
 }
 
+.lyrics.lyrics-mobile {
+  bottom: calc(72px + 12px);
+}
+
 
 .snooze-timer {
   margin: 0.6em;
