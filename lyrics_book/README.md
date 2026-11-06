@@ -42,6 +42,24 @@ a newer version; there is nothing else to sync.
 own, which still works: it asks for a file. Use that for anywhere the words
 themselves should not go.
 
+### Republishing, and browser caches
+
+The build fingerprints the lyrics it embeds and the book asks for
+`lyrics.md?v=<hash>`, so republishing an edited book reaches readers who
+already have the old one: the address changes exactly when the words do, and a
+book that has not changed still loads from cache. Without this an album
+deleted from `lyrics.md` could survive a rebuild in a browser that had been
+there before — which is what happened before it was added.
+
+One thing the build cannot fix from here: **the host must not cache
+`index.html`.** Everything it references is fingerprinted — scripts, styles and
+now the lyrics — so a reader holding a stale `index.html` holds stale
+everything, and no rebuild will reach them. Serve `index.html` with
+`Cache-Control: no-cache` and let the rest cache freely.
+
+`vite preview` sends `no-cache` for every file, so stale-cache problems never
+show up locally. They depend entirely on what the real host sends for `.md`.
+
 The lyrics are only ever written to `dist/`, never to `public/`. `dist/` is
 gitignored, and so is any file named `lyrics.md`, so a built copy cannot be
 committed by accident — but it *is* a full copy of the lyrics, so treat

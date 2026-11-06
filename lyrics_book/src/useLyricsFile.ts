@@ -23,7 +23,10 @@ export function useLyricsFile() {
   useEffect(() => {
     let cancelled = false
 
-    fetch('lyrics.md')
+    // The version makes a republished book reach readers who already have the
+    // old one cached: the address changes exactly when the words do. Without
+    // it a deleted album can survive a rebuild in someone's browser.
+    fetch(`lyrics.md?v=${__LYRICS_VERSION__}`)
       .then((response) => {
         if (!response.ok) throw new Error(`${response.status}`)
         return response.text()
