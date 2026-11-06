@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { useAtomValue } from "jotai";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import { arrayMove, SortableContext } from "@dnd-kit/sortable";
@@ -10,6 +10,12 @@ import { currentPlaylist, playlistFilter } from "./atoms";
 import { TrackCard } from "./TrackCard";
 
 import { applyFilter } from "./filter";
+import { commands$, SHUFFLE, UNDO, REDO } from "./CommandsStream";
+import { useAnimatedReorder } from "./useAnimatedReorder";
+
+const reorderCommands$ = commands$.stream.filter(({ action }) =>
+  [SHUFFLE, UNDO, REDO].includes(action)
+);
 
 function handleDragEnd(event, items, notifyChange) {
   const { active, over } = event;
@@ -27,13 +33,21 @@ function Playlist({ onReorder }) {
   const filter = useAtomValue(playlistFilter);
   const selected = applyFilter(playlist, filter);
 
+  const container = useRef(null);
+
+  useAnimatedReorder(
+    container,
+    reorderCommands$,
+    selected.map((track) => track.url).join("\n")
+  );
+
   return (
     <DndContext
       collisionDetection={closestCenter}
       onDragEnd={(e) => handleDragEnd(e, selected, onReorder)}
       handle
     >
-      <div id="tracks" className="cards tracks-container">
+      <div id="tracks" className="cards tracks-container" ref={container}>
         <SortableContext items={selected}>
           {selected.map((e) => (
             <TrackCard key={e.url} id={e.id} track={e} />

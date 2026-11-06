@@ -54,6 +54,8 @@ Sequencer state change → document.dispatchEvent(CustomEvent)
 
 - **AlbumFolders.js** — Mobile albums page grouped by album color (`albumGroups.js`), picked with the Covers / By color switch in the albums counter popover and saved as `albumsLayout` in `player-options`; `AlbumTiles` stays the default. It is lazy-loaded because it brings the `motion` library (~48 KB gzipped), whose shared `layoutId`s morph a folder and its first nine covers into the open panel. The open panel sits under the album summary popup (z-index 8 vs 9) and closes only on a tap that *started* on its backdrop, since the tap that dismisses the summary lands there too.
 
+- **useAnimatedReorder.js** — Shuffle, undo and redo spring the track cards to their new places (FLIP with `motion/mini`'s `animate` and motion's `spring`, about 5 KB gzipped). Card positions are recorded when the command is sent, which is before React renders the new order since the command emitter is synchronous. The animation is a WAAPI `transform`, so the cards' `transition: all … !important` doesn't drag it, and the inline transform is removed at the end so the `:hover` lift keeps working. Not motion's `AnimateView`: it needs React 19.3, and View Transitions draw the moving cards above the page, outside the list's scroll clip.
+
 - **LyricsSubtitle.js** — Synchronized lyrics display. `LyricVerse` listens directly for `sequencer:position` document events (NOT via Recoil) and uses `sortedIndexBy` binary search on SRT-parsed timings to find the current verse. Lyrics are loaded from `./data/lyrics/{title}.srt` via a Recoil `selectorFamily`.
 
 ### Persistence
