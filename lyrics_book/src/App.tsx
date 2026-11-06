@@ -7,9 +7,11 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Contents } from './book/Contents'
 import { Measurer } from './book/Measurer'
 import { PageView } from './book/PageView'
 import { pageOfAlbum, pageOfSong, paginate, type Heights, type Page } from './book/paginate'
+import { summarizeAlbums, type ContentsOrder } from './contents'
 import { resolveReuse } from './reuse'
 import { buildIndex, parseQuery, search } from './search/search'
 import { useLyricsFile } from './useLyricsFile'
@@ -18,7 +20,7 @@ import type { LyricsDocument } from './parser/types'
 /** Below this the spread folds down to a single page. */
 const SPREAD_MIN_WIDTH = 1040
 
-type Panel = 'none' | 'search' | 'problems'
+type Panel = 'none' | 'search' | 'problems' | 'contents'
 
 export default function App() {
   const { state, openFile } = useLyricsFile()
@@ -57,6 +59,7 @@ function Book({ document }: { document: LyricsDocument }) {
   const [pageIndex, setPageIndex] = useState(0)
   const [query, setQuery] = useState('')
   const [panel, setPanel] = useState<Panel>('none')
+  const [contentsOrder, setContentsOrder] = useState<ContentsOrder>('as-written')
   const [term, setTerm] = useState('')
   const [spread, setSpread] = useState(() => window.innerWidth >= SPREAD_MIN_WIDTH)
   const [pageHeight, setPageHeight] = useState(0)
@@ -102,6 +105,7 @@ function Book({ document }: { document: LyricsDocument }) {
 
   const songPages = useMemo(() => pageOfSong(pages), [pages])
   const albumPages = useMemo(() => pageOfAlbum(pages), [pages])
+  const albumSummaries = useMemo(() => summarizeAlbums(document.albums), [document])
 
   const step = spread ? 2 : 1
   const lastPage = Math.max(0, pages.length - 1)
@@ -138,6 +142,12 @@ function Book({ document }: { document: LyricsDocument }) {
         return
       }
       if (typing) return
+
+      if (event.key === 'c') {
+        event.preventDefault()
+        setPanel((current) => (current === 'contents' ? 'none' : 'contents'))
+        return
+      }
 
       switch (event.key) {
         case 'ArrowLeft':
@@ -207,6 +217,12 @@ function Book({ document }: { document: LyricsDocument }) {
           />
         </div>
         <div className="bar__spacer" />
+        <button
+          aria-pressed={panel === 'contents'}
+          onClick={() => setPanel(panel === 'contents' ? 'none' : 'contents')}
+        >
+          Contents
+        </button>
         <button
           aria-pressed={panel === 'problems'}
           onClick={() => setPanel(panel === 'problems' ? 'none' : 'problems')}
@@ -281,6 +297,21 @@ function Book({ document }: { document: LyricsDocument }) {
               </button>
             ))}
           </div>
+        )}
+
+        {panel === 'contents' && (
+          <Contents
+            albums={albumSummaries}
+            order={contentsOrder}
+            onOrderChange={setContentsOrder}
+            currentAlbum={currentAlbum}
+            onJump={(albumIndex) => {
+              const target = albumPages.get(albumIndex)
+              if (target === undefined) return
+              goTo(target)
+              setPanel('none')
+            }}
+          />
         )}
 
         {panel === 'problems' && (

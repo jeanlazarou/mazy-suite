@@ -487,6 +487,48 @@ button {
   border-radius: 2px;
 }
 
+.contents__orders {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: 0.75rem;
+}
+
+.contents__orders button {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.76rem;
+  border-radius: 4px;
+  color: var(--ink-faint);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.contents__orders button:hover {
+  color: var(--paper);
+}
+
+.contents__orders button[aria-pressed='true'] {
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: transparent;
+}
+
+.contents__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.contents__years {
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.contents__album--current .result__title {
+  color: #d9a066;
+}
+
 .problem {
   padding: 0.45rem 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);

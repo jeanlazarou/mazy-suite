@@ -111,6 +111,18 @@ heading with no date falls back to looking for a separator word.
 See `README.md` for the full grammar, including dates, variant markers and
 qualifiers.
 
+### Reading order is the file's order
+
+Do not sort the albums. The written order is about 80% chronological measured
+against the songs' own dates — the long first run goes forward in time almost
+exactly, and the albums that break it are the side ones gathered at the end —
+so it is the only record in the book of when any of this happened. Sorting by
+title was proposed and turned down for that reason.
+
+Finding an album is answered by the contents panel (`c`), which lists them A–Z,
+by date, or as written, and by search. Re-sorting that list must never move a
+page: `AlbumSummary.index` stays the reading order whatever the sort.
+
 ### Two kinds of reuse
 
 Both are tracked, because both answer "have these words been used before?":

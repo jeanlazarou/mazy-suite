@@ -59,9 +59,26 @@ song continues onto the next page.
 | `←` `→`, `PgUp` `PgDn`, `Space` | turn the page |
 | `Home` `End` | first and last page |
 | `/` | search |
+| `c` | contents |
 | `Esc` | close the panel |
 
 The strip along the bottom is every album in proportion; click to jump.
+
+## Contents, and why the albums are not sorted
+
+`c` opens the contents: every album with its year range and song count, listed
+A–Z, by date, or as written. Changing that list never moves a page.
+
+The book itself always reads in the order the file is written, and that is on
+purpose. Measured against the songs' own dates, the written order is already
+about 80% chronological — the first twenty-odd albums run forward in time
+almost exactly, and the few that break it are the side albums collected at the
+end. Sorting the book by title would trade a real record of when the work
+happened for an order that means nothing, opening on `95%` and following it
+with `And in the Meantime`.
+
+Finding an album is a different problem from reading one, so it is answered by
+the contents list and by search, not by rearranging the book.
 
 ## Searching
 

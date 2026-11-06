@@ -61,3 +61,4 @@ examples/**/.DS_Store
 # parser tests (no song lyrics, invented content)
 !player_editor/test/*.srt
 srt_generator/tmp/
+Value Zero Lyrics.md
