@@ -52,6 +52,8 @@ Sequencer state change → document.dispatchEvent(CustomEvent)
 
 - **Timeline.js** — Optional chronology, oldest first, grouped by year. It sits in a narrow column to the right of the description when there is room and stacks under it otherwise (`.description-layout` / `.description-layout-split` in `DescriptionThemes.css`). It reads the current theme's `--desc-*` custom properties, falling back to its own palette for the plain rendering, so it belongs to whichever theme the album picked. Its class names are all `timeline-*` prefixed: the old `.track-title` / `.track-date` / `.track-artists` were bare selectors that also landed on the playlist cards (see the note at the end of `index.css`).
 
+- **AlbumFolders.js** — Mobile albums page grouped by album color (`albumGroups.js`), picked with the Covers / By color switch in the albums counter popover and saved as `albumsLayout` in `player-options`; `AlbumTiles` stays the default. It is lazy-loaded because it brings the `motion` library (~48 KB gzipped), whose shared `layoutId`s morph a folder and its first nine covers into the open panel. The open panel sits under the album summary popup (z-index 8 vs 9) and closes only on a tap that *started* on its backdrop, since the tap that dismisses the summary lands there too.
+
 - **LyricsSubtitle.js** — Synchronized lyrics display. `LyricVerse` listens directly for `sequencer:position` document events (NOT via Recoil) and uses `sortedIndexBy` binary search on SRT-parsed timings to find the current verse. Lyrics are loaded from `./data/lyrics/{title}.srt` via a Recoil `selectorFamily`.
 
 ### Persistence

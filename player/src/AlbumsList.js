@@ -12,6 +12,12 @@ import { AlbumsMenu } from "./AlbumsMenu";
 import { VersionCard } from "./VersionCard";
 import { MenuItem } from "./MenuItem";
 import { AlbumTiles } from "./AlbumTiles";
+import { OptionsStore } from "./OptionsStore";
+
+// with its animation library, only loaded when that layout is picked
+const AlbumFolders = React.lazy(() =>
+  import("./AlbumFolders").then((module) => ({ default: module.AlbumFolders }))
+);
 
 const albumViewOptions = atom({ showDetail: false });
 
@@ -92,10 +98,17 @@ function AlbumCard({ data, rating, index, onClick }) {
   );
 }
 
-function AllAlbums({ list, onClick, ratings }) {
+function AllAlbums({ list, onClick, ratings, layout }) {
   const isMobileDevice = useIsMobile();
 
-  if (isMobileDevice) return <AlbumTiles list={list} onClick={onClick} />
+  if (isMobileDevice)
+    return layout === "folders" ? (
+      <React.Suspense fallback={null}>
+        <AlbumFolders list={list} onClick={onClick} />
+      </React.Suspense>
+    ) : (
+      <AlbumTiles list={list} onClick={onClick} />
+    );
 
   return list.map((playlist, i) => (
     <AlbumCard
@@ -160,6 +173,14 @@ export function AlbumsList({
 
   const [options, setOptions] = useAtom(albumViewOptions);
 
+  const isMobileDevice = useIsMobile();
+  const [layout, setLayout] = useState(() => OptionsStore.restore().albumsLayout);
+
+  const changeLayout = (value) => {
+    setLayout(value);
+    OptionsStore.save({ albumsLayout: value });
+  };
+
   const onClick = (index) => {
     showSummary(true);
     setCurrentAlbum(index);
@@ -184,6 +205,8 @@ export function AlbumsList({
         count={filtered.length}
         colors={availableColors}
         onFilter={(value, color, rating, showEmpty) => setFilter({ value, color, rating, showEmpty })}
+        layout={isMobileDevice ? layout : undefined}
+        onLayout={changeLayout}
       />
 
       <AlbumsMenu>
@@ -228,7 +251,12 @@ export function AlbumsList({
         </AlbumsMenu.Menu>
         <AlbumsMenu.Content>
           <div className="toc albums">
-            <AllAlbums list={filtered} onClick={onClick} ratings={albumRatings} />
+            <AllAlbums
+              list={filtered}
+              onClick={onClick}
+              ratings={albumRatings}
+              layout={layout}
+            />
           </div>
         </AlbumsMenu.Content>
       </AlbumsMenu>

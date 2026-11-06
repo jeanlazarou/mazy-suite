@@ -79,7 +79,11 @@ export function AlbumTiles({ list, onClick }) {
       resize(container, list);
     }
 
-    new ResizeObserver(onResize).observe(container.current);
+    const observer = new ResizeObserver(onResize);
+
+    observer.observe(container.current);
+
+    return () => observer.disconnect();
   }, [list])
 
   return <div ref={container} style={styles}>

@@ -31,6 +31,7 @@ class OptionsStore {
     if (values.snoozeDuration !== undefined)
       options.snoozeDuration = values.snoozeDuration;
     if (values.darkMode !== undefined) options.darkMode = values.darkMode;
+    if (values.albumsLayout) options.albumsLayout = values.albumsLayout;
 
     localStorage.setItem(OptionsStore.key, JSON.stringify(options));
   }
@@ -42,6 +43,7 @@ class OptionsStore {
       lyricsActive: false,
       snoozeDuration: 300,
       darkMode: true,
+      albumsLayout: "tiles",
     };
 
     const values = localStorage.getItem(OptionsStore.key);

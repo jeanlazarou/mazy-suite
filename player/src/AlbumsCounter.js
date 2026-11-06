@@ -4,6 +4,8 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Popover from "@mui/material/Popover";
 import Select from "@mui/material/Select";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 
 import { ClearableRating } from "./ClearableRating";
 
@@ -20,7 +22,7 @@ function Color({ color }) {
   );
 }
 
-export function AlbumsCounter({ count, colors, filter, onFilter }) {
+export function AlbumsCounter({ count, colors, filter, onFilter, layout, onLayout }) {
   const [anchor, setAnchor] = useState(null);
 
   return (
@@ -40,6 +42,19 @@ export function AlbumsCounter({ count, colors, filter, onFilter }) {
           },
         }}
       >
+        {layout && (
+          <ToggleButtonGroup
+            size="small"
+            exclusive
+            fullWidth
+            value={layout}
+            onChange={(_ev, value) => value && onLayout(value)}
+            sx={{ "& .MuiToggleButton-root": { textTransform: "none" } }}
+          >
+            <ToggleButton value="tiles">Covers</ToggleButton>
+            <ToggleButton value="folders">By color</ToggleButton>
+          </ToggleButtonGroup>
+        )}
         <Select
           size="small"
           displayEmpty
