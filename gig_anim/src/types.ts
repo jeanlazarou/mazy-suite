@@ -1,4 +1,5 @@
 export type AnimationType =
+  | "blinds"
   | "carousel"
   | "cloud"
   | "constellation"
@@ -6,12 +7,14 @@ export type AnimationType =
   | "echo"
   | "fade"
   | "falling"
+  | "filings"
   | "glitch"
   | "manuscript"
   | "mosaic"
   | "neon"
   | "none"
   | "grid"
+  | "scatter"
   | "splitflap"
   | "spotlight"
   | "teletype"
@@ -46,6 +49,9 @@ export interface Track {
   theme: string;
   animationType: AnimationType;
   animationDelay: number;
+  // In time with the song, or the lines at random; for the animations that
+  // can do both
+  followSong?: boolean;
 }
 
 export interface PerformanceData {

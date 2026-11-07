@@ -130,10 +130,22 @@ performance usually plays the live playback files while the prompter's albums
 point at the studio ones. While the prompter is on a track that isn't in the
 performance, gig_anim shows nothing.
 
-The `spotlight` animation also follows where the prompter is in the song: the
-line being sung, big and swept as it is sung, between the previous and the
-next ones. Without a link, it takes the song to start when the animation
+Animations that follow the song (see below) also follow where the prompter is
+in the song. Without a link, they take the song to start when the animation
 shows.
+
+## In time with the song, or at random
+
+The `blinds`, `filings`, `grid`, `scatter`, `spiral` and `spotlight`
+animations can show the lines either way:
+
+- following the song, `"followSong": true` on the track: the lines in the
+  song's order, each at the time its SRT file gives;
+- at random, `"followSong": false`: every line in random order, each for about
+  as long as it is sung, again and again, without end.
+
+The *Follow the song* switch in edit mode sets it. A track without
+`followSong` follows the song with `spotlight` only, as it always did.
 
 Reloading either page ends the link: link again the same way. Scanning needs
 a camera and a page served over `https` or from `localhost`; on a plain `http`

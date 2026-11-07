@@ -10,7 +10,9 @@ import {
     Typography,
     Dialog,
     SelectChangeEvent,
-    Divider
+    Divider,
+    FormControlLabel,
+    Switch
 } from '@mui/material';
 import { LyricDisplay } from './LyricDisplay';
 import { PerformanceData, Track, Album, AnimationType } from '../types';
@@ -20,6 +22,7 @@ import { AlbumSelectionDialog } from './AlbumSelectionDialog';
 import { PrompterLink } from './PrompterLink';
 import { useExternalCommands } from '../context/ExternalCommandsContext';
 import { usePlayback } from '../context/PlaybackContext';
+import { CAN_FOLLOW_SONG, followsSong } from '../hooks/useSongTimeline';
 
 import './EditMode.css';
 
@@ -166,6 +169,17 @@ export const EditMode: React.FC<EditModeProps> = ({
         }
     };
 
+    const handleFollowSongChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (performanceData && performanceData.tracks[currentTrackIndex]) {
+            const updatedTracks = [...performanceData.tracks];
+            updatedTracks[currentTrackIndex] = {
+                ...updatedTracks[currentTrackIndex],
+                followSong: event.target.checked
+            };
+            setPerformanceData({ ...performanceData, tracks: updatedTracks });
+        }
+    };
+
     if (!performanceData || !albums) {
         return <div>Loading...</div>;
     }
@@ -225,6 +239,7 @@ export const EditMode: React.FC<EditModeProps> = ({
                         value={currentTrack && currentTrack.animationType ? currentTrack.animationType : "default"}
                         onChange={handleAnimationTypeChange}
                     >
+                        <MenuItem value="blinds">Blinds</MenuItem>
                         <MenuItem value="carousel">Carousel</MenuItem>
                         <MenuItem value="constellation">Constellation</MenuItem>
                         <MenuItem value="mosaic">Cover mosaic</MenuItem>
@@ -232,14 +247,16 @@ export const EditMode: React.FC<EditModeProps> = ({
                         <MenuItem value="echo">Echo</MenuItem>
                         <MenuItem value="fade">Fade</MenuItem>
                         <MenuItem value="falling">Falling</MenuItem>
+                        <MenuItem value="filings">Filings</MenuItem>
                         <MenuItem value="glitch">Glitch</MenuItem>
                         <MenuItem value="manuscript">Manuscript</MenuItem>
                         <MenuItem value="neon">Neon</MenuItem>
                         <MenuItem value="none">None</MenuItem>
                         <MenuItem value="grid">Grid</MenuItem>
+                        <MenuItem value="scatter">Scatter</MenuItem>
                         <MenuItem value="spiral">Spiral</MenuItem>
                         <MenuItem value="splitflap">Split-flap board</MenuItem>
-                        <MenuItem value="spotlight">Spotlight (follows the prompter)</MenuItem>
+                        <MenuItem value="spotlight">Spotlight</MenuItem>
                         <MenuItem value="teletype">Teletype</MenuItem>
                         <MenuItem value="typewriter">Typewriter</MenuItem>
                         <MenuItem value="typography">Typography</MenuItem>
@@ -249,6 +266,13 @@ export const EditMode: React.FC<EditModeProps> = ({
                         <MenuItem value="cloud">Word cloud</MenuItem>
                     </Select>
                 </FormControl>
+                {currentTrack && CAN_FOLLOW_SONG.includes(currentTrack.animationType) && (
+                    <FormControlLabel
+                        sx={{ color: 'black' }}
+                        label="Follow the song"
+                        control={<Switch checked={followsSong(currentTrack)} onChange={handleFollowSongChange} />}
+                    />
+                )}
                 <TextField
                     fullWidth
                     margin="normal"

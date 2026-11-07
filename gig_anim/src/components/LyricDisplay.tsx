@@ -28,6 +28,10 @@ import NeonAnimation from './NeonAnimation';
 import MosaicAnimation from './MosaicAnimation';
 import GlitchAnimation from './GlitchAnimation';
 import SpotlightAnimation from './SpotlightAnimation';
+import BlindsAnimation from './BlindsAnimation';
+import FilingsAnimation from './FilingsAnimation';
+import ScatterAnimation from './ScatterAnimation';
+import { followsSong } from '../hooks/useSongTimeline';
 
 import '../vendor/khoshnus/style.css'
 
@@ -68,6 +72,7 @@ export const LyricDisplay: React.FC<LyricDisplayProps> = ({ performanceData, cur
     const currentAlbum = performanceData.albums.find(album => album.id === currentTrack.albumId);
     const currentTheme = themes.find(theme => theme.name === currentTrack.theme) ||
         { name: 'default', backgroundColor: 'black', textColors: 'random' };
+    const follow = followsSong(currentTrack);
 
     const displayedElements = useMemo(() => {
         const allElements = [
@@ -89,7 +94,7 @@ export const LyricDisplay: React.FC<LyricDisplayProps> = ({ performanceData, cur
             case "none":
                 return null;
             case "grid":
-                return <GridAnimation lyrics={lyrics} theme={currentTheme} />;
+                return <GridAnimation lyrics={lyrics} theme={currentTheme} follow={follow} />;
             case "teletype":
                 return <TeletypeAnimation lyrics={lyrics} theme={currentTheme} album={currentAlbum!} />;
             case 'carousel':
@@ -101,7 +106,7 @@ export const LyricDisplay: React.FC<LyricDisplayProps> = ({ performanceData, cur
             case 'manuscript':
                 return <ManuscriptAnimation lyrics={lyrics} theme={currentTheme} album={currentAlbum!} />;
             case 'spiral':
-                return <SpiralAnimation lyrics={lyrics} theme={currentTheme} album={currentAlbum!} />;
+                return <SpiralAnimation lyrics={lyrics} theme={currentTheme} album={currentAlbum!} follow={follow} />;
             case 'typewriter':
                 return <TypewriterAnimation lyrics={lyrics} theme={currentTheme} />;
             case 'wall':
@@ -127,7 +132,13 @@ export const LyricDisplay: React.FC<LyricDisplayProps> = ({ performanceData, cur
             case 'glitch':
                 return <GlitchAnimation lyrics={lyrics} theme={currentTheme} />;
             case 'spotlight':
-                return <SpotlightAnimation lyrics={lyrics} theme={currentTheme} />;
+                return <SpotlightAnimation lyrics={lyrics} theme={currentTheme} follow={follow} />;
+            case 'blinds':
+                return <BlindsAnimation lyrics={lyrics} theme={currentTheme} follow={follow} />;
+            case 'filings':
+                return <FilingsAnimation lyrics={lyrics} theme={currentTheme} follow={follow} />;
+            case 'scatter':
+                return <ScatterAnimation lyrics={lyrics} theme={currentTheme} follow={follow} />;
             default:
                 return (
                     <>

@@ -1,51 +1,29 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
+import { motion, AnimatePresence, MotionStyle, useAnimationFrame, useMotionValue } from 'framer-motion';
 import { Lyric, Theme } from '../types';
-import { useExternalCommands } from '../context/ExternalCommandsContext';
+import { sungPart, useSongTimeline } from '../hooks/useSongTimeline';
 
 interface SpotlightAnimationProps {
   lyrics: Lyric[];
   theme: Theme;
+  follow: boolean;
 }
 
-const FRAME = 50; // ms between two looks at the clock
-
-// The line being sung, big and swept as it goes, between the previous and the
-// next ones. In time with the linked prompter; without one, the song is taken
-// to start when the animation shows.
-const SpotlightAnimation: React.FC<SpotlightAnimationProps> = ({ lyrics, theme }) => {
-  const { prompterClock } = useExternalCommands();
-  const startedAt = useRef(performance.now());
-  const [position, setPosition] = useState(0);
-  const lines = useMemo(() => [...lyrics].sort((a, b) => a.start - b.start), [lyrics]);
+// The line in focus big, swept as it's sung, between the previous and the next
+const SpotlightAnimation: React.FC<SpotlightAnimationProps> = ({ lyrics, theme, follow }) => {
+  const { lines, focus, position } = useSongTimeline(lyrics, follow);
+  const swept = useMotionValue('0%');
 
   const colors = Array.isArray(theme.textColors)
     ? theme.textColors
     : ['#ffffff', '#ffd166', '#cccccc'];
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const clock = prompterClock.current;
-      const now = performance.now();
-      setPosition(clock
-        ? clock.position + (clock.playing ? (now - clock.receivedAt) / 1000 : 0)
-        : (now - startedAt.current) / 1000);
-    }, FRAME);
-    return () => clearInterval(interval);
-  }, [prompterClock]);
-
-  // In focus: the line being sung, else the next to come, else the last one
-  const singing = lines.findIndex(line => line.start <= position && position < line.end);
-  const upcoming = lines.findIndex(line => line.start > position);
-  const focus = singing !== -1 ? singing : upcoming !== -1 ? upcoming : lines.length - 1;
-  const focused = lines[focus];
-  const progress = !focused ? 0
-    : singing !== -1 ? (position - focused.start) / (focused.end - focused.start)
-    : position >= focused.end ? 1 : 0;
+  useAnimationFrame(() => {
+    swept.set(`${Math.round(sungPart(lines[focus], position()) * 1000) / 10}%`);
+  });
 
   const lit = colors[Math.max(focus, 0) % colors.length];
   const dim = `color-mix(in srgb, ${lit} 30%, transparent)`;
-  const swept = Math.round(progress * 1000) / 10;
 
   return (
     <div style={{
@@ -85,14 +63,15 @@ const SpotlightAnimation: React.FC<SpotlightAnimationProps> = ({ lyrics, theme }
               }}
             >
               {role === 'focus' ? (
-                <span style={{
-                  backgroundImage: `linear-gradient(90deg, ${lit} ${swept}%, ${dim} ${swept}%)`,
+                <motion.span style={{
+                  '--swept': swept,
+                  backgroundImage: `linear-gradient(90deg, ${lit} var(--swept), ${dim} var(--swept))`,
                   WebkitBackgroundClip: 'text',
                   backgroundClip: 'text',
                   color: 'transparent'
-                }}>
+                } as MotionStyle}>
                   {lines[i].text}
-                </span>
+                </motion.span>
               ) : lines[i].text}
             </motion.div>
           );
