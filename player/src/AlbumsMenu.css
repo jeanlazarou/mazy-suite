@@ -25,6 +25,12 @@
   transition: all 0.3s linear;
 }
 
+body.dark .menu-handle {
+  background-color: #2c2d2e;
+  border-color: #4a4b4c;
+  color: #ddd;
+}
+
 .menu-handle.hide {
   left: -60px;
 }

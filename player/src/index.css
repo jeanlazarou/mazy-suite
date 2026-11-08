@@ -614,6 +614,11 @@ body.dark .player-menu .item:hover {
   width: 100%;
 }
 
+body.dark .toc.albums {
+  background-color: #1b1c1d;
+  color: rgba(255, 255, 255, 0.87);
+}
+
 .album {
   box-sizing: border-box;
   border-width: thin;
@@ -647,6 +652,8 @@ body.dark .player-menu .item:hover {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  /* white cards (no album color) set no text color: not the page's */
+  color: rgb(51, 51, 51);
 }
 
 

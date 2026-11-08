@@ -29,3 +29,12 @@
   padding: 0.6em 0;
   border-bottom: 1px solid rgba(34, 36, 38, 0.15);
 }
+
+body.dark .custom-list-builder {
+  background-color: #1b1c1d;
+  color: rgba(255, 255, 255, 0.87);
+}
+
+body.dark .custom-list-builder .song-list-item {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}

@@ -8,17 +8,21 @@ import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 
 import { ClearableRating } from "./ClearableRating";
+import { ColorFill } from "./ColorFill";
 
 function Color({ color }) {
   return (
     <div
       style={{
+        position: "relative",
+        isolation: "isolate",
         width: 140,
         height: 20,
-        border: "thin solid black",
-        backgroundColor: color,
+        border: "thin solid rgba(128, 128, 128, 0.7)",
       }}
-    />
+    >
+      <ColorFill color={color} />
+    </div>
   );
 }
 

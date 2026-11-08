@@ -30,7 +30,8 @@
   align-content: start;
   gap: 7px;
   padding: 12px;
-  background-color: color-mix(in srgb, var(--folder-color) 85%, white);
+  position: relative;
+  isolation: isolate;
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
   cursor: pointer;
@@ -48,6 +49,15 @@
   font-size: 0.95rem;
   line-height: 1.2;
   color: #4b5563;
+}
+
+body.dark .album-folder {
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+}
+
+body.dark .album-folder-label {
+  color: #9ca3af;
 }
 
 /* under the album summary popup (z-index 9), so a cover opens on top */
@@ -87,7 +97,8 @@
 .album-folder-panel {
   box-sizing: border-box;
   padding: 16px;
-  background-color: color-mix(in srgb, var(--folder-color) 60%, transparent);
+  position: relative;
+  isolation: isolate;
   border: 1px solid rgba(255, 255, 255, 0.22);
 }
 

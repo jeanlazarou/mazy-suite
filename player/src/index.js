@@ -31,18 +31,9 @@ function Main() {
     }
   }, [list, playlistUrl, setPlaylistUrl]);
 
-  // the albums browser is a light-styled view; don't let the player's
-  // dark-mode preference turn MUI inputs white-on-white there
-  return list ? (
-    <SetsGate />
-  ) : (
-    <ThemeProvider theme={lightTheme}>
-      <Albums />
-    </ThemeProvider>
-  );
+  // the albums views pick their own MUI theme (they follow the system)
+  return list ? <SetsGate /> : <Albums />;
 }
-
-const lightTheme = createTheme({ palette: { mode: "light" } });
 
 // MUI components (dialogs, inputs…) follow the app's dark-mode atom
 function Themed({ children }) {

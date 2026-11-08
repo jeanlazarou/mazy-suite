@@ -18,3 +18,9 @@
   box-shadow: 7px 6px 34px 1px rgba(44, 41, 47, 0.7);
   z-index: 9;
 }
+
+body.dark .modal-container {
+  background-color: #2a2b2d;
+  color: rgba(255, 255, 255, 0.87);
+  box-shadow: 7px 6px 34px 1px rgba(0, 0, 0, 0.7);
+}

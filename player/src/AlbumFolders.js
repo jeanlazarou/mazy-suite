@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 
 import { AlbumTiles } from "./AlbumTiles";
+import { ColorFill } from "./ColorFill";
 import { albumsLabel, groupByColor } from "./albumGroups";
 
 import "./AlbumFolders.css";
@@ -67,10 +68,11 @@ function Folder({ group, onOpen }) {
     <motion.div
       layoutId={`folder-${group.color}`}
       className="album-folder"
-      style={{ "--folder-color": group.color, borderRadius: 24 }}
+      style={{ borderRadius: 24 }}
       transition={spring}
       onClick={onOpen}
     >
+      <ColorFill color={group.color} opacity={0.85} over="white" />
       {group.albums.slice(0, PREVIEW).map(({ album }) => (
         <motion.img
           key={album.id}
@@ -115,9 +117,10 @@ function OpenFolder({ group, onClick, onClose }) {
         <motion.div
           layoutId={`folder-${group.color}`}
           className="album-folder-panel"
-          style={{ "--folder-color": group.color, borderRadius: 32 }}
+          style={{ borderRadius: 32 }}
           transition={spring}
         >
+          <ColorFill color={group.color} opacity={0.6} />
           <motion.div
             layoutScroll
             className="album-folder-grid"

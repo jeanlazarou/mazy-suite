@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAtom } from "jotai";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
 
 import { asReadyList, loadAlbums } from "./api";
 
@@ -7,6 +9,7 @@ import { AlbumsList } from "./AlbumsList";
 import { CustomListBuilder } from "./CustomListBuilder";
 
 import { Player } from "./Player";
+import { changeTheme } from "./DarkModeToggle";
 import { customPlaylist, currentPlaylistUrl } from "./atoms";
 
 function playlistPeriod(period) {
@@ -33,6 +36,27 @@ export function Albums() {
 
   const [, setCustomPlaylist] = useAtom(customPlaylist);
   const [, setPlaylistUrl] = useAtom(currentPlaylistUrl);
+
+  const systemDark = useMediaQuery("(prefers-color-scheme: dark)", { noSsr: true });
+
+  const theme = useMemo(
+    () => createTheme({ palette: { mode: systemDark ? "dark" : "light" } }),
+    [systemDark]
+  );
+
+  // the albums views follow the system's dark mode, and declaring it keeps
+  // browsers' forced dark from recoloring them; the player has its own switch
+  useEffect(() => {
+    if (playingList) return;
+
+    changeTheme(systemDark);
+
+    const root = document.documentElement.style;
+
+    root.colorScheme = "light dark";
+
+    return () => root.removeProperty("color-scheme");
+  }, [playingList, systemDark]);
 
   useEffect(() => {
     if (playlists.length > 0) return;
@@ -80,22 +104,26 @@ export function Albums() {
     setCreateList(true);
   };
 
-  return creatingList ? (
-    <CustomListBuilder
-      playlists={playlists}
-      open={creatingList}
-      onDone={startPlay}
-      defaultList={defaultList}
-    />
-  ) : playingList ? (
-    <Player />
-  ) : (
-    <AlbumsList
-      onLoad={loadList}
-      onPlay={startPlay}
-      sortedList={sortedList}
-      availableColors={availableColors}
-      onCreate={() => setCreateList(true)}
-    />
+  if (playingList && !creatingList) return <Player />;
+
+  return (
+    <ThemeProvider theme={theme}>
+      {creatingList ? (
+        <CustomListBuilder
+          playlists={playlists}
+          open={creatingList}
+          onDone={startPlay}
+          defaultList={defaultList}
+        />
+      ) : (
+        <AlbumsList
+          onLoad={loadList}
+          onPlay={startPlay}
+          sortedList={sortedList}
+          availableColors={availableColors}
+          onCreate={() => setCreateList(true)}
+        />
+      )}
+    </ThemeProvider>
   );
 }
