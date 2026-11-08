@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/audiomaster/mastering/pkg/analysis"
+	"github.com/audiomaster/mastering/pkg/dsp"
 	"github.com/audiomaster/mastering/pkg/engine"
 )
 
@@ -52,7 +53,7 @@ type Style struct {
 	Release     float64 `json:"-"` // compressor release, ms
 	Knee        float64 `json:"-"` // dB
 	RatioAdd    float64 `json:"-"` // added to the destination's ratio
-	ThreshAdd   float64 `json:"-"` // added to the destination's threshold, dB
+	SqueezeAdd  float64 `json:"-"` // dB of gain reduction added to the destination's
 }
 
 // Destination is where the master will be heard.
@@ -63,7 +64,7 @@ type Destination struct {
 	Description  string  `json:"description"`
 	TargetLUFS   float64 `json:"target_lufs"`
 	CeilingDBTP  float64 `json:"ceiling_dbtp"`
-	Density      float64 `json:"-"` // 0-1, how much to compress
+	Density      float64 `json:"-"` // 0-1, how much to compress (see squeezeDB)
 	Width        float64 `json:"-"` // stereo width multiplier
 	Tone         Tone    `json:"-"` // device compensation
 	HighPassHz   float64 `json:"-"`
@@ -73,25 +74,28 @@ type Destination struct {
 
 // neutralStyle is used when no style is chosen: no tonal shaping, a
 // middle-of-the-road compressor motion.
-var neutralStyle = Style{ID: "", Name: "No style", Attack: 15, Release: 100, Knee: 6}
+var neutralStyle = Style{ID: "", Name: "No style", Attack: 15, Release: 150, Knee: 6}
 
+// Compressor timings are mastering ones (whole mix, a few dB of gain
+// reduction): attack 10 ms or more, release 100 ms or more. Faster
+// settings make the whole mix pump on every beat.
 var styles = []Style{
 	{ID: "rock", Name: "Rock", Description: "Solid lows, cleaner low-mids, a bit of bite and air; punchy compression.",
-		Tone: Tone{Low: 1.5, Mud: -1, Presence: 1, Air: 1.5}, Attack: 10, Release: 100, Knee: 6, RatioAdd: 1, ThreshAdd: -2},
+		Tone: Tone{Low: 1.5, Mud: -1, Presence: 1, Air: 1.5}, Attack: 20, Release: 150, Knee: 6, RatioAdd: 0.5, SqueezeAdd: 0.5},
 	{ID: "pop", Name: "Pop", Description: "Bright and polished: forward vocals, extra air, smooth compression.",
-		Tone: Tone{Low: 1, Presence: 1.5, Air: 2}, Attack: 5, Release: 80, Knee: 8, RatioAdd: 0.5, ThreshAdd: -1},
+		Tone: Tone{Low: 1, Presence: 1.5, Air: 2}, Attack: 15, Release: 120, Knee: 8, RatioAdd: 0.25, SqueezeAdd: 0.25},
 	{ID: "electronic", Name: "Electronic", Description: "Big low end, scooped low-mids, crisp top; tight, dense compression.",
-		Tone: Tone{Low: 2, Mud: -1.5, Air: 2}, Attack: 3, Release: 50, Knee: 4, RatioAdd: 1.5, ThreshAdd: -3},
+		Tone: Tone{Low: 2, Mud: -1.5, Air: 2}, Attack: 10, Release: 100, Knee: 4, RatioAdd: 0.5, SqueezeAdd: 0.75},
 	{ID: "hiphop", Name: "Hip-hop", Description: "Heavy lows, clear vocals; firm compression that keeps the kick punching.",
-		Tone: Tone{Low: 2.5, Mud: -1, Presence: 1, Air: 1}, Attack: 10, Release: 80, Knee: 6, RatioAdd: 1, ThreshAdd: -2},
+		Tone: Tone{Low: 2.5, Mud: -1, Presence: 1, Air: 1}, Attack: 20, Release: 120, Knee: 6, RatioAdd: 0.5, SqueezeAdd: 0.5},
 	{ID: "jazz", Name: "Jazz", Description: "Warm and natural; gentle, slow compression that keeps the dynamics.",
-		Tone: Tone{Low: 0.5, Presence: -0.5, Air: 1}, Attack: 25, Release: 200, Knee: 10, RatioAdd: -0.5, ThreshAdd: 2},
+		Tone: Tone{Low: 0.5, Presence: -0.5, Air: 1}, Attack: 30, Release: 250, Knee: 10, RatioAdd: -0.25, SqueezeAdd: -0.5},
 	{ID: "acoustic", Name: "Acoustic / folk", Description: "Open and natural, slightly less boxy; light compression.",
-		Tone: Tone{Mud: -0.5, Presence: 0.5, Air: 1}, Attack: 20, Release: 150, Knee: 10, RatioAdd: -0.5, ThreshAdd: 2},
+		Tone: Tone{Mud: -0.5, Presence: 0.5, Air: 1}, Attack: 25, Release: 200, Knee: 10, RatioAdd: -0.25, SqueezeAdd: -0.5},
 	{ID: "classical", Name: "Classical", Description: "Almost untouched: a touch of air, very light compression to keep the full dynamic range.",
-		Tone: Tone{Presence: 0.5, Air: 1}, Attack: 30, Release: 300, Knee: 12, RatioAdd: -1, ThreshAdd: 4},
+		Tone: Tone{Presence: 0.5, Air: 1}, Attack: 30, Release: 300, Knee: 12, RatioAdd: -0.5, SqueezeAdd: -1},
 	{ID: "voice", Name: "Voice / speech", Description: "Spoken word: rumble cut, less boom, more intelligibility, softer sibilance; even levels.",
-		Tone: Tone{Low: -2, Mud: -1.5, Presence: 2, Air: -1}, HighPassHz: 80, Attack: 5, Release: 80, Knee: 6, RatioAdd: 1, ThreshAdd: -2},
+		Tone: Tone{Low: -2, Mud: -1.5, Presence: 2, Air: -1}, HighPassHz: 80, Attack: 10, Release: 120, Knee: 6, RatioAdd: 0.5, SqueezeAdd: 0.5},
 }
 
 var destinations = []Destination{
@@ -348,7 +352,8 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 
 	// --- Fix: from the analysis ---
 	var fixTone Tone
-	ratioFix, threshFix, attackCap := 0.0, 0.0, 0.0
+	ratioFix, squeezeFix, attackCap := 0.0, 0.0, 0.0
+	squashed := false
 	if c.Fix && a != nil {
 		if a.Spectrum != nil {
 			switch a.Spectrum.SpectralBalance {
@@ -371,16 +376,16 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 		if a.Loudness != nil && a.Loudness.LoudnessRange > 0 {
 			switch lra := a.Loudness.LoudnessRange; {
 			case lra > 15:
-				ratioFix, threshFix = 1, -2
+				ratioFix, squeezeFix = 0.5, 1
 				note("fix", "Very wide dynamics (loudness range %.1f LU): a bit more compression", lra)
 			case lra < 4:
-				ratioFix = -1
-				note("fix", "Already heavily compressed (loudness range %.1f LU): gentler compression", lra)
+				ratioFix, squashed = -0.5, true
+				note("fix", "Already heavily compressed (loudness range %.1f LU): only a touch of compression", lra)
 			}
 		}
 		if a.Dynamics != nil {
 			if a.Dynamics.CrestFactor > 12 {
-				attackCap = 5
+				attackCap = minAttackMS
 				note("fix", "Sharp peaks: faster compressor attack")
 			}
 		}
@@ -390,18 +395,20 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 			r.Fixes++
 		}
 	}
+	squeeze := squeezeDB(dest, style, squeezeFix, squashed)
+	note("destination", "Compression: about %.1f dB on the loudest parts", squeeze)
 
 	// --- Variant: the finish ---
 	if variant.Note != "" {
 		note("variant", "%s: %s", variant.Name, variant.Note)
 	}
 
-	// --- EQ: fixed band roles, layers add up ---
+	// --- EQ: fixed band roles, layers add up (to at most ±maxToneDB) ---
 	tone := style.Tone.add(dest.Tone).add(fixTone).add(variant.Tone)
 	eq := r.Processors["Parametric EQ"]
 	setBand := func(i int, freq, gain, q float64) {
 		eq[fmt.Sprintf("band.%d.freq", i)] = freq
-		eq[fmt.Sprintf("band.%d.gain", i)] = clamp(gain, -6, 6)
+		eq[fmt.Sprintf("band.%d.gain", i)] = clamp(gain, -maxToneDB, maxToneDB)
 		eq[fmt.Sprintf("band.%d.q", i)] = q
 		eq[fmt.Sprintf("band.%d.enabled", i)] = 1
 	}
@@ -415,20 +422,22 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 	}
 
 	// --- Compressor: character from style, amount from destination,
-	// movement adjusted by the variant ---
+	// movement adjusted by the variant. The threshold sits where the
+	// track's loud parts get the chosen gain reduction, so a hot mix isn't
+	// crushed and a quiet one isn't left alone. ---
 	comp := r.Processors["Compressor"]
-	ratio := clamp(1.5+dest.Density*3+style.RatioAdd+ratioFix+variant.RatioAdd, 1.2, 8)
-	threshold := clamp(-10-dest.Density*10+style.ThreshAdd+threshFix, -40, -4)
+	ratio := round1(clamp(1.5+dest.Density+style.RatioAdd+ratioFix+variant.RatioAdd, 1.2, 4))
+	knee := style.Knee + variant.KneeAdd
 	attack := style.Attack
 	if attackCap > 0 {
 		attack = math.Min(attack, attackCap)
 	}
-	comp["ratio"] = round1(ratio)
-	comp["threshold"] = round1(threshold)
-	comp["attack"] = round1(clamp(attack*variant.AttackMul, 1, 100))
-	comp["release"] = math.Round(clamp(style.Release*variant.ReleaseMul, 20, 1000))
-	comp["knee"] = style.Knee + variant.KneeAdd
-	comp["makeup"] = round1(math.Max(0, -threshold/ratio))
+	comp["ratio"] = ratio
+	comp["threshold"] = round1(thresholdFor(loudLevelDB(a), squeeze, ratio, knee))
+	comp["attack"] = round1(clamp(attack*variant.AttackMul, minAttackMS, 100))
+	comp["release"] = math.Round(clamp(style.Release*variant.ReleaseMul, minReleaseMS, 1000))
+	comp["knee"] = knee
+	comp["makeup"] = round1(squeeze)
 	comp["auto_makeup"] = 0
 
 	// --- Delivery stages ---
@@ -443,6 +452,54 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 
 	r.Summary = summary(style, dest, variant, r.Fixes, c.Fix)
 	return r, nil
+}
+
+const (
+	maxToneDB = 3.0 // most an EQ band moves, all layers together
+	// Mastering compressor timings (see styles).
+	minAttackMS  = 10.0
+	minReleaseMS = 100.0
+)
+
+// squeezeDB is how much the compressor turns the loudest parts down: from
+// 0.5 dB to 4 dB with the destination's density, the style's taste and
+// the dynamics fix. An already squashed mix gets at most 1 dB.
+func squeezeDB(dest Destination, style Style, fix float64, squashed bool) float64 {
+	s := clamp(0.5+dest.Density*3.5+style.SqueezeAdd+fix, 0.5, 4)
+	if squashed {
+		s = math.Min(s/2, 1)
+	}
+	return s
+}
+
+// loudLevelDB is where the compressor's detector sits on the source's
+// loud parts: measured by the analysis, else estimated from the loudness
+// (it typically sits ~8 dB above the integrated LUFS), else a typical
+// mix's level.
+func loudLevelDB(a *analysis.AnalysisResult) float64 {
+	if a != nil && a.Dynamics != nil && a.Dynamics.LoudLevelDB != 0 && a.Dynamics.LoudLevelDB > -100 {
+		return a.Dynamics.LoudLevelDB
+	}
+	if a != nil && a.Loudness != nil && a.Loudness.IntegratedLUFS > -100 {
+		return a.Loudness.IntegratedLUFS + 8
+	}
+	return -6
+}
+
+// thresholdFor returns the threshold at which a detector level gets
+// squeeze dB of gain reduction. The static curve grows with level −
+// threshold, so bisection on that difference finds it.
+func thresholdFor(level, squeeze, ratio, knee float64) float64 {
+	lo, hi := -knee/2, 80.0
+	for i := 0; i < 60; i++ {
+		mid := (lo + hi) / 2
+		if dsp.GainReductionDB(level, level-mid, ratio, knee) < squeeze {
+			lo = mid
+		} else {
+			hi = mid
+		}
+	}
+	return clamp(level-(lo+hi)/2, -40, 0)
 }
 
 // defaults returns every parameter of a fresh full chain.

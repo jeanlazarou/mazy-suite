@@ -3,6 +3,7 @@ package analysis
 import (
 	"math"
 	"math/cmplx"
+	"sort"
 
 	"github.com/audiomaster/mastering/pkg/dsp"
 )
@@ -34,6 +35,11 @@ type DynamicsAnalysis struct {
 	DynamicRange float64   `json:"dynamic_range_db"`
 	CrestFactor  float64   `json:"crest_factor_db"`
 	Histogram    []float64 `json:"histogram"` // dB histogram bins
+	// LoudLevelDB is the level a mastering compressor's detector reaches on
+	// the loud parts (see loudLevel); recipes set the threshold from it so
+	// the compression depends on the track, not on a fixed dB value. 0 =
+	// unknown (an analysis from before it existed).
+	LoudLevelDB float64 `json:"loud_level_db"`
 }
 
 // StereoAnalysis contains stereo field information.
@@ -247,7 +253,45 @@ func analyzeDynamics(buf *dsp.AudioBuffer) *DynamicsAnalysis {
 		DynamicRange: maxWindowDB - minWindowDB,
 		CrestFactor:  crestFactor,
 		Histogram:    histogram,
+		LoudLevelDB:  loudLevel(buf),
 	}
+}
+
+// loudLevel runs the compressor's peak detector (cross-channel peak, one-
+// pole attack/release) with typical mastering timings over the track and
+// returns the 95th percentile of its level, in dB, over the parts above
+// -60 dBFS (silence and fades don't count). -200 for silence.
+func loudLevel(buf *dsp.AudioBuffer) float64 {
+	const attackMS, releaseMS, everyMS = 10.0, 150.0, 5.0
+	sr := float64(buf.SampleRate)
+	att := math.Exp(-1 / (attackMS * 0.001 * sr))
+	rel := math.Exp(-1 / (releaseMS * 0.001 * sr))
+	step := int(everyMS * 0.001 * sr)
+	if step < 1 {
+		step = 1
+	}
+	floor := math.Pow(10, -60.0/20)
+	var env float64
+	var levels []float64
+	for i := 0; i < buf.Length(); i++ {
+		var peak float64
+		for ch := range buf.Samples {
+			peak = math.Max(peak, math.Abs(buf.Samples[ch][i]))
+		}
+		if peak > env {
+			env = att*env + (1-att)*peak
+		} else {
+			env = rel*env + (1-rel)*peak
+		}
+		if i%step == 0 && env > floor {
+			levels = append(levels, env)
+		}
+	}
+	if len(levels) == 0 {
+		return -200
+	}
+	sort.Float64s(levels)
+	return linToDb(levels[len(levels)*95/100])
 }
 
 func analyzeStereo(buf *dsp.AudioBuffer) *StereoAnalysis {

@@ -13,9 +13,11 @@ const NAME = 'Compressor';
 const COLOR = '#FF6584';
 const DB_MIN = -60; // in/out graph range
 const RATIO_MAX = 20;
+// Average gain reduction above which a whole mix audibly pumps.
+const HEAVY_AVG_GR_DB = 3;
 
 /** Output level for a detector level — the static curve of
- *  Compressor.computeGainReduction in pkg/dsp/compressor.go. */
+ *  GainReductionDB in pkg/dsp/compressor.go. */
 export function compressorOut(inDB: number, threshold: number, ratio: number, knee: number): number {
   const half = knee / 2;
   if (knee > 0 && inDB > threshold - half && inDB < threshold + half) {
@@ -61,6 +63,12 @@ export const CompressorPanel: React.FC<CompressorPanelProps> = ({ expanded, onEx
   return (
     <Paper sx={{ p: 2 }}>
       <ProcessorHeader title="Compressor" enabled={enabled} onToggle={(v) => setProcessorEnabled(NAME, v)} expanded={expanded} onExpandToggle={onExpandToggle} />
+      {enabled && meters && meters.avg_gr_db > HEAVY_AVG_GR_DB && (
+        <Typography sx={{ fontSize: '0.75rem', color: 'warning.main', mt: 0.5, mb: expanded ? 1 : 0 }}>
+          Heavy compression: the mix is turned down {meters.avg_gr_db.toFixed(1)} dB on average, so its
+          level may rise and fall with the beat (pumping). Raise the threshold or lower the ratio.
+        </Typography>
+      )}
       <Collapse in={expanded}>
         <Box sx={{ mb: 1 }}>
           <ViewToggle view={view} onChange={setView} visualLabel="Curve" />

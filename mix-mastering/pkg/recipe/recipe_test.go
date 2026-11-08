@@ -2,10 +2,12 @@ package recipe
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 
 	"github.com/audiomaster/mastering/pkg/analysis"
+	"github.com/audiomaster/mastering/pkg/dsp"
 	"github.com/audiomaster/mastering/pkg/engine"
 )
 
@@ -52,7 +54,7 @@ func TestStyleAndDestinationCombine(t *testing.T) {
 	if got := rockPod.Processors["Parametric EQ"]["band.1.gain"]; got != rock.Processors["Parametric EQ"]["band.1.gain"] {
 		t.Errorf("rock+podcast low shelf = %v, want rock's %v", got, rock.Processors["Parametric EQ"]["band.1.gain"])
 	}
-	if rockPod.Processors["Compressor"]["attack"] != 10 || plainPod.Processors["Compressor"]["attack"] != 15 {
+	if rockPod.Processors["Compressor"]["attack"] != 20 || plainPod.Processors["Compressor"]["attack"] != 15 {
 		t.Errorf("compressor attack should follow the style")
 	}
 	// Podcast as a destination is about delivery; it must not turn on the
@@ -83,8 +85,75 @@ func TestFixesFollowAnalysisAndSwitch(t *testing.T) {
 	if on.Processors["Parametric EQ"]["band.4.gain"] <= off.Processors["Parametric EQ"]["band.4.gain"] {
 		t.Errorf("dark fix should raise the air band")
 	}
-	if on.Processors["Compressor"]["attack"] != 5 {
-		t.Errorf("peak fix should cap attack at 5 ms, got %v", on.Processors["Compressor"]["attack"])
+	if on.Processors["Compressor"]["attack"] != minAttackMS {
+		t.Errorf("peak fix should cap attack at %v ms, got %v", minAttackMS, on.Processors["Compressor"]["attack"])
+	}
+}
+
+// The threshold follows the track: the loud parts get the planned gain
+// reduction whatever the file's level. A fixed threshold crushed hot mixes
+// (Electronic × Car on a -9 LUFS master: 10 dB of reduction on average,
+// the whole mix pumping on every beat) and left quiet ones alone.
+func TestCompressionFollowsTrackLevel(t *testing.T) {
+	at := func(loud float64) *analysis.AnalysisResult {
+		return &analysis.AnalysisResult{
+			Dynamics: &analysis.DynamicsAnalysis{LoudLevelDB: loud},
+			Loudness: &analysis.LoudnessAnalysis{IntegratedLUFS: loud - 8, LoudnessRange: 7},
+		}
+	}
+	hot, _ := Build(Choice{Style: "electronic", Destination: "car", Fix: true}, at(-3))
+	quiet, _ := Build(Choice{Style: "electronic", Destination: "car", Fix: true}, at(-13))
+	h, q := hot.Processors["Compressor"], quiet.Processors["Compressor"]
+	if d := h["threshold"] - q["threshold"]; math.Abs(d-10) > 0.11 || h["ratio"] != q["ratio"] {
+		t.Errorf("a 10 dB hotter track should get a 10 dB higher threshold, got %v vs %v", h, q)
+	}
+	car, _ := findDestination("car")
+	electronic, _ := findStyle("electronic")
+	want := squeezeDB(car, electronic, 0, false)
+	if got := dsp.GainReductionDB(-3, h["threshold"], h["ratio"], h["knee"]); math.Abs(got-want) > 0.2 {
+		t.Errorf("loud parts get %.2f dB of reduction, want %.2f", got, want)
+	}
+	if want > 4 || want < 3 {
+		t.Errorf("electronic × car should squeeze 3-4 dB, got %.2f", want)
+	}
+
+	// An already squashed master gets a touch at most.
+	squashed := at(-3)
+	squashed.Loudness.LoudnessRange = 3.4
+	r, _ := Build(Choice{Style: "electronic", Destination: "car", Fix: true}, squashed)
+	c := r.Processors["Compressor"]
+	if got := dsp.GainReductionDB(-3, c["threshold"], c["ratio"], c["knee"]); got > 1.05 {
+		t.Errorf("squashed master: %.2f dB of reduction, want at most 1", got)
+	}
+}
+
+// Mastering timings everywhere (fast release pumps a whole mix), and the
+// layers' EQ moves add up to at most ±maxToneDB.
+func TestMasteringLimits(t *testing.T) {
+	dark := &analysis.AnalysisResult{
+		Spectrum: &analysis.SpectrumAnalysis{SpectralBalance: "dark"},
+		Dynamics: &analysis.DynamicsAnalysis{CrestFactor: 15},
+		Loudness: &analysis.LoudnessAnalysis{IntegratedLUFS: -14, LoudnessRange: 7},
+	}
+	for _, s := range append([]Style{neutralStyle}, styles...) {
+		for _, d := range destinations {
+			for _, v := range variants {
+				r, err := Build(Choice{Style: s.ID, Destination: d.ID, Fix: true, Variant: v.ID}, dark)
+				if err != nil {
+					t.Fatal(err)
+				}
+				name := fmt.Sprintf("%s/%s/%s", s.ID, d.ID, v.ID)
+				c := r.Processors["Compressor"]
+				if c["attack"] < minAttackMS || c["release"] < minReleaseMS || c["ratio"] > 4 {
+					t.Errorf("%s: attack %v, release %v, ratio %v", name, c["attack"], c["release"], c["ratio"])
+				}
+				for b := 1; b <= 4; b++ {
+					if g := r.Processors["Parametric EQ"][fmt.Sprintf("band.%d.gain", b)]; math.Abs(g) > maxToneDB {
+						t.Errorf("%s: band %d at %v dB", name, b, g)
+					}
+				}
+			}
+		}
 	}
 }
 

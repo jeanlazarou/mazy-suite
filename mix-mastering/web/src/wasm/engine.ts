@@ -27,6 +27,9 @@ export interface AnalysisResult {
     dynamic_range_db: number;
     crest_factor_db: number;
     histogram: number[];
+    // Compressor detector level on the loud parts; recipes set the
+    // threshold from it.
+    loud_level_db?: number;
   };
   stereo_field: {
     correlation: number;

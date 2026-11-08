@@ -75,3 +75,26 @@ func TestFFT(t *testing.T) {
 		t.Errorf("FFT peak at %.0f Hz, expected ~%.0f Hz", peakFreq, freq)
 	}
 }
+
+// The loud level is where a peak detector sits on the loud parts: for a
+// steady sine, just under its peak; quiet passages and silence don't pull
+// it down.
+func TestLoudLevel(t *testing.T) {
+	const sr = 44100
+	buf := dsp.NewAudioBuffer(2, sr*10, sr)
+	for i := 0; i < buf.Length(); i++ {
+		amp := 0.5 // -6 dB
+		switch {
+		case i < sr*2:
+			amp = 0.05 // quiet intro, -26 dB
+		case i > sr*8:
+			amp = 0 // silence
+		}
+		v := amp * math.Sin(2*math.Pi*220*float64(i)/sr)
+		buf.Samples[0][i], buf.Samples[1][i] = v, v
+	}
+	got := Analyze(buf).Dynamics.LoudLevelDB
+	if got > -6 || got < -7 {
+		t.Errorf("loud level = %.2f dB, want just under -6", got)
+	}
+}

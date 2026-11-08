@@ -62,6 +62,12 @@ func Aggregate(results []*AnalysisResult) *AnalysisResult {
 		CrestFactor: median(collect(func(r *AnalysisResult) (float64, bool) {
 			return safeDyn(r, func(d *DynamicsAnalysis) float64 { return d.CrestFactor })
 		})),
+		LoudLevelDB: median(collect(func(r *AnalysisResult) (float64, bool) {
+			if r.Dynamics == nil || r.Dynamics.LoudLevelDB == 0 || r.Dynamics.LoudLevelDB < -100 {
+				return 0, false
+			}
+			return r.Dynamics.LoudLevelDB, true
+		})),
 	}
 
 	// Loudness: power-domain mean of integrated values (duration weighting

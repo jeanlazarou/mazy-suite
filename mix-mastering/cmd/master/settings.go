@@ -39,9 +39,10 @@ func (f *settingsFlags) registerVariant(cmd *cobra.Command) {
 }
 
 // needsAnalysis tells whether resolve uses the audio's analysis, so
-// callers can skip analyzing when it doesn't.
+// callers can skip analyzing when it doesn't. Recipes always do (the
+// compressor threshold follows the track's level), with or without fixes.
 func (f *settingsFlags) needsAnalysis() bool {
-	return f.preset == "" && !f.noFix
+	return f.preset == ""
 }
 
 // settings is what a command applies to its chains: a recipe built from
@@ -53,7 +54,7 @@ type settings struct {
 
 // resolve builds the settings. analyses are the audio's analyses (one
 // track, or every track of an album — aggregated so the settings suit the
-// whole record); they're only used for fixes.
+// whole record), used for the fixes and the compressor threshold.
 func (f *settingsFlags) resolve(analyses ...*analysis.AnalysisResult) (*settings, error) {
 	if f.preset != "" {
 		if f.style != "" || f.dest != "" || f.variant != "" {
@@ -65,11 +66,8 @@ func (f *settingsFlags) resolve(analyses ...*analysis.AnalysisResult) (*settings
 		}
 		return &settings{preset: p}, nil
 	}
-	var a *analysis.AnalysisResult
-	if !f.noFix {
-		a = analysis.Aggregate(analyses)
-	}
-	r, err := recipe.Build(recipe.Choice{Style: f.style, Destination: f.dest, Fix: !f.noFix, Variant: f.variant}, a)
+	r, err := recipe.Build(recipe.Choice{Style: f.style, Destination: f.dest, Fix: !f.noFix, Variant: f.variant},
+		analysis.Aggregate(analyses))
 	if err != nil {
 		return nil, err
 	}

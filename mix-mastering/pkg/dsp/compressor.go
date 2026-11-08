@@ -120,25 +120,23 @@ func (c *Compressor) computeGainReduction(level float64) float64 {
 	if level < 1e-10 {
 		return 1.0
 	}
+	return dbToLinear(-GainReductionDB(linearToDb(level), c.Threshold, c.Ratio, c.KneeWidth))
+}
 
-	levelDB := linearToDb(level)
-	threshDB := c.Threshold
-	kneeHalf := c.KneeWidth / 2.0
-
-	var outputDB float64
-	if c.KneeWidth > 0 && levelDB > (threshDB-kneeHalf) && levelDB < (threshDB+kneeHalf) {
-		// Soft knee region
-		x := levelDB - threshDB + kneeHalf
-		outputDB = levelDB + (1.0/c.Ratio-1.0)*x*x/(2.0*c.KneeWidth)
-	} else if levelDB >= threshDB+kneeHalf {
-		// Above threshold
-		outputDB = threshDB + (levelDB-threshDB)/c.Ratio
-	} else {
-		// Below threshold
-		return 1.0
+// GainReductionDB is the compressor's static curve: how many dB a detector
+// level is turned down, with a soft knee centred on the threshold. Recipes
+// use it to find the threshold that gives a chosen amount of gain
+// reduction; the web UI has a TS copy (compressor curve view).
+func GainReductionDB(levelDB, threshold, ratio, knee float64) float64 {
+	half := knee / 2
+	switch {
+	case knee > 0 && levelDB > threshold-half && levelDB < threshold+half:
+		x := levelDB - threshold + half
+		return (1 - 1/ratio) * x * x / (2 * knee)
+	case levelDB >= threshold+half:
+		return (levelDB - threshold) * (1 - 1/ratio)
 	}
-
-	return dbToLinear(outputDB - levelDB)
+	return 0
 }
 
 func (c *Compressor) SetParam(name string, value float64) error {
