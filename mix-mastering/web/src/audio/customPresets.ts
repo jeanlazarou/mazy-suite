@@ -11,6 +11,8 @@ export interface CustomPreset {
   description: string;
   tags: string[];
   processors: ProcessorParams;
+  // Which stages are on; absent in presets saved before v0.10.2.
+  enabled?: Record<string, boolean>;
 }
 
 const STORAGE_KEY = 'mixMastering.customPresets';

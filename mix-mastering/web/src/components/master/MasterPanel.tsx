@@ -281,6 +281,7 @@ export const PresetsSection: React.FC<{ hint: string }> = ({ hint }) => {
       description: st.recipe?.summary ?? 'Custom preset',
       tags: ['custom'],
       processors: st.params,
+      enabled: { ...st.processorEnabled },
     };
     setCustomPresets(saveCustomPreset(preset));
     st.setCustomPreset(name);

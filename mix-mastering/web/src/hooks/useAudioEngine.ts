@@ -647,6 +647,10 @@ export function useAudioEngine() {
         await engine.setParam(proc, 'enabled', 0);
       }
     }
+    for (const [name, enabled] of Object.entries(preset.enabled ?? {})) {
+      useStore.getState().setProcessorEnabledState(name, enabled);
+      await engine.setProcessorEnabled(name, enabled);
+    }
     setParams(await engine.getParams());
     setParamsEdited(false);
   }, []);

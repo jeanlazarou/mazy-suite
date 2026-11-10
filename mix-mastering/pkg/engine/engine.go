@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/audiomaster/mastering/pkg/dsp"
 	audioio "github.com/audiomaster/mastering/pkg/io"
@@ -131,18 +132,67 @@ func (e *MasteringEngine) ProcessWithTaps(buf *dsp.AudioBuffer, tap func(stage s
 	if tap != nil {
 		tap("Input", buf)
 	}
+	var normalizer *dsp.LoudnessNormalizer
 	for _, p := range e.processors {
 		if !p.Enabled() {
 			continue
 		}
-		if err := p.Process(buf); err != nil {
+		var err error
+		if lim, ok := p.(*dsp.Limiter); ok && normalizer != nil {
+			err = limitToTarget(buf, lim, normalizer.TargetLUFS)
+		} else {
+			err = p.Process(buf)
+		}
+		if err != nil {
 			return fmt.Errorf("processor %q: %w", p.Name(), err)
+		}
+		if ln, ok := p.(*dsp.LoudnessNormalizer); ok {
+			normalizer = ln
 		}
 		if tap != nil {
 			tap(p.Name(), buf)
 		}
 	}
 	return nil
+}
+
+// How close to the normalizer's target the limited result must land (LU),
+// how many times more level is fed to the limiter to get there, and the
+// most it may be fed in total (dB).
+const (
+	targetTolerance = 0.1
+	targetPasses    = 3
+	targetMaxMakeup = 3.0
+)
+
+// limitToTarget runs the limiter after a loudness normalizer. The
+// normalizer reaches its target before the limiter, and the limiter then
+// takes level off the peaks, so the result ends under the target; where
+// it does, the limiter is run again on its input with that much more
+// level.
+func limitToTarget(buf *dsp.AudioBuffer, lim *dsp.Limiter, targetLUFS float64) error {
+	input := make([][]float64, buf.Channels())
+	for ch := range input {
+		input[ch] = append([]float64(nil), buf.Samples[ch]...)
+	}
+	makeup := 0.0
+	for pass := 0; ; pass++ {
+		if err := lim.Process(buf); err != nil {
+			return err
+		}
+		got := dsp.NewLUFSMeter(float64(buf.SampleRate), buf.Channels()).MeasureIntegrated(buf)
+		short := targetLUFS - got
+		if got < -100 || short < targetTolerance || pass == targetPasses || makeup >= targetMaxMakeup {
+			return nil
+		}
+		makeup = math.Min(makeup+short, targetMaxMakeup)
+		gain := math.Pow(10, makeup/20)
+		for ch := range input {
+			for i, v := range input[ch] {
+				buf.Samples[ch][i] = v * gain
+			}
+		}
+	}
 }
 
 // SetSampleRate updates the engine's sample rate and propagates it to all
