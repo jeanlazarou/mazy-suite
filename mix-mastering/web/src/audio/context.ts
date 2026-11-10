@@ -83,10 +83,10 @@ export function audioBufferToWavBlob(buffer: AudioBuffer): Blob {
   return new Blob([wav.buffer as ArrayBuffer], { type: 'audio/wav' });
 }
 
-// Encode interleaved float32 samples as a 16-bit PCM WAV with TPDF dither.
+// Encode interleaved float32 samples as a 24-bit PCM WAV with TPDF dither.
 export function encodeWav(interleaved: Float32Array, numChannels: number, sampleRate: number): Uint8Array {
   const length = interleaved.length / numChannels;
-  const bytesPerSample = 2; // 16-bit
+  const bytesPerSample = 3; // 24-bit
   const dataSize = length * numChannels * bytesPerSample;
   const headerSize = 44;
   const arrayBuffer = new ArrayBuffer(headerSize + dataSize);
@@ -117,17 +117,19 @@ export function encodeWav(interleaved: Float32Array, numChannels: number, sample
   writeString(36, 'data');
   view.setUint32(40, dataSize, true);
 
-  // Interleaved 16-bit samples with 1-LSB TPDF dither
+  // Interleaved 24-bit little-endian samples with 1-LSB TPDF dither
+  const out = new Uint8Array(arrayBuffer);
   let offset = headerSize;
   for (let i = 0; i < interleaved.length; i++) {
     const sample = Math.max(-1, Math.min(1, interleaved[i]));
     const dither = Math.random() - Math.random();
-    const scaled = Math.round(sample * 0x7FFF + dither);
-    view.setInt16(offset, Math.max(-0x8000, Math.min(0x7FFF, scaled)), true);
-    offset += 2;
+    const v = Math.max(-0x800000, Math.min(0x7FFFFF, Math.round(sample * 0x7FFFFF + dither)));
+    out[offset++] = v & 0xFF;
+    out[offset++] = (v >> 8) & 0xFF;
+    out[offset++] = (v >> 16) & 0xFF;
   }
 
-  return new Uint8Array(arrayBuffer);
+  return out;
 }
 
 export function audioBufferToFloat32Array(buffer: AudioBuffer): Float32Array {

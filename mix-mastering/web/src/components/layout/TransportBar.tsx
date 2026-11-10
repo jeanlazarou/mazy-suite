@@ -208,7 +208,7 @@ export const TransportBar: React.FC = () => {
           </span>
         </Tooltip>
         <Tooltip title={processedBuffer && !isProcessing && !paramsDirty
-          ? 'Download the mastered audio as WAV'
+          ? 'Download the mastered audio as 24-bit WAV'
           : 'Available once the preview is up to date'}>
           <span>
             <IconButton
