@@ -1,4 +1,5 @@
 import { createLiveSection } from './livePreview';
+import { sniffSampleRate } from './sampleRate';
 
 let audioContext: AudioContext | null = null;
 let analyserNode: AnalyserNode | null = null;
@@ -61,21 +62,20 @@ export async function resumeAudioContext(): Promise<void> {
   }
 }
 
-export function decodeAudioFile(file: File): Promise<AudioBuffer> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = async () => {
-      try {
-        const ctx = getAudioContext();
-        const buffer = await ctx.decodeAudioData(reader.result as ArrayBuffer);
-        resolve(buffer);
-      } catch (err) {
-        reject(err);
-      }
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsArrayBuffer(file);
-  });
+// Decode at the file's own sample rate: decodeAudioData converts to the
+// rate of its context, and the playback context runs at the output
+// device's.
+export async function decodeAudioFile(file: File): Promise<AudioBuffer> {
+  const bytes = await file.arrayBuffer();
+  const rate = sniffSampleRate(new Uint8Array(bytes));
+  if (rate !== null && rate !== getAudioContext().sampleRate) {
+    try {
+      return await new OfflineAudioContext(2, 1, rate).decodeAudioData(bytes.slice(0));
+    } catch {
+      // Rate not supported by this browser: decode at the device's.
+    }
+  }
+  return getAudioContext().decodeAudioData(bytes);
 }
 
 export function audioBufferToWavBlob(buffer: AudioBuffer): Blob {

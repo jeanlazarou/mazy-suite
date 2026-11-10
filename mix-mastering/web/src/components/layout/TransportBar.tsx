@@ -207,11 +207,13 @@ export const TransportBar: React.FC = () => {
             </IconButton>
           </span>
         </Tooltip>
-        <Tooltip title={processedBuffer ? 'Download the mastered audio as WAV' : 'Available once the preview is ready'}>
+        <Tooltip title={processedBuffer && !isProcessing && !paramsDirty
+          ? 'Download the mastered audio as WAV'
+          : 'Available once the preview is up to date'}>
           <span>
             <IconButton
               size="small"
-              disabled={!processedBuffer}
+              disabled={!processedBuffer || isProcessing || paramsDirty}
               onClick={() => {
                 if (!processedBuffer || !fileInfo) return;
                 const blob = audioBufferToWavBlob(processedBuffer);
