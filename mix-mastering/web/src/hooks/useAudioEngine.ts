@@ -23,11 +23,17 @@ const XRAY_SPEC_COLS = 800;
 let xrayRunSeq = 0;
 
 // Engine start-up runs once per app, not once per component using this
-// hook: its final setParams(engine.getParams()) would otherwise, from a
-// component mounted later (the master panel appears once an album is
-// analyzed), overwrite settings applied in the meantime with whatever the
-// engine held at that moment.
+// hook.
 let engineInitStarted = false;
+
+// A job on the app's engine is many calls (init, settings, processing,
+// meters); jobs run one after the other so they never interleave.
+let engineQueue: Promise<unknown> = Promise.resolve();
+function withEngine<T>(job: () => Promise<T>): Promise<T> {
+  const run = engineQueue.then(job, job);
+  engineQueue = run.catch(() => {});
+  return run;
+}
 
 // Same idea for recipe builds: a choice clicked while a previous build is
 // still in flight must win, and the older build must stop applying.
@@ -127,8 +133,6 @@ export function useAudioEngine() {
   const setAnalysis = useStore((s) => s.setAnalysis);
   const setProcessedAnalysis = useStore((s) => s.setProcessedAnalysis);
   const setIsAnalyzing = useStore((s) => s.setIsAnalyzing);
-  const setParamsEdited = useStore((s) => s.setParamsEdited);
-  const setProcessorEnabledState = useStore((s) => s.setProcessorEnabledState);
   const setProcessorNames = useStore((s) => s.setProcessorNames);
 
   useEffect(() => {
@@ -138,7 +142,10 @@ export function useAudioEngine() {
       setWasmReady(true);
       setLoading(false);
       useStore.getState().setRecipeOptions(await engine.getRecipeOptions());
-      setParams(await engine.getParams());
+      // The chain's defaults, so the store holds complete settings from
+      // the start (a recipe or preset replaces them).
+      await engine.initEngine(44100, 2);
+      if (Object.keys(useStore.getState().params).length === 0) setParams(await engine.getParams());
       setProcessorNames(await engine.getProcessorNames());
     }).catch((err) => {
       setError(`Failed to load WASM: ${err.message}`);
@@ -153,16 +160,8 @@ export function useAudioEngine() {
     const live = useStore.getState();
     const params = settings ? settings.params : live.params;
     const processorEnabled = settings ? settings.enabled : live.processorEnabled;
-    const applied = { params, enabled: processorEnabled };
-    for (const [proc, procParams] of Object.entries(params)) {
-      for (const [param, value] of Object.entries(procParams)) {
-        await engine.setParam(proc, param, value);
-      }
-    }
-    for (const [name, enabled] of Object.entries(processorEnabled)) {
-      await engine.setProcessorEnabled(name, enabled);
-    }
-    return applied;
+    await engine.applySettings(params, processorEnabled);
+    return { params, enabled: processorEnabled };
   };
 
   // Album loudness must be measured through the chains (they change
@@ -229,19 +228,6 @@ export function useAudioEngine() {
     return applied;
   };
 
-  // Put the active track's settings back into the engine after work on
-  // other tracks (calibration, export, transitions): knob edits read the
-  // engine's params back, so it must hold the active track's.
-  const restoreActiveEngine = async () => {
-    const s = useStore.getState();
-    const t = s.tracks.find((x) => x.id === s.activeTrackId);
-    if (!t) return;
-    await engine.initEngine(t.buffer.sampleRate, t.buffer.numberOfChannels);
-    await applyEngineState();
-    await applyTrackLoudness(t);
-  };
-  const syncEngineToActive = useCallback(() => restoreActiveEngine(), []);
-
   // Show a finished render as the preview — no engine work.
   const showRender = (r: CachedRender) => {
     setProcessedBuffer(r.buffer, r.rendered);
@@ -279,50 +265,52 @@ export function useAudioEngine() {
 
     setIsProcessing(true);
     try {
-      const channels = originalBuffer.numberOfChannels;
-      const sampleRate = originalBuffer.sampleRate;
-      const rendered = await prepareEngineRun(channels, sampleRate);
+      await withEngine(async () => {
+        const channels = originalBuffer.numberOfChannels;
+        const sampleRate = originalBuffer.sampleRate;
+        const rendered = await prepareEngineRun(channels, sampleRate);
 
-      // Float32Array args are transferred to the worker, so interleave a
-      // fresh copy per call.
-      const processed = await engine.processBuffer(
-        audioBufferToFloat32Array(originalBuffer), channels, sampleRate);
-      if (useStore.getState().originalBuffer !== originalBuffer) return; // track switched
-      // A version picked meanwhile is already rendered: it is shown
-      // instead (App's auto-preview), this stale result is dropped.
-      if (!stillCurrent() && currentRender(useStore.getState())) return;
-      const processedAudioBuffer = float32ArrayToAudioBuffer(processed, channels, sampleRate);
-
-      setProcessedBuffer(processedAudioBuffer, rendered);
-      if (!stillCurrent()) useStore.getState().setParamsDirty(true);
-      else if (start.workspace === 'album' && start.activeTrackId) {
-        useStore.getState().markReviewed(start.activeTrackId);
-      }
-      setMeters(await engine.getMeters());
-
-      // Analyze the result for display (the recipe's fixes stay pinned to
-      // the original's analysis).
-      const processedAnalysis = await engine.inspectBuffer(
-        audioBufferToFloat32Array(processedAudioBuffer), channels, sampleRate);
-      setProcessedAnalysis(processedAnalysis);
-
-      // Match gain for loudness-matched A/B playback, from the two analyses.
-      const originalLufs = useStore.getState().analysis?.loudness.integrated_lufs
-        ?? await engine.measureLoudness(
+        // Float32Array args are transferred to the worker, so interleave a
+        // fresh copy per call.
+        const processed = await engine.processBuffer(
           audioBufferToFloat32Array(originalBuffer), channels, sampleRate);
-      const processedLufs = processedAnalysis.loudness.integrated_lufs;
-      const matchGainDB = originalLufs > -100 && processedLufs > -100 ? originalLufs - processedLufs : null;
-      setMatchGainDB(matchGainDB);
+        if (useStore.getState().originalBuffer !== originalBuffer) return; // track switched
+        // A version picked meanwhile is already rendered: it is shown
+        // instead (App's auto-preview), this stale result is dropped.
+        if (!stillCurrent() && currentRender(useStore.getState())) return;
+        const processedAudioBuffer = float32ArrayToAudioBuffer(processed, channels, sampleRate);
 
-      // One of the four versions (the version renderer failed on it, or
-      // wasn't running): keep it for switching back to.
-      const key = renderKey(rendered, start.activeTrackId);
-      const now = useStore.getState();
-      if (now.workspace === 'track' && Object.values(now.variants).some((v) => v.key === key)) {
-        now.addRender({
-          key, rendered, buffer: processedAudioBuffer, meters: now.meters, analysis: processedAnalysis, matchGainDB,
-        });
-      }
+        setProcessedBuffer(processedAudioBuffer, rendered);
+        if (!stillCurrent()) useStore.getState().setParamsDirty(true);
+        else if (start.workspace === 'album' && start.activeTrackId) {
+          useStore.getState().markReviewed(start.activeTrackId);
+        }
+        setMeters(await engine.getMeters());
+
+        // Analyze the result for display (the recipe's fixes stay pinned to
+        // the original's analysis).
+        const processedAnalysis = await engine.inspectBuffer(
+          audioBufferToFloat32Array(processedAudioBuffer), channels, sampleRate);
+        setProcessedAnalysis(processedAnalysis);
+
+        // Match gain for loudness-matched A/B playback, from the two analyses.
+        const originalLufs = useStore.getState().analysis?.loudness.integrated_lufs
+          ?? await engine.measureLoudness(
+            audioBufferToFloat32Array(originalBuffer), channels, sampleRate);
+        const processedLufs = processedAnalysis.loudness.integrated_lufs;
+        const matchGainDB = originalLufs > -100 && processedLufs > -100 ? originalLufs - processedLufs : null;
+        setMatchGainDB(matchGainDB);
+
+        // One of the four versions (the version renderer failed on it, or
+        // wasn't running): keep it for switching back to.
+        const key = renderKey(rendered, start.activeTrackId);
+        const now = useStore.getState();
+        if (now.workspace === 'track' && Object.values(now.variants).some((v) => v.key === key)) {
+          now.addRender({
+            key, rendered, buffer: processedAudioBuffer, meters: now.meters, analysis: processedAnalysis, matchGainDB,
+          });
+        }
+      });
     } catch (err: any) {
       setError(`Processing failed: ${err.message}`);
     } finally {
@@ -358,24 +346,21 @@ export function useAudioEngine() {
 
     setXrayBusy(true);
     try {
-      const channels = originalBuffer.numberOfChannels;
-      const sampleRate = originalBuffer.sampleRate;
-      // prepareEngineRun may be the very first call to touch the WASM
-      // engine (loading a file only runs analysis, not the chain), in
-      // which case it initializes fresh engine-side defaults rather than
-      // applying anything from (still-empty) store params.
-      await prepareEngineRun(channels, sampleRate);
-      const res = await engine.processBufferStages(
-        audioBufferToFloat32Array(originalBuffer), channels, sampleRate,
-        XRAY_BUCKETS, XRAY_SPEC_COLS);
-      if (mySeq !== xrayRunSeq) return; // superseded by a newer run
-      // Sync the store from the engine's actual post-run state *before*
-      // computing the settings key, so the key (and any setup saved from
-      // it) always matches what was really processed — never a stale or
-      // still-empty params snapshot from before the engine existed.
-      setParams(await engine.getParams());
-      setXrayStages(res.stages, xraySettingsKey());
-      setMeters(await engine.getMeters());
+      await withEngine(async () => {
+        if (mySeq !== xrayRunSeq) return; // superseded while waiting
+        const channels = originalBuffer.numberOfChannels;
+        const sampleRate = originalBuffer.sampleRate;
+        // The key of the settings this run is made with.
+        const key = xraySettingsKey();
+        await prepareEngineRun(channels, sampleRate);
+        const res = await engine.processBufferStages(
+          audioBufferToFloat32Array(originalBuffer), channels, sampleRate,
+          XRAY_BUCKETS, XRAY_SPEC_COLS);
+        const meters = await engine.getMeters();
+        if (mySeq !== xrayRunSeq) return; // superseded by a newer run
+        setXrayStages(res.stages, key);
+        setMeters(meters);
+      });
     } catch (err: any) {
       if (mySeq === xrayRunSeq) setError(`Chain X-Ray failed: ${err.message}`);
     } finally {
@@ -400,23 +385,15 @@ export function useAudioEngine() {
   // a stage capture for the current track, the lanes are restored from it
   // instantly (the capture was made under exactly these settings), so
   // flipping between setups is an immediate visual A/B — no reprocessing.
-  const applyXraySetup = useCallback(async (setupId: string) => {
-    const setup = useStore.getState().xraySetups.find((x) => x.id === setupId);
+  const applyXraySetup = useCallback((setupId: string) => {
+    const st = useStore.getState();
+    const setup = st.xraySetups.find((x) => x.id === setupId);
     if (!setup) return;
-    for (const [proc, procParams] of Object.entries(setup.params)) {
-      for (const [param, value] of Object.entries(procParams)) {
-        await engine.setParam(proc, param, value);
-      }
-    }
-    for (const [name, enabled] of Object.entries(setup.enabled)) {
-      useStore.getState().setProcessorEnabledState(name, enabled);
-      await engine.setProcessorEnabled(name, enabled);
-    }
-    setParams(await engine.getParams());
-    // setParams cleared the marker; this is an exact setup application.
-    useStore.getState().setXrayActiveSetup(setupId);
+    st.applySettings({ ...st.params, ...setup.params }, { ...st.processorEnabled, ...setup.enabled });
+    // applySettings cleared the marker; this is an exact setup application.
+    st.setXrayActiveSetup(setupId);
     if (setup.stages && setup.stagesKey === xraySettingsKey()) {
-      useStore.getState().setXrayStages(setup.stages, setup.stagesKey);
+      st.setXrayStages(setup.stages, setup.stagesKey);
       if (setup.meters) setMeters(setup.meters);
     }
   }, []);
@@ -466,16 +443,6 @@ export function useAudioEngine() {
       useStore.getState().setTrackSettings(t.id, {
         params: r.processors, enabled: r.enabled, recipe: r, recipeKey: key, paramsEdited: false,
       });
-      if (t.id !== useStore.getState().activeTrackId) continue;
-      // The store is the source of truth (every run re-initializes the
-      // engine from it), but knob edits read the engine's params back, so
-      // the engine must hold the new settings right away — not only at the
-      // next run: a version already rendered is shown without one. Not
-      // cancelled by a newer sync (setTrackSettings itself triggers one,
-      // which finds this recipe current and skips); it applies whatever
-      // settings are live when it runs.
-      await restoreActiveEngine();
-      if (mySeq !== recipeSeq) return;
     }
   }, []);
 
@@ -513,24 +480,26 @@ export function useAudioEngine() {
 
     setIsProcessing(true);
     try {
-      if (!await ensureAlbumCalibration()) throw new Error('some tracks are not ready yet');
-      const s = useStore.getState();
       const entries: ZipEntry[] = [];
-      for (let i = 0; i < s.tracks.length; i++) {
-        const t = s.tracks[i];
-        useStore.getState().setAlbumCalibrating(`Exporting ${i + 1}/${s.tracks.length}: ${t.name}…`);
-        const ch = t.buffer.numberOfChannels;
-        const sr = t.buffer.sampleRate;
-        await engine.initEngine(sr, ch);
-        await applyEngineState(trackSettingsOf(s, t));
-        await applyTrackLoudness(t);
-        const processed = await engine.processBuffer(
-          audioBufferToFloat32Array(t.buffer), ch, sr);
-        entries.push({
-          name: `${String(i + 1).padStart(2, '0')} ${t.name.replace(/\.[^.]+$/, '')}_mastered.wav`,
-          data: encodeWav(processed, ch, sr),
-        });
-      }
+      await withEngine(async () => {
+        if (!await ensureAlbumCalibration()) throw new Error('some tracks are not ready yet');
+        const s = useStore.getState();
+        for (let i = 0; i < s.tracks.length; i++) {
+          const t = s.tracks[i];
+          useStore.getState().setAlbumCalibrating(`Exporting ${i + 1}/${s.tracks.length}: ${t.name}…`);
+          const ch = t.buffer.numberOfChannels;
+          const sr = t.buffer.sampleRate;
+          await engine.initEngine(sr, ch);
+          await applyEngineState(trackSettingsOf(s, t));
+          await applyTrackLoudness(t);
+          const processed = await engine.processBuffer(
+            audioBufferToFloat32Array(t.buffer), ch, sr);
+          entries.push({
+            name: `${String(i + 1).padStart(2, '0')} ${t.name.replace(/\.[^.]+$/, '')}_mastered.wav`,
+            data: encodeWav(processed, ch, sr),
+          });
+        }
+      });
 
       const url = URL.createObjectURL(createZip(entries));
       const a = document.createElement('a');
@@ -542,7 +511,6 @@ export function useAudioEngine() {
       setError(`Album export failed: ${err.message}`);
     } finally {
       useStore.getState().setAlbumCalibrating(null);
-      await restoreActiveEngine();
       setIsProcessing(false);
     }
   }, [wasmReady]);
@@ -554,11 +522,10 @@ export function useAudioEngine() {
     if (!wasmReady || s.isProcessing || s.workspace !== 'album') return;
     setIsProcessing(true);
     try {
-      await ensureAlbumCalibration();
+      await withEngine(ensureAlbumCalibration);
     } catch (err: any) {
       setError(`Measuring the album failed: ${err.message}`);
     } finally {
-      await restoreActiveEngine();
       setIsProcessing(false);
     }
   }, [wasmReady]);
@@ -594,10 +561,12 @@ export function useAudioEngine() {
     stopPlayback();
     setIsProcessing(true);
     try {
-      if (!await ensureAlbumCalibration()) throw new Error('some tracks are not ready yet');
       const TAIL = 8;
-      const head = await renderAlbumPart(b, 0, 8);
-      const tail = await renderAlbumPart(a, Math.max(0, a.info.duration - TAIL), TAIL);
+      const [tail, head] = await withEngine(async () => {
+        if (!await ensureAlbumCalibration()) throw new Error('some tracks are not ready yet');
+        const head = await renderAlbumPart(b, 0, 8);
+        return [await renderAlbumPart(a, Math.max(0, a.info.duration - TAIL), TAIL), head];
+      });
       useStore.getState().setTransitionPlaying(i);
       playTransition([tail, head], () => {
         if (useStore.getState().transitionPlaying === i) useStore.getState().setTransitionPlaying(null);
@@ -605,54 +574,41 @@ export function useAudioEngine() {
     } catch (err: any) {
       setError(`Transition preview failed: ${err.message}`);
     } finally {
-      await restoreActiveEngine();
       setIsProcessing(false);
     }
   }, [wasmReady]);
 
+  // Manual edits change the store only: every run loads the engine from
+  // it.
   const setParam = useCallback(async (processor: string, param: string, value: number) => {
-    await engine.setParam(processor, param, value);
-    setParams(await engine.getParams());
-    // Settings no longer exactly match the applied recipe/preset.
-    setParamsEdited(true);
+    useStore.getState().editParam(processor, param, value);
   }, []);
 
   const setProcessorEnabled = useCallback(async (name: string, enabled: boolean) => {
-    setProcessorEnabledState(name, enabled);
-    await engine.setProcessorEnabled(name, enabled);
-    // Bypass changes affect the output; flag for reprocessing.
-    setParams(await engine.getParams());
-    setParamsEdited(true);
+    useStore.getState().setBypass(name, enabled);
   }, []);
 
-  // Custom presets are saved locally (see audio/customPresets.ts) — the
-  // Go engine has no way to look one up by name the way it does built-in
-  // presets, so this replays its param map directly. While one is loaded
-  // the style/destination choice isn't applied; picking a choice again
-  // leaves it (store.setChoice).
-  const applyCustomPreset = useCallback(async (preset: CustomPreset) => {
+  // Saved presets ("My presets", audio/customPresets.ts) replay a param
+  // snapshot over the current settings. While one is loaded the
+  // style/destination choice isn't applied; picking a choice again leaves
+  // it (store.setChoice).
+  const applyCustomPreset = useCallback((preset: CustomPreset) => {
     recipeSeq++; // cancel any recipe still being applied
-    useStore.getState().setCustomPreset(preset.name);
-    useStore.getState().setAppliedRecipe(null, null);
+    const st = useStore.getState();
+    const params = { ...st.params };
     for (const [proc, procParams] of Object.entries(preset.processors)) {
-      for (const [param, value] of Object.entries(procParams)) {
-        await engine.setParam(proc, param, value);
-      }
+      params[proc] = { ...params[proc], ...procParams };
     }
     // A preset saved before a stage existed doesn't mention it; the
     // switchable stages all start off, so it is turned off rather than
     // left as the previous settings had it (e.g. Warm's saturation).
-    for (const [proc, procParams] of Object.entries(useStore.getState().params)) {
-      if (!(proc in preset.processors) && 'enabled' in procParams) {
-        await engine.setParam(proc, 'enabled', 0);
-      }
+    for (const [proc, procParams] of Object.entries(params)) {
+      if (!(proc in preset.processors) && 'enabled' in procParams) params[proc] = { ...procParams, enabled: 0 };
     }
-    for (const [name, enabled] of Object.entries(preset.enabled ?? {})) {
-      useStore.getState().setProcessorEnabledState(name, enabled);
-      await engine.setProcessorEnabled(name, enabled);
-    }
-    setParams(await engine.getParams());
-    setParamsEdited(false);
+    st.setCustomPreset(preset.name);
+    st.setAppliedRecipe(null, null);
+    st.applySettings(params, { ...st.processorEnabled, ...preset.enabled });
+    st.setParamsEdited(false);
   }, []);
 
   // Drop manual edits: rebuild the recipe for the current choice.
@@ -669,7 +625,6 @@ export function useAudioEngine() {
     saveXraySetup,
     analyzeAudio,
     syncRecipe,
-    syncEngineToActive,
     showCurrentRender,
     resetToRecipe,
     exportAlbum,

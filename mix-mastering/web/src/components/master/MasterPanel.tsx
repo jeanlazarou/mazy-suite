@@ -327,7 +327,7 @@ export const PresetsSection: React.FC<{ hint: string }> = ({ hint }) => {
             label="Preset name"
             value={newPresetName}
             onChange={(e) => setNewPresetName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSave(); } }}
             sx={{ mt: 1 }}
           />
         </DialogContent>

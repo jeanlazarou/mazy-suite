@@ -27,9 +27,9 @@ export const EQPanel: React.FC<EQPanelProps> = ({ expanded, onExpandToggle }) =>
   const [solo, setSolo] = useState(false);
   const [grabbed, setGrabbed] = useState<number | null>(null);
 
-  // Drag edits show immediately from this local overlay; the engine round
-  // trip (setParam -> getParams -> store) is throttled to one per frame,
-  // and the overlay is dropped once the store has caught up.
+  // Drag edits show immediately from this local overlay; the store is
+  // updated once per frame, and the overlay is dropped once it has
+  // caught up.
   const [local, setLocal] = useState<Record<number, BandEdit>>({});
   const pending = useRef(new Map<string, number>());
   const inFlight = useRef(0);

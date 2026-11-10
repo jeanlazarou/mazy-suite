@@ -25,7 +25,7 @@ const App: React.FC = () => {
   const originalBuffer = useStore((s) => s.originalBuffer);
   const wasmReady = useStore((s) => s.wasmReady);
   const setError = useStore((s) => s.setError);
-  const { analyzeAudio, processAudio, syncRecipe, syncEngineToActive, showCurrentRender } = useAudioEngine();
+  const { analyzeAudio, processAudio, syncRecipe, showCurrentRender } = useAudioEngine();
   const workspace = useStore((s) => s.workspace);
   const xrayOpen = useStore((s) => s.xrayOpen);
   const analyser = getAnalyserNode();
@@ -102,12 +102,6 @@ const App: React.FC = () => {
     if (wasmReady && workspace === 'track' && activeAnalysis && recipeOptions) renderVariants();
     else stopVariants();
   }, [wasmReady, workspace, activeTrackId, activeAnalysis, recipeOptions, choice.style, choice.destination, choice.fix]);
-
-  // The engine holds the active track's settings (knob edits read them
-  // back), so switching tracks loads the new one's.
-  useEffect(() => {
-    if (wasmReady && activeTrackId) syncEngineToActive();
-  }, [wasmReady, activeTrackId]);
 
   // Auto-preview: whenever the settings (or the track) differ from the
   // last processed result, reprocess after a short pause, so every choice

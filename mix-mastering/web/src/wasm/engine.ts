@@ -206,6 +206,21 @@ export class AudioEngine {
     if (err) console.warn('setParam error:', err);
   }
 
+  /** Set every given param and bypass state (on a freshly initialized
+   *  engine: complete settings). */
+  async applySettings(params: ProcessorParams, enabled: Record<string, boolean>): Promise<void> {
+    for (const [proc, procParams] of Object.entries(params)) {
+      for (const [param, value] of Object.entries(procParams)) {
+        await this.setParam(proc, param, value);
+      }
+    }
+    for (const [name, on] of Object.entries(enabled)) {
+      await this.setProcessorEnabled(name, on);
+    }
+  }
+
+  /** The engine's params — its defaults, right after initEngine. The app
+   *  never reads settings back otherwise: the store holds them. */
   async getParams(): Promise<ProcessorParams> {
     return JSON.parse(await this.call<string>('wasmGetParams', []));
   }

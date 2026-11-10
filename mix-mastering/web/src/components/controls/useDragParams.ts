@@ -4,9 +4,9 @@ import { useStore } from '../../store/store';
 import { EMPTY_PARAMS } from '../../store/constants';
 
 /** A processor's params for direct-manipulation views. Drag edits show
- *  immediately from a local overlay; the engine round trip (setParam ->
- *  getParams -> store) is throttled to one per frame, and the overlay is
- *  dropped once the store has caught up and the drag has ended. */
+ *  immediately from a local overlay; the store is updated once per frame,
+ *  and the overlay is dropped once it has caught up and the drag has
+ *  ended. */
 export function useDragParams(processor: string) {
   const { setParam } = useAudioEngine();
   const stored = useStore((s) => s.params[processor] ?? EMPTY_PARAMS);

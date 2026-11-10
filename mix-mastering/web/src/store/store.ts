@@ -166,9 +166,8 @@ export interface AppState {
   wasmReady: boolean;
   params: ProcessorParams;
   meters: MeterData;
-  // Bypass state per processor name; survives engine re-initialization.
-  // Reconciled from params by setParams for processors that expose an
-  // "enabled" param (currently the exciters) — see setParams below.
+  // Bypass state per processor name. Stages that also carry it as an
+  // "enabled" param (exciters, saturation) follow that param.
   processorEnabled: Record<string, boolean>;
   // Chain processor names in real signal-flow order, from the engine
   // (wasmGetProcessorNames) — drives the studio pipeline strip so it
@@ -272,8 +271,11 @@ export interface AppState {
   setListenMode: (mode: 'original' | 'processed') => void;
   setWasmReady: (v: boolean) => void;
   setParams: (params: ProcessorParams) => void;
+  // Manual edits of the active track's settings: one param, or a stage
+  // switched on/off.
+  editParam: (processor: string, param: string, value: number) => void;
+  setBypass: (name: string, enabled: boolean) => void;
   setMeters: (m: MeterData) => void;
-  setProcessorEnabledState: (name: string, enabled: boolean) => void;
   setProcessorNames: (names: string[]) => void;
   setLoudnessMatch: (v: boolean) => void;
   setMatchGainDB: (v: number | null) => void;
@@ -327,6 +329,19 @@ const freshTrackView = {
   xrayStages: null,
   xrayStagesKey: null,
 } as const;
+
+// Bypass state with the stages that carry it as an "enabled" param too
+// (exciters, saturation) following that param, so the two can't disagree.
+// Returns the same object when nothing changes.
+function enabledFromParams(params: ProcessorParams, enabled: Record<string, boolean>): Record<string, boolean> {
+  let out = enabled;
+  for (const [proc, procParams] of Object.entries(params)) {
+    if (!('enabled' in procParams)) continue;
+    const on = procParams.enabled > 0.5;
+    if (out[proc] !== on) out = { ...out, [proc]: on };
+  }
+  return out;
+}
 
 // The live settings fields, from a track's settings.
 function liveFields(st: TrackSettings) {
@@ -532,41 +547,28 @@ export const useStore = create<AppState>((set) => ({
   setPlaybackPosition: (v) => set({ playbackPosition: v }),
   setListenMode: (mode) => set({ listenMode: mode }),
   setWasmReady: (v) => set({ wasmReady: v }),
-  // Any params change means the current settings may no longer exactly
-  // match the setup they came from, so the active-setup marker clears;
-  // paths that apply a setup re-set it afterwards.
-  //
-  // Also reconciles processorEnabled from any processor whose params
-  // carry a top-level "enabled" key (currently the Bass/Treble Exciters,
-  // which self-report bypass state through the params mirror the way the
-  // EQ's bands report band.N.enabled). Every mutation path — setParam,
-  // setProcessorEnabled, applyCustomPreset, applyXraySetup,
-  // computeXrayStages, engine init — funnels through
-  // setParams(await engine.getParams()), so this is the one place that
-  // keeps the store's bypass state from ever diverging from the engine's:
-  // a custom preset that turns an exciter on writes "enabled: 1" into
-  // its params, and that alone is enough for the panel switch, the strip
-  // chip, and the X-Ray lane to agree, with no separate wiring needed.
-  // Preserves object identity when nothing changed, so this doesn't
-  // trigger renders/key churn on every unrelated param edit.
-  setParams: (params) => set((s) => {
-    let enabledPatch: Record<string, boolean> | null = null;
-    for (const [proc, procParams] of Object.entries(params)) {
-      if (!('enabled' in procParams)) continue;
-      const on = procParams.enabled > 0.5;
-      if (s.processorEnabled[proc] !== on) {
-        enabledPatch = { ...(enabledPatch ?? s.processorEnabled), [proc]: on };
-      }
-    }
+  // The settings live here; the engine is only ever loaded from them
+  // (every run starts from initEngine + applySettings) and never read
+  // back, except for its defaults at start-up. Any change clears the
+  // active-setup marker; applying a setup re-sets it afterwards.
+  setParams: (params) => set((s) => ({
+    params, paramsDirty: true, xrayActiveSetupId: null,
+    processorEnabled: enabledFromParams(params, s.processorEnabled),
+  })),
+  editParam: (processor, param, value) => set((s) => {
+    const params = { ...s.params, [processor]: { ...s.params[processor], [param]: value } };
     return {
-      params, paramsDirty: true, xrayActiveSetupId: null,
-      ...(enabledPatch ? { processorEnabled: enabledPatch } : {}),
+      params, paramsDirty: true, paramsEdited: true, xrayActiveSetupId: null,
+      processorEnabled: enabledFromParams(params, s.processorEnabled),
     };
   }),
-  setMeters: (m) => set({ meters: m }),
-  setProcessorEnabledState: (name, enabled) => set((s) => ({
+  setBypass: (name, enabled) => set((s) => ({
     processorEnabled: { ...s.processorEnabled, [name]: enabled },
+    params: s.params[name] && 'enabled' in s.params[name]
+      ? { ...s.params, [name]: { ...s.params[name], enabled: enabled ? 1 : 0 } } : s.params,
+    paramsDirty: true, paramsEdited: true, xrayActiveSetupId: null,
   })),
+  setMeters: (m) => set({ meters: m }),
   setProcessorNames: (names) => set({ processorNames: names }),
   setLoudnessMatch: (v) => set({ loudnessMatch: v }),
   setMatchGainDB: (v) => set({ matchGainDB: v }),
@@ -587,7 +589,7 @@ export const useStore = create<AppState>((set) => ({
   setAppliedRecipe: (r, key) => set({ recipe: r, recipeKey: key }),
   setCustomPreset: (name) => set({ customPreset: name }),
   applySettings: (params, enabled) => set({
-    params, processorEnabled: enabled, paramsDirty: true, xrayActiveSetupId: null,
+    params, processorEnabled: enabledFromParams(params, enabled), paramsDirty: true, xrayActiveSetupId: null,
   }),
   setCustomPresets: (p) => set({ customPresets: p }),
   startVariants: (ids) => set({

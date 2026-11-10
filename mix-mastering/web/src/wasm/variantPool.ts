@@ -90,14 +90,7 @@ async function renderOne(
       const ch = track.buffer.numberOfChannels;
       const sr = track.buffer.sampleRate;
       await eng.initEngine(sr, ch);
-      for (const [proc, procParams] of Object.entries(r.processors)) {
-        for (const [param, value] of Object.entries(procParams)) {
-          await eng.setParam(proc, param, value);
-        }
-      }
-      for (const [name, enabled] of Object.entries(r.enabled)) {
-        await eng.setProcessorEnabled(name, enabled);
-      }
+      await eng.applySettings(r.processors, r.enabled);
       const out = await eng.processBuffer(audioBufferToFloat32Array(track.buffer), ch, sr);
       const meters = await eng.getMeters();
       if (my !== batch) return;
