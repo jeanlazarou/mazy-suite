@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box, IconButton, Typography, ToggleButton, LinearProgress, Tooltip, CircularProgress } from '@mui/material';
 import CheckIcon from '@mui/icons-material/Check';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -49,6 +49,48 @@ export const TransportBar: React.FC = () => {
     pickAudioFiles(true, addAlbumFiles);
   };
 
+  // Keyboard: Space play/pause, A / B listen, M match, ← → 5 s, Home.
+  useEffect(() => {
+    // Whether focus was last moved with Tab (rather than left by a click).
+    let tabbed = false;
+    const onPointer = () => { tabbed = false; };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Tab') tabbed = true;
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat && e.key === ' ') return;
+      const el = e.target as HTMLElement | null;
+      if (el?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')) return;
+      const s = useStore.getState();
+      const duration = s.fileInfo?.duration ?? 0;
+      switch (e.key.length === 1 ? e.key.toLowerCase() : e.key) {
+        case ' ': {
+          // A button reached with the keyboard keeps Space; one that only
+          // has focus left over from a click gives it up.
+          const focused = document.activeElement as HTMLElement | null;
+          if (focused?.closest('button, a, [role="button"]')) {
+            if (tabbed) return;
+            focused.blur();
+          }
+          togglePlayback();
+          break;
+        }
+        case 'a': s.setListenMode('original'); break;
+        case 'b': if (s.processedBuffer) s.setListenMode('processed'); break;
+        case 'm': if (s.matchGainDB !== null) s.setLoudnessMatch(!s.loudnessMatch); break;
+        case 'ArrowLeft': seek(Math.max(0, s.playbackPosition - 5)); break;
+        case 'ArrowRight': seek(Math.min(Math.max(0, duration - 0.1), s.playbackPosition + 5)); break;
+        case 'Home': seek(0); break;
+        default: return;
+      }
+      e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('pointerdown', onPointer, true);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onPointer, true);
+    };
+  }, [togglePlayback, seek]);
+
   if (!fileInfo) return null;
 
   const formatTime = (s: number) => {
@@ -89,12 +131,12 @@ export const TransportBar: React.FC = () => {
         </Box>
 
         {/* Transport controls */}
-        <Tooltip title={isPlaying ? 'Pause' : 'Play'}>
+        <Tooltip title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}>
           <IconButton onClick={togglePlayback} color="primary" size="small">
             {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
           </IconButton>
         </Tooltip>
-        <Tooltip title="Back to start">
+        <Tooltip title="Back to start (Home)">
           <IconButton onClick={() => seek(0)} size="small">
             <SkipPreviousIcon />
           </IconButton>
@@ -130,7 +172,7 @@ export const TransportBar: React.FC = () => {
 
         {/* A/B Toggle */}
         <Box sx={{ display: 'flex' }}>
-          <Tooltip title={`Original${originalLufs !== undefined ? ` — ${originalLufs.toFixed(1)} LUFS` : ''}`}>
+          <Tooltip title={`Original (A)${originalLufs !== undefined ? ` — ${originalLufs.toFixed(1)} LUFS` : ''}`}>
             <ToggleButton
               value="original"
               size="small"
@@ -142,7 +184,7 @@ export const TransportBar: React.FC = () => {
             </ToggleButton>
           </Tooltip>
           <Tooltip title={processedBuffer
-            ? `Processed result${processedLufs !== undefined ? ` — ${processedLufs.toFixed(1)} LUFS` : ''}`
+            ? `Processed result (B)${processedLufs !== undefined ? ` — ${processedLufs.toFixed(1)} LUFS` : ''}`
             : isProcessing ? 'Processing…' : 'The mastered preview appears here as soon as it is ready'}>
             <span>
               <ToggleButton
@@ -161,8 +203,8 @@ export const TransportBar: React.FC = () => {
         <Tooltip
           title={
             matchGainDB === null
-              ? 'Loudness-matched A/B (process audio first)'
-              : `Loudness-matched A/B: plays B at equal loudness (${matchGainDB >= 0 ? '+' : ''}${matchGainDB.toFixed(1)} dB trim)`
+              ? 'Loudness-matched A/B (M) — available once the preview is ready'
+              : `Loudness-matched A/B (M): plays B at equal loudness (${matchGainDB >= 0 ? '+' : ''}${matchGainDB.toFixed(1)} dB trim)`
           }
         >
           <span>
