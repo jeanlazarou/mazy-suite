@@ -109,6 +109,18 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
     showToast(`Created "${name}"`, 'success');
   };
 
+  const handleDeleteClip = (clip: AudioClip) => {
+    const usage = clipUsageCount(clip.id);
+    removeClip(clip.id);
+    if (usage > 0) {
+      showToast(
+        `Deleted "${clip.name}" and its ${usage} track clip${usage === 1 ? '' : 's'} - Undo brings them back`,
+        'info',
+        5000
+      );
+    }
+  };
+
   const closeModal = () => {
     setShowModal(false);
     setEditingClip(null);
@@ -315,8 +327,13 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
                       Duplicate
                     </button>
                     <button
-                      onClick={() => removeClip(clip.id)}
+                      onClick={() => handleDeleteClip(clip)}
                       className="text-red-500 hover:text-red-400 text-xs"
+                      title={
+                        usage > 0
+                          ? `Also removes its ${usage} track clip${usage === 1 ? '' : 's'} from the timeline`
+                          : undefined
+                      }
                     >
                       Delete
                     </button>

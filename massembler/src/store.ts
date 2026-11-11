@@ -9,6 +9,7 @@ import {
   findTrackClip,
   getGroupRefs,
   getLinkedRefs,
+  removeTrackClips,
 } from './utils/clipLinks';
 
 interface AppState {
@@ -172,20 +173,42 @@ export const useStore = create<AppState>((set, get) => ({
   clips: [],
   addClip: (clip) =>
     set((state) => ({ clips: [...state.clips, clip] })),
-  removeClip: (id, addToHistory = true) =>
-    set((state) => {
-      const clip = state.clips.find((s) => s.id === id);
-      if (clip && addToHistory) {
-        undoManager.addAction({
-          type: 'REMOVE_CLIP',
-          clipId: id,
-          clip: { ...clip },
-        });
-      }
-      return {
-        clips: state.clips.filter((s) => s.id !== id),
-      };
-    }),
+  removeClip: (id, addToHistory = true) => {
+    const state = get();
+    const clipIndex = state.clips.findIndex((c) => c.id === id);
+    if (clipIndex < 0) return;
+    const clip = state.clips[clipIndex];
+
+    // Its track clips go with it; left behind they would be invisible and silent.
+    const { tracks, removed, unlinked } = removeTrackClips(
+      state.tracks,
+      (tc) => tc.clipId === id
+    );
+
+    set({ clips: state.clips.filter((c) => c.id !== id), tracks });
+
+    if (!addToHistory) return;
+
+    const actions: UndoAction[] = [
+      ...removed.map(({ trackId, trackClip }): UndoAction => ({
+        type: 'REMOVE_TRACK_CLIP',
+        trackId,
+        trackClipId: trackClip.id,
+        trackClip,
+      })),
+      ...unlinked.map(({ trackId, trackClipId, linkId }): UndoAction => ({
+        type: 'UPDATE_TRACK_CLIP_OPTIONS',
+        trackId,
+        trackClipId,
+        oldValues: { linkId },
+        newValues: { linkId: undefined },
+      })),
+      { type: 'REMOVE_CLIP', clipId: id, clip: { ...clip }, clipIndex },
+    ];
+
+    const batched = batchActions(actions);
+    if (batched) undoManager.addAction(batched);
+  },
   updateClip: (id, updates) =>
     set((state) => ({
       clips: state.clips.map((s) =>
@@ -696,8 +719,13 @@ export const useStore = create<AppState>((set, get) => ({
         break;
 
       case 'REMOVE_CLIP':
-        // Restore the clip
-        set({ clips: [...state.clips, action.clip] });
+        set({
+          clips: [
+            ...state.clips.slice(0, action.clipIndex),
+            action.clip,
+            ...state.clips.slice(action.clipIndex),
+          ],
+        });
         break;
 
       case 'REMOVE_TRACK_CLIP':
@@ -979,12 +1007,16 @@ export const useStore = create<AppState>((set, get) => ({
   // Project management
   projectName: 'Untitled Project',
   setProjectName: (name) => set({ projectName: name }),
-  loadProjectState: (tracks, clips, audioFiles, pixelsPerSecond, projectName) => {
+  loadProjectState: (loadedTracks, clips, audioFiles, pixelsPerSecond, projectName) => {
     // History belongs to the project that was open. Track and track-clip ids
     // are sequential counters, so every project reuses the same id space and
     // a leftover action would resolve against whatever the loaded project
     // happens to have under that id - silently editing the wrong clip.
     undoManager.clear();
+
+    // Earlier builds left a deleted clip's track clips behind.
+    const clipIds = new Set(clips.map((c) => c.id));
+    const { tracks } = removeTrackClips(loadedTracks, (tc) => !clipIds.has(tc.clipId));
 
     // Update ID counters to prevent collisions
     tracks.forEach((track) => {

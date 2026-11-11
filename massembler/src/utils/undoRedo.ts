@@ -5,6 +5,8 @@ export type UndoAction =
       type: 'REMOVE_CLIP';
       clipId: string;
       clip: AudioClip;
+      /** Where it sat in the library, so undo puts it back in place. */
+      clipIndex: number;
     }
   | {
       type: 'REMOVE_TRACK_CLIP';

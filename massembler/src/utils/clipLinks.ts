@@ -91,6 +91,49 @@ export function getGroupRefs(tracks: Track[], linkId: string): TrackClipRef[] {
   return refs;
 }
 
+/**
+ * Take every track clip matching `doomed` off the timeline. A group left with
+ * a single member is dissolved: a group of one is no group at all.
+ */
+export function removeTrackClips(
+  tracks: Track[],
+  doomed: (trackClip: TrackClip) => boolean
+): {
+  tracks: Track[];
+  removed: Array<{ trackId: string; trackClip: TrackClip }>;
+  unlinked: Array<TrackClipRef & { linkId: string }>;
+} {
+  const removed: Array<{ trackId: string; trackClip: TrackClip }> = [];
+
+  let next = tracks.map((t) => {
+    const gone = t.clips.filter(doomed);
+    if (gone.length === 0) return t;
+    gone.forEach((trackClip) => removed.push({ trackId: t.id, trackClip }));
+    return { ...t, clips: t.clips.filter((tc) => !doomed(tc)) };
+  });
+
+  if (removed.length === 0) return { tracks, removed, unlinked: [] };
+
+  const unlinked: Array<TrackClipRef & { linkId: string }> = [];
+  const brokenLinks = new Set(removed.map((r) => r.trackClip.linkId));
+  for (const linkId of brokenLinks) {
+    if (!linkId) continue;
+    const rest = getGroupRefs(next, linkId);
+    if (rest.length === 1) unlinked.push({ ...rest[0], linkId });
+  }
+
+  if (unlinked.length > 0) {
+    next = next.map((t) => ({
+      ...t,
+      clips: t.clips.map((tc) =>
+        unlinked.some((u) => u.trackClipId === tc.id) ? { ...tc, linkId: undefined } : tc
+      ),
+    }));
+  }
+
+  return { tracks: next, removed, unlinked };
+}
+
 /** How many clips are in a clip's group. 0 when it is unlinked. */
 export function getLinkSize(tracks: Track[], ref: TrackClipRef): number {
   return getLinkedRefs(tracks, ref).length;
