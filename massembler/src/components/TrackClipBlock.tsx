@@ -16,6 +16,7 @@ import {
   solveLinkedResize,
 } from '../utils/clipLinks';
 import { SNAP_PX, snapPoint, snapSpan, snapTargets } from '../utils/snapping';
+import { contiguousRange } from '../utils/projectOptimizer';
 import { history, useStore } from '../store';
 import { ClipWaveform } from './ClipWaveform';
 
@@ -138,7 +139,8 @@ export function TrackClipBlock({
     const originalStartTime = currentTrimStart;
     const originalEndTime = currentTrimEnd;
     const originalPosition = trackClip.position;
-    const maxDuration = audioFile.duration;
+    // In an optimized file, past the kept region lies some other part of the recording.
+    const playable = contiguousRange(audioFile, originalStartTime, originalEndTime);
     const repeats = getRepeatCount(trackClip);
 
     // The group as it stands now. Empty for an unlinked clip, which leaves
@@ -178,7 +180,7 @@ export function TrackClipBlock({
 
         // Resize from left edge - adjust trimStart AND position
         // The visual left edge follows the mouse
-        let newTrimStart = Math.max(0, Math.min(originalStartTime + deltaTime, originalEndTime - 0.1));
+        let newTrimStart = Math.max(playable.start, Math.min(originalStartTime + deltaTime, originalEndTime - 0.1));
         const actualDelta = newTrimStart - originalStartTime;
         let newPosition = originalPosition + actualDelta;
 
@@ -238,7 +240,7 @@ export function TrackClipBlock({
         }
 
         // Resize from right edge - adjust trimEnd only
-        let newTrimEnd = Math.max(originalStartTime + 0.1, Math.min(originalEndTime + deltaTime, maxDuration));
+        let newTrimEnd = Math.max(originalStartTime + 0.1, Math.min(originalEndTime + deltaTime, playable.end));
         const newDuration = newTrimEnd - originalStartTime;
         // Stretching one repetition stretches them all, so the clip's last
         // repetition is what meets the next clip.

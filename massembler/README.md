@@ -144,7 +144,9 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - Savings can be **negative** — re-encoding a trimmed compressed file to PCM
     often costs more than it saves, so those are flagged and never preselected
   - Unused audio files are dropped entirely
-  - Keeps a margin around each region so clip edges stay resizable
+  - Keeps a margin around each region so clip edges stay resizable; an edge
+    stops at its region's end rather than running on into another part of
+    the recording
   - Writes a copy; the project you have open is left untouched
   - **Relink** points an optimized file back at its original recording, expanding
     every clip time back as it goes

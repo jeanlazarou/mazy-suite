@@ -150,6 +150,35 @@ export function unmapTime(time: number, segments: UsedSegment[]): number {
   return segments.length ? segments[segments.length - 1].end : time;
 }
 
+/**
+ * How far a clip playing [start, end] of an audio file may be stretched
+ * before it runs into unrelated audio. An optimized file is its kept segments
+ * joined end to end, so that is the kept segment the clip sits in; any other
+ * file is contiguous throughout. Never narrower than [start, end] itself.
+ */
+export function contiguousRange(
+  audioFile: AudioFile,
+  start: number,
+  end: number
+): { start: number; end: number } {
+  const segments = audioFile.optimization?.segments;
+  if (!segments?.length) return { start: 0, end: audioFile.duration };
+
+  const middle = (start + end) / 2;
+  let offset = 0;
+  for (const segment of segments) {
+    const length = segment.end - segment.start;
+    if (middle <= offset + length) {
+      return {
+        start: Math.min(start, offset),
+        end: Math.max(end, Math.min(offset + length, audioFile.duration)),
+      };
+    }
+    offset += length;
+  }
+  return { start: 0, end: audioFile.duration };
+}
+
 /** Concatenate the kept segments into a new buffer. */
 export function buildOptimizedBuffer(
   buffer: AudioBuffer,
