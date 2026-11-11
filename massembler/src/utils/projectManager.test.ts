@@ -1,5 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { PROJECT_FORMAT_VERSION, upgradeProjectData } from './projectManager';
+import { MockBuffer, asAudioBuffer } from '../test/mockAudio';
+import { PROJECT_FORMAT_VERSION, preventClipping, upgradeProjectData } from './projectManager';
+
+function mix(...channels: number[][]) {
+  const buffer = new MockBuffer(channels.length, channels[0].length, 10);
+  channels.forEach((samples, c) => buffer.getChannelData(c).set(samples));
+  return buffer;
+}
+const peakOf = (buffer: MockBuffer) =>
+  Math.max(...[0, 1].flatMap((c) => [...buffer.getChannelData(c)].map(Math.abs)));
+
+describe('preventClipping', () => {
+  it('leaves a mix that fits untouched', () => {
+    const buffer = mix([0.5, -1, 0.2], [0.9, 0, -0.3]);
+    expect(preventClipping(asAudioBuffer(buffer))).toBe(1);
+    expect(buffer.getChannelData(0)).toEqual(Float32Array.from([0.5, -1, 0.2]));
+  });
+
+  it('turns a mix that would clip down as a whole, to just under full scale', () => {
+    const buffer = mix([0.6, -1.5, 0.3], [1.2, 0, -0.75]);
+    const gain = preventClipping(asAudioBuffer(buffer));
+
+    expect(gain).toBeCloseTo(0.98 / 1.5);
+    expect(peakOf(buffer)).toBeCloseTo(0.98);
+    // the balance between samples and channels is kept
+    expect(buffer.getChannelData(1)[0] / buffer.getChannelData(0)[0]).toBeCloseTo(2);
+  });
+});
 
 const base = { name: 'p', tracks: [], clips: [], pixelsPerSecond: 50 };
 

@@ -128,6 +128,8 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - Uses `OfflineAudioContext` for offline rendering
   - Respects track volumes and mute states
   - Handles clip trimming and repeats correctly
+  - A mix loud enough to clip is turned down as a whole, to just under full
+    scale, and a message says by how much; one that fits is left untouched
   - Shows real-time progress during export
   - Downloads as `[ProjectName]-mix.wav`
 

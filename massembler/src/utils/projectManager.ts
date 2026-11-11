@@ -75,15 +75,43 @@ function storedFileName(audioFile: AudioFile): string {
   return `${audioFile.id}${extension}`;
 }
 
+/** The loudest an exported mix may peak: just under full scale. */
+const EXPORT_PEAK = 0.98;
+
 /**
- * Export the mix to a WAV file using OfflineAudioContext
+ * Turn a rendered mix down as a whole if it would clip. Tracks are summed at
+ * their own volumes, so a mix can peak past full scale, and the WAV writer
+ * would flatten every sample beyond it. A mix that fits is left untouched.
+ * Returns the gain applied: 1 when none was needed.
+ */
+export function preventClipping(buffer: AudioBuffer, peak = EXPORT_PEAK): number {
+  let loudest = 0;
+  for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+    for (const sample of buffer.getChannelData(channel)) {
+      const level = Math.abs(sample);
+      if (level > loudest) loudest = level;
+    }
+  }
+  if (loudest <= 1) return 1;
+
+  const gain = peak / loudest;
+  for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+    const data = buffer.getChannelData(channel);
+    for (let i = 0; i < data.length; i++) data[i] *= gain;
+  }
+  return gain;
+}
+
+/**
+ * Export the mix to a WAV file using OfflineAudioContext. `gain` is what was
+ * applied to keep it from clipping, 1 when nothing was.
  */
 export async function exportMix(
   tracks: Track[],
   clips: AudioClip[],
   audioFiles: AudioFile[],
   onProgress?: (progress: number) => void
-): Promise<Blob> {
+): Promise<{ blob: Blob; gain: number }> {
   // Calculate the total duration of the project
   let maxDuration = 0;
   tracks.forEach((track) => {
@@ -138,12 +166,12 @@ export async function exportMix(
 
   onProgress?.(0.8);
 
-  // Convert to WAV
-  const wavBlob = audioBufferToWav(renderedBuffer);
+  const gain = preventClipping(renderedBuffer);
+  const blob = audioBufferToWav(renderedBuffer);
 
   onProgress?.(1.0);
 
-  return wavBlob;
+  return { blob, gain };
 }
 
 /**

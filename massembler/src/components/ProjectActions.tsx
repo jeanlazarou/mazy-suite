@@ -87,12 +87,20 @@ export function ProjectActions() {
     setProgress(0);
 
     try {
-      const blob = await exportMix(tracks, clips, audioFiles, (p) => {
+      const { blob, gain } = await exportMix(tracks, clips, audioFiles, (p) => {
         setProgress(Math.round(p * 100));
       });
 
       downloadBlob(blob, `${projectName}-mix.wav`);
       setStatusMessage('Export complete!');
+      if (gain < 1) {
+        const decibels = (-20 * Math.log10(gain)).toFixed(1);
+        showToast(
+          `The mix peaked above full scale, so the export was turned down ${decibels} dB to keep it from clipping.`,
+          'info',
+          8000
+        );
+      }
 
       setTimeout(() => {
         setIsProcessing(false);
