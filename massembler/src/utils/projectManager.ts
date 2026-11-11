@@ -209,7 +209,7 @@ export async function exportMix(
 /**
  * Convert AudioBuffer to WAV blob
  */
-function audioBufferToWav(buffer: AudioBuffer): Blob {
+export function audioBufferToWav(buffer: AudioBuffer): Blob {
   const length = buffer.length * buffer.numberOfChannels * 2 + 44;
   const arrayBuffer = new ArrayBuffer(length);
   const view = new DataView(arrayBuffer);

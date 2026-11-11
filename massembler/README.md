@@ -139,6 +139,16 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - Restores tracks, clips, trim values, positions, repeats, etc.
   - Progress indicator during load
   - Everything works exactly as it did before save
+  - Projects saved by earlier versions open too
+
+- **Autosave**: The open project is kept in the browser as you work
+  - Stored a second after each change, audio included; each audio file is
+    written once, in its original encoding
+  - On the next visit, offers to pick up where you left off or start fresh
+  - Closing the tab only warns when the latest changes are not stored yet
+  - One project per browser: with two tabs open, the last one changed is kept
+  - A safety net, not a replacement for Save Project - clearing the browser's
+    site data clears it too
 
 ### UI/UX Features
 - **Material UI Speed Dial**: Beautiful floating action button (bottom-right) with:
@@ -308,6 +318,8 @@ only the name can be edited. The row tells you which case applies.
 **Save Your Work**:
 - Click Speed Dial → **Save Project**
 - Downloads a `.mass` file containing your complete project
+- The browser also keeps your project as you work, and offers it back when
+  you return - but only a `.mass` file is safe from clearing site data
 
 **Load Saved Project**:
 - Click Speed Dial → **Load Project**

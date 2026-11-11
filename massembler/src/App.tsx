@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ClipLibrary } from './components/ClipLibrary';
 import { Timeline } from './components/Timeline';
 import { PlaybackControls } from './components/PlaybackControls';
@@ -6,11 +6,33 @@ import { UndoRedoControls } from './components/UndoRedoControls';
 import { ProjectActions } from './components/ProjectActions';
 import { ToastContainer } from './components/ToastContainer';
 import { ClipPropertiesPanel } from './components/ClipPropertiesPanel';
+import { RestoreSessionDialog } from './components/RestoreSessionDialog';
 import { useStore } from './store';
+import { SavedSession, findSavedSession, startAutosave } from './utils/autosave';
 
 function App() {
   const { projectName, setProjectName, selectedTrackClip, clips } = useStore();
   const [isLibraryOpen, setIsLibraryOpen] = useState(true);
+  const [savedSession, setSavedSession] = useState<SavedSession | null>(null);
+
+  // Autosave waits until the last session has been offered back, so the empty
+  // project the app opens with cannot overwrite it first.
+  useEffect(() => {
+    let cancelled = false;
+    findSavedSession().then((session) => {
+      if (cancelled) return;
+      if (session) setSavedSession(session);
+      else startAutosave();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleSessionDecided = () => {
+    setSavedSession(null);
+    startAutosave();
+  };
 
   return (
     <div className="h-screen flex flex-col bg-gray-900 text-white">
@@ -73,6 +95,10 @@ function App() {
 
       {/* Project Actions Speed Dial */}
       <ProjectActions />
+
+      {savedSession && (
+        <RestoreSessionDialog session={savedSession} onDone={handleSessionDecided} />
+      )}
 
       {/* Toast notifications */}
       <ToastContainer />
