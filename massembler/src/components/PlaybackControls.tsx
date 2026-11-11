@@ -96,12 +96,9 @@ export function PlaybackControls() {
     const time = parseFloat(e.target.value);
     setPlaybackState({ currentTime: time });
 
-    if (playbackState.isPlaying) {
-      handlePause();
-      setTimeout(() => {
-        setPlaybackState({ currentTime: time });
-        handlePlay();
-      }, 50);
+    // Reschedule in place; the running animation loop follows the engine.
+    if (playbackState.isPlaying && audioEngineRef.current) {
+      audioEngineRef.current.play(tracks, clips, audioFiles, time);
     }
   };
 
