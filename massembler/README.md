@@ -30,11 +30,19 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   `<name> copy`, as a starting point for a variation. Track placements stay
   with the original.
 - **Multi-Track Timeline**: Arrange clips across multiple tracks
+  - Each clip block shows its waveform - the stretch it actually plays,
+    mirrored when reversed
 - **Drag & Drop**:
   - Easy placement of clips from library to tracks
   - Drag to reposition clips within tracks
   - Drag clips between different tracks
   - Custom drag preview showing clip appearance
+- **Snap**: While dragging, resizing or dropping a clip, an edge that comes
+  within a few pixels of another clip's edge (on any track), the playhead or
+  the start is pulled onto it, and a guide line shows where
+  - Clips can be butted exactly edge to edge, with no gap and no overlap
+  - Toggle it with the **Snap** checkbox next to the zoom slider; the setting
+    is remembered
 
 ### Advanced Editing
 - **Clip Resizing**: Adjust clip length by dragging left or right edges
@@ -106,7 +114,9 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - Scrolling by hand while playing turns following off, so it never fights you
   - Disabled, and marked *(not needed)*, while the whole arrangement already
     fits on screen
-- **Timeline Scrubbing**: Jump to any position
+- **Timeline Scrubbing**: Jump to any position, from the seek bar or by
+  clicking or dragging along the ruler
+- **Space** plays and pauses (except while typing in a field)
 - **Edits heard while playing**: Volume, mute and solo take effect at once;
   moving, trimming or changing clips is picked up as soon as you pause or let
   go, without stopping playback
@@ -248,7 +258,9 @@ only the name can be edited. The row tells you which case applies.
 
 1. Drag a clip from the library onto a track
 2. Drop it at the desired position on the timeline
-3. **Reposition**: Drag clip blocks left or right to move them
+3. **Reposition**: Drag clip blocks left or right to move them. With **Snap**
+   on, an edge near another clip's edge or the playhead lands exactly on it -
+   an amber line shows where
 4. **Move Between Tracks**: Drag clips up or down to different tracks
 5. **Resize Clips**: Hover over clip edges and drag left/right edge to adjust trim
    - Each instance can be resized independently
@@ -295,7 +307,9 @@ only the name can be edited. The row tells you which case applies.
 - **Play**: Start playback from the current position
 - **Pause**: Pause playback (can be resumed)
 - **Stop**: Stop playback and return to the beginning
-- **Seek**: Drag the timeline scrubber to jump to a specific position
+- **Space**: Play or pause from anywhere but a text field
+- **Seek**: Drag the timeline scrubber, or click or drag along the ruler above
+  the tracks, to jump to a specific position
 - **Edit while listening**: No need to stop - turn a knob, mute or solo a
   track, or move a clip, and you hear the change straight away
 - **Zoom**: Adjust the timeline zoom level for better precision

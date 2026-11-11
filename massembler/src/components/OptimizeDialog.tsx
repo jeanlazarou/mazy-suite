@@ -136,7 +136,11 @@ export function OptimizeDialog({ onClose }: OptimizeDialogProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-6">
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-6"
+    >
       <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-full flex flex-col">
         <div className="p-4 border-b border-gray-700">
           <h2 className="text-xl font-semibold text-white">Optimize project</h2>

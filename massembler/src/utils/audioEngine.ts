@@ -29,6 +29,8 @@ export class AudioEngine {
   private run: Run | null = null;
   /** Context time at which timeline time zero plays. */
   private origin = 0;
+  /** Timeline time the current run starts from. */
+  private from = 0;
 
   constructor(audioContext: AudioContext) {
     this.audioContext = audioContext;
@@ -50,8 +52,11 @@ export class AudioEngine {
   /** Pick up arrangement edits while playing, from wherever playback has got to. */
   replay(tracks: Track[], clips: AudioClip[], audioFiles: AudioFile[]) {
     if (!this.run) return;
+    const shown = this.getCurrentTime();
     const at = this.audioContext.currentTime + LOOKAHEAD_SECONDS;
     this.start(tracks, clips, audioFiles, at - this.origin, at);
+    // The playhead carries on from where it is, rather than leaping ahead.
+    this.from = shown;
   }
 
   /** Follow volume, mute and solo changes while playing. */
@@ -74,7 +79,9 @@ export class AudioEngine {
   }
 
   getCurrentTime(): number {
-    return this.run ? this.audioContext.currentTime - this.origin : 0;
+    if (!this.run) return 0;
+    // Not before the start: during the lookahead the clock has not reached it yet.
+    return Math.max(this.from, this.audioContext.currentTime - this.origin);
   }
 
   private start(
@@ -114,6 +121,7 @@ export class AudioEngine {
 
     this.run = { bus, trackGains, scheduled };
     this.origin = at - from;
+    this.from = from;
   }
 
   /** End the current run: faded out from `when`, or left to ring out. */

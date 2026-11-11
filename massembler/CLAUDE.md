@@ -104,8 +104,17 @@ When adding features that modify state:
   scheduling there, never in one of them only.
 - `src/utils/audioEngine.ts` runs realtime playback: a gain per track (muted
   tracks too, at zero) so volume/mute/solo follow live, and `replay` to
-  reschedule mid-play with a short crossfade. `PlaybackControls` decides when
-  to call which.
+  reschedule mid-play with a short crossfade.
+- `src/utils/transport.ts` owns the engine and the playhead loop: `play`,
+  `pause`, `stop`, `seek`, `togglePlay` for the buttons, seek bar, ruler and
+  Space key, and decides when edits made while playing need a `replay`.
+
+### Snapping
+`src/utils/snapping.ts` holds the targets (clip edges on every track, the
+playhead, zero) and the maths; `TrackClipBlock` (drag, resize) and `Track`
+(library drop) apply it. Compare timeline positions with `spansOverlap` /
+`OVERLAP_EPSILON` from `clipTiming.ts`, so clips snapped edge to edge do not
+read as overlapping.
 
 ### Changing project save/load
 Modify `src/utils/projectManager.ts` - handles:

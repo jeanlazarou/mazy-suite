@@ -1,149 +1,28 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useStore } from '../store';
-import { AudioClip, AudioFile, Track } from '../types';
-import { AudioEngine } from '../utils/audioEngine';
-import { getProjectDuration } from '../utils/clipTiming';
-
-/**
- * Arrangement edits made while playing are picked up once they pause for
- * this long, so a drag is not rescheduled on every mouse move.
- */
-const RESCHEDULE_DELAY_MS = 120;
-
-interface Arrangement {
-  tracks: Track[];
-  clips: AudioClip[];
-  audioFiles: AudioFile[];
-}
-
-/** Whether only track settings (volume, mute, solo, name) differ. */
-function sameArrangement(a: Arrangement, b: Arrangement): boolean {
-  return (
-    a.clips === b.clips &&
-    a.audioFiles === b.audioFiles &&
-    a.tracks.length === b.tracks.length &&
-    a.tracks.every((track, i) => track.id === b.tracks[i].id && track.clips === b.tracks[i].clips)
-  );
-}
+import { isTextEntry } from '../utils/keyboard';
+import { pause, play, seek, stop, togglePlay } from '../utils/transport';
 
 export function PlaybackControls() {
-  const {
-    playbackState,
-    setPlaybackState,
-    tracks,
-    clips,
-    audioFiles,
-    audioContext,
-    setAudioContext,
-  } = useStore();
+  const { playbackState } = useStore();
 
-  const audioEngineRef = useRef<AudioEngine | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-
+  // Space plays and pauses, except while typing or inside a dialog. It is
+  // taken from focused buttons too: after clicking "+ Track", Space should
+  // play rather than add another track.
   useEffect(() => {
-    if (audioContext && !audioEngineRef.current) {
-      audioEngineRef.current = new AudioEngine(audioContext);
-    }
-  }, [audioContext]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+      const target = e.target;
+      if (isTextEntry(target) || target instanceof HTMLSelectElement) return;
+      if (target instanceof Element && target.closest('[role="dialog"]')) return;
 
-  // While playing, edits are heard: track settings at once, the arrangement
-  // after a short pause.
-  useEffect(() => {
-    if (!playbackState.isPlaying) return;
-
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const unsubscribe = useStore.subscribe((state, previous) => {
-      const engine = audioEngineRef.current;
-      if (!engine || !state.playbackState.isPlaying) return;
-      if (
-        state.tracks === previous.tracks &&
-        state.clips === previous.clips &&
-        state.audioFiles === previous.audioFiles
-      ) {
-        return;
-      }
-
-      engine.setTrackLevels(state.tracks);
-      if (sameArrangement(state, previous)) return;
-
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (!engine.playing) return;
-        const { tracks, clips, audioFiles } = useStore.getState();
-        engine.replay(tracks, clips, audioFiles);
-        setPlaybackState({ duration: getProjectDuration(tracks, clips, 1) });
-      }, RESCHEDULE_DELAY_MS);
-    });
-
-    return () => {
-      unsubscribe();
-      clearTimeout(timer);
+      e.preventDefault();
+      togglePlay();
     };
-  }, [playbackState.isPlaying, setPlaybackState]);
 
-  const endPlayback = (rewind: boolean, ringOut = false) => {
-    audioEngineRef.current?.stop(ringOut);
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    setPlaybackState(rewind ? { isPlaying: false, currentTime: 0 } : { isPlaying: false });
-  };
-
-  const updatePlaybackTime = () => {
-    const engine = audioEngineRef.current;
-    if (!engine) return;
-
-    // Read live rather than from this callback's closure: the loop
-    // re-schedules itself, so it would keep whatever was current when play
-    // started.
-    const { duration, isPlaying } = useStore.getState().playbackState;
-
-    // Stopped from elsewhere - a project was loaded over this one.
-    if (!isPlaying) {
-      engine.stop();
-      return;
-    }
-
-    const currentTime = engine.getCurrentTime();
-    if (currentTime < duration) {
-      setPlaybackState({ currentTime });
-      animationFrameRef.current = requestAnimationFrame(updatePlaybackTime);
-    } else {
-      endPlayback(true, true);
-    }
-  };
-
-  const handlePlay = () => {
-    // Initialize audio context if it doesn't exist
-    let ctx = audioContext;
-    if (!ctx) {
-      ctx = new AudioContext();
-      setAudioContext(ctx);
-    }
-
-    if (!audioEngineRef.current) {
-      audioEngineRef.current = new AudioEngine(ctx);
-    }
-
-    audioEngineRef.current.play(tracks, clips, audioFiles, playbackState.currentTime);
-
-    setPlaybackState({ isPlaying: true, duration: getProjectDuration(tracks, clips, 1) });
-    animationFrameRef.current = requestAnimationFrame(updatePlaybackTime);
-  };
-
-  const handlePause = () => endPlayback(false);
-  const handleStop = () => endPlayback(true);
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = parseFloat(e.target.value);
-    setPlaybackState({ currentTime: time });
-
-    // Reschedule in place; the running animation loop follows the engine.
-    if (playbackState.isPlaying && audioEngineRef.current) {
-      audioEngineRef.current.play(tracks, clips, audioFiles, time);
-    }
-  };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -158,21 +37,23 @@ export function PlaybackControls() {
         <div className="flex gap-2">
           {!playbackState.isPlaying ? (
             <button
-              onClick={handlePlay}
+              onClick={play}
               className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-semibold"
+              title="Play (Space)"
             >
               ▶ Play
             </button>
           ) : (
             <button
-              onClick={handlePause}
+              onClick={pause}
               className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded font-semibold"
+              title="Pause (Space)"
             >
               ⏸ Pause
             </button>
           )}
           <button
-            onClick={handleStop}
+            onClick={stop}
             className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-semibold"
           >
             ⏹ Stop
@@ -192,7 +73,7 @@ export function PlaybackControls() {
             max={playbackState.duration || 1}
             step="0.1"
             value={playbackState.currentTime}
-            onChange={handleSeek}
+            onChange={(e) => seek(parseFloat(e.target.value))}
             className="flex-1"
           />
         </div>

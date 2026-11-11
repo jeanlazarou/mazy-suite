@@ -1,14 +1,6 @@
 import { useEffect } from 'react';
 import { useStore } from '../store';
-
-const NON_TEXT_INPUTS = ['checkbox', 'radio', 'range', 'button', 'submit', 'reset', 'file', 'color'];
-
-/** A field with its own text undo, which the shortcuts must be left to. */
-function isTextEntry(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable || target instanceof HTMLTextAreaElement) return true;
-  return target instanceof HTMLInputElement && !NON_TEXT_INPUTS.includes(target.type);
-}
+import { isTextEntry } from '../utils/keyboard';
 
 export function UndoRedoControls() {
   const { undo, redo, undoAvailable, redoAvailable } = useStore();

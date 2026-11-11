@@ -37,7 +37,11 @@ export function RestoreSessionDialog({ session, onDone }: RestoreSessionDialogPr
 
   return (
     // Above the Speed Dial, which MUI layers at 1050.
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[1300] p-6">
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[1300] p-6"
+    >
       <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6">
         <h2 className="text-xl font-semibold text-white">Pick up where you left off?</h2>
         <p className="text-gray-300 mt-3">

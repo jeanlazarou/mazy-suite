@@ -1,15 +1,23 @@
 import { useState, useRef } from 'react';
 import LinkIcon from '@mui/icons-material/Link';
 import { TrackClip } from '../types';
-import { getEffectInfo } from '../utils/clipEffects';
-import { getRepeatCount, getTrackClipDuration, getTrackClipEnd } from '../utils/clipTiming';
+import { getEffectInfo, resolveClipPlaybackRate } from '../utils/clipEffects';
+import {
+  OVERLAP_EPSILON,
+  getRepeatCount,
+  getTrackClipDuration,
+  getTrackClipEnd,
+  spansOverlap,
+} from '../utils/clipTiming';
 import {
   linkedResizeLimit,
   snapshotGroup,
   solveLinkedMove,
   solveLinkedResize,
 } from '../utils/clipLinks';
+import { SNAP_PX, snapPoint, snapSpan, snapTargets } from '../utils/snapping';
 import { history, useStore } from '../store';
+import { ClipWaveform } from './ClipWaveform';
 
 /** A colour per group, so linked clips can be told apart at a glance. */
 function linkColor(linkId: string): string {
@@ -28,7 +36,7 @@ export function TrackClipBlock({
   trackClip,
   pixelsPerSecond,
 }: TrackClipBlockProps) {
-  const { clips, updateTrackClip, moveClipBetweenTracks, audioFiles, tracks, selectedTrackClips, setSelectedTrackClip, toggleTrackClipSelection, applyTrackClipPatches, applyTrackClipMoves } = useStore();
+  const { clips, updateTrackClip, moveClipBetweenTracks, audioFiles, tracks, selectedTrackClips, setSelectedTrackClip, toggleTrackClipSelection, applyTrackClipPatches, applyTrackClipMoves, setSnapGuide } = useStore();
   const clip = clips.find((s) => s.id === trackClip.clipId);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
@@ -57,6 +65,31 @@ export function TrackClipBlock({
   const width = effectiveDuration * pixelsPerSecond;
   const left = trackClip.position * pixelsPerSecond;
 
+  // The stretch of audio the clip actually plays: a pitch preset reads less
+  // of it, and Reverse plays it backwards.
+  const waveform = (
+    <ClipWaveform
+      buffer={audioFile.buffer}
+      start={effectiveStartTime}
+      end={effectiveStartTime + effectiveDuration * resolveClipPlaybackRate(trackClip.effect)}
+      width={width}
+      reversed={trackClip.effect === 'reverse'}
+    />
+  );
+
+  /**
+   * Snap targets for a gesture, frozen when it starts, and how far an edge
+   * reaches for them. Null when snapping is off.
+   */
+  const startSnapping = (exclude: Set<string>) => {
+    const { snapEnabled, playbackState } = useStore.getState();
+    if (!snapEnabled) return null;
+    return {
+      targets: snapTargets(tracks, clips, playbackState.currentTime, exclude),
+      reach: SNAP_PX / pixelsPerSecond,
+    };
+  };
+
   // Helper to check if a position would cause overlap
   const checkOverlap = (targetTrackId: string, position: number): boolean => {
     const targetTrack = tracks.find((t) => t.id === targetTrackId);
@@ -73,10 +106,7 @@ export function TrackClipBlock({
       const otherClip = clips.find((c) => c.id === tc.clipId);
       if (!otherClip) return false;
 
-      const existingStart = tc.position;
-      const existingEnd = getTrackClipEnd(tc, otherClip);
-
-      return newStart < existingEnd && newEnd > existingStart;
+      return spansOverlap(newStart, newEnd, tc.position, getTrackClipEnd(tc, otherClip));
     });
   };
 
@@ -115,6 +145,7 @@ export function TrackClipBlock({
     // everything below on the plain single-clip path.
     const group = snapshotGroup(tracks, clips, { trackId, trackClipId: trackClip.id });
     const self = group.find((m) => m.trackClipId === trackClip.id) ?? null;
+    const snapping = startSnapping(new Set([trackClip.id]));
 
     // Find adjacent clips for overlap checking
     const track = tracks.find((t) => t.id === trackId);
@@ -136,9 +167,15 @@ export function TrackClipBlock({
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const deltaX = moveEvent.clientX - startX;
-      const deltaTime = deltaX / pixelsPerSecond;
+      let deltaTime = deltaX / pixelsPerSecond;
+      let snappedTo: number | null = null;
 
       if (edge === 'left') {
+        if (snapping) {
+          snappedTo = snapPoint(originalPosition + deltaTime, snapping.targets, snapping.reach);
+          if (snappedTo !== null) deltaTime = snappedTo - originalPosition;
+        }
+
         // Resize from left edge - adjust trimStart AND position
         // The visual left edge follows the mouse
         let newTrimStart = Math.max(0, Math.min(originalStartTime + deltaTime, originalEndTime - 0.1));
@@ -146,7 +183,9 @@ export function TrackClipBlock({
         let newPosition = originalPosition + actualDelta;
 
         // Check for overlap with clips that end before our current position
-        const clipsToLeft = otherClips.filter((tc) => tc.endPosition <= originalPosition);
+        const clipsToLeft = otherClips.filter(
+          (tc) => tc.endPosition <= originalPosition + OVERLAP_EPSILON
+        );
         if (clipsToLeft.length > 0) {
           const closestClip = clipsToLeft.reduce((prev, curr) =>
             curr.endPosition > prev.endPosition ? curr : prev
@@ -167,6 +206,11 @@ export function TrackClipBlock({
           }
         }
 
+        // Only show the guide if the limits above left the edge on it.
+        setSnapGuide(
+          snappedTo !== null && Math.abs(newPosition - snappedTo) < OVERLAP_EPSILON ? snappedTo : null
+        );
+
         applyTrackClipPatches(
           [
             {
@@ -178,6 +222,21 @@ export function TrackClipBlock({
           ]
         );
       } else {
+        const originalLength = originalEndTime - originalStartTime;
+
+        // The edge that snaps is where the last repetition ends: that is what
+        // meets the next clip.
+        if (snapping) {
+          snappedTo = snapPoint(
+            originalPosition + repeats * (originalLength + deltaTime),
+            snapping.targets,
+            snapping.reach
+          );
+          if (snappedTo !== null) {
+            deltaTime = (snappedTo - originalPosition) / repeats - originalLength;
+          }
+        }
+
         // Resize from right edge - adjust trimEnd only
         let newTrimEnd = Math.max(originalStartTime + 0.1, Math.min(originalEndTime + deltaTime, maxDuration));
         const newDuration = newTrimEnd - originalStartTime;
@@ -187,7 +246,7 @@ export function TrackClipBlock({
 
         // Check for overlap with clips that start after our current position
         const clipsToRight = otherClips.filter(
-          (tc) => tc.position >= originalPosition + repeats * (originalEndTime - originalStartTime)
+          (tc) => tc.position >= originalPosition + repeats * originalLength - OVERLAP_EPSILON
         );
         if (clipsToRight.length > 0) {
           const closestClip = clipsToRight.reduce((prev, curr) =>
@@ -213,6 +272,10 @@ export function TrackClipBlock({
           }
         }
 
+        setSnapGuide(
+          snappedTo !== null && Math.abs(edgeValue - snappedTo) < OVERLAP_EPSILON ? snappedTo : null
+        );
+
         applyTrackClipPatches(
           [
             { trackId, trackClipId: trackClip.id, updates: { trimEnd: newTrimEnd } },
@@ -224,6 +287,7 @@ export function TrackClipBlock({
 
     const handleMouseUp = () => {
       setIsResizing(null);
+      setSnapGuide(null);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       history.endGesture();
@@ -258,6 +322,13 @@ export function TrackClipBlock({
     // The group travels as a rigid body, measured from where it all started.
     const group = snapshotGroup(tracks, clips, { trackId, trackClipId: trackClip.id });
 
+    // The dragged clip's edges snap; the rest of its group follows it, so
+    // none of them are targets.
+    const snapping = startSnapping(
+      new Set(group.length > 0 ? group.map((m) => m.trackClipId) : [trackClip.id])
+    );
+    const footprint = getTrackClipDuration(trackClip, clip);
+
     // A clip that is already sitting on top of another one - an arrangement
     // made back when repetitions did not count towards a clip's footprint -
     // would be frozen in place by the checks below, since every position it
@@ -289,8 +360,14 @@ export function TrackClipBlock({
 
       const targetRect = targetTrackEl.getBoundingClientRect();
       const relativeX = moveEvent.clientX - targetRect.left - offsetX;
-      const newPosition = Math.max(0, relativeX / pixelsPerSecond);
+      let newPosition = Math.max(0, relativeX / pixelsPerSecond);
 
+      const snapped = snapping
+        ? snapSpan(newPosition, footprint, snapping.targets, snapping.reach)
+        : null;
+      if (snapped) newPosition = snapped.start;
+
+      // A refused move below leaves the guide as it was: the clip has not moved.
       if (group.length > 0) {
         const live = useStore.getState().tracks;
         const fromIndex = live.findIndex((t) => t.id === startTrackId);
@@ -311,6 +388,7 @@ export function TrackClipBlock({
 
         applyTrackClipMoves(moves);
         currentTrackId = targetTrackId;
+        setSnapGuide(snapped?.at ?? null);
         return;
       }
 
@@ -327,10 +405,12 @@ export function TrackClipBlock({
         // Same track - just update position
         updateTrackClip(currentTrackId, trackClip.id, { position: newPosition });
       }
+      setSnapGuide(snapped?.at ?? null);
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
+      setSnapGuide(null);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       history.endGesture();
@@ -377,29 +457,31 @@ export function TrackClipBlock({
           title="Resize clip end"
         />
 
+        {waveform}
+
         {/* Fade In Gradient Overlay */}
-        {trackClip.fadeIn && trackClip.fadeIn > 0 && (
+        {(trackClip.fadeIn ?? 0) > 0 && (
           <div
             className="absolute top-0 bottom-0 left-0 pointer-events-none"
             style={{
-              width: `${(trackClip.fadeIn / effectiveDuration) * 100}%`,
+              width: `${((trackClip.fadeIn ?? 0) / effectiveDuration) * 100}%`,
               background: 'linear-gradient(to right, rgba(0,0,0,0.5), transparent)',
             }}
           />
         )}
 
         {/* Fade Out Gradient Overlay */}
-        {trackClip.fadeOut && trackClip.fadeOut > 0 && (
+        {(trackClip.fadeOut ?? 0) > 0 && (
           <div
             className="absolute top-0 bottom-0 right-0 pointer-events-none"
             style={{
-              width: `${(trackClip.fadeOut / effectiveDuration) * 100}%`,
+              width: `${((trackClip.fadeOut ?? 0) / effectiveDuration) * 100}%`,
               background: 'linear-gradient(to left, rgba(0,0,0,0.5), transparent)',
             }}
           />
         )}
 
-        <div className="p-1 h-full flex flex-col justify-between text-xs pointer-events-none">
+        <div className="relative p-1 h-full flex flex-col justify-between text-xs pointer-events-none">
           <div className="font-medium truncate">{clip.name}</div>
           <div className="text-blue-100 text-[10px] flex items-center gap-1">
             <span className="truncate">
@@ -436,7 +518,8 @@ export function TrackClipBlock({
                 className="absolute top-1 bottom-1 bg-blue-600 rounded border border-blue-400 opacity-30 pointer-events-none"
                 style={{ left: `${phantomLeft}px`, width: `${width}px` }}
               >
-                <div className="p-1 h-full flex flex-col justify-between text-xs">
+                {waveform}
+                <div className="relative p-1 h-full flex flex-col justify-between text-xs">
                   <div className="font-medium truncate">{clip.name}</div>
                   <div className="text-blue-100 text-[10px]">
                     #{repeatIndex + 1}

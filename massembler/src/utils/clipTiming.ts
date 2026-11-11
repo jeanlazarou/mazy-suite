@@ -31,6 +31,17 @@ export function getTrackClipEnd(trackClip: TrackClip, clip: AudioClip): number {
   return trackClip.position + getTrackClipDuration(trackClip, clip);
 }
 
+/**
+ * Slack allowed when comparing timeline positions. Snapping butts clips edge
+ * to edge, and float arithmetic would otherwise read that as a hair of overlap.
+ */
+export const OVERLAP_EPSILON = 1e-6;
+
+/** Whether two timeline spans overlap by more than rounding noise. */
+export function spansOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
+  return aStart < bEnd - OVERLAP_EPSILON && aEnd > bStart + OVERLAP_EPSILON;
+}
+
 /** Length of the whole project: the furthest point any clip reaches. */
 export function getProjectDuration(
   tracks: Track[],

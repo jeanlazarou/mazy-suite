@@ -1,5 +1,5 @@
 import { AudioClip, Track, TrackClip } from '../types';
-import { getEffectiveRange, getRepeatCount, getTrackClipEnd } from './clipTiming';
+import { getEffectiveRange, getRepeatCount, getTrackClipEnd, spansOverlap } from './clipTiming';
 
 /**
  * Linked clips.
@@ -319,7 +319,7 @@ export function solveLinkedMove(
         if (movedIds.has(tc.id)) return false;
         const other = clips.find((c) => c.id === tc.clipId);
         if (!other) return false;
-        return position < getTrackClipEnd(tc, other) && end > tc.position;
+        return spansOverlap(position, end, tc.position, getTrackClipEnd(tc, other));
       });
     if (blocked) return null;
 

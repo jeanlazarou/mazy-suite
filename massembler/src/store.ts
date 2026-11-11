@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { AudioFile, AudioClip, Track, TrackClip, PlaybackState } from './types';
 import { History } from './utils/undoRedo';
-import { getTrackClipDuration, getTrackClipEnd } from './utils/clipTiming';
+import { getTrackClipDuration, getTrackClipEnd, spansOverlap } from './utils/clipTiming';
 import {
   TrackClipMove,
   TrackClipPatch,
@@ -78,6 +78,13 @@ interface AppState {
   pixelsPerSecond: number;
   setPixelsPerSecond: (pps: number) => void;
 
+  // Snapping (see utils/snapping.ts). The setting is remembered per browser.
+  snapEnabled: boolean;
+  setSnapEnabled: (enabled: boolean) => void;
+  /** Where a drag has just snapped to, for the guide line; null when it has not. */
+  snapGuide: number | null;
+  setSnapGuide: (time: number | null) => void;
+
   // Undo/Redo - see utils/undoRedo.ts and the `history` export below
   undo: () => void;
   redo: () => void;
@@ -114,6 +121,16 @@ let nextTrackId = 1;
 let nextTrackClipId = 1;
 let nextLinkId = 0;
 
+const SNAP_PREFERENCE_KEY = 'massembler.snap';
+
+function readSnapPreference(): boolean {
+  try {
+    return localStorage.getItem(SNAP_PREFERENCE_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
 // Helper function to check if a clip overlaps with existing clips on a track
 function checkOverlap(
   track: Track,
@@ -134,11 +151,7 @@ function checkOverlap(
     const clip = state.clips.find((c) => c.id === trackClip.clipId);
     if (!clip) return false;
 
-    const existingStart = trackClip.position;
-    const existingEnd = getTrackClipEnd(trackClip, clip);
-
-    // Check if ranges overlap
-    return newStart < existingEnd && newEnd > existingStart;
+    return spansOverlap(newStart, newEnd, trackClip.position, getTrackClipEnd(trackClip, clip));
   });
 }
 
@@ -425,6 +438,20 @@ export const useStore = create<AppState>((set, get) => ({
 
   pixelsPerSecond: 50,
   setPixelsPerSecond: (pps) => set({ pixelsPerSecond: pps }),
+
+  snapEnabled: readSnapPreference(),
+  setSnapEnabled: (enabled) => {
+    try {
+      localStorage.setItem(SNAP_PREFERENCE_KEY, enabled ? 'on' : 'off');
+    } catch {
+      // storage unavailable: the setting just lasts for this visit
+    }
+    set({ snapEnabled: enabled });
+  },
+  snapGuide: null,
+  setSnapGuide: (time) => {
+    if (get().snapGuide !== time) set({ snapGuide: time });
+  },
 
   undo: () => history.undo(),
   redo: () => history.redo(),

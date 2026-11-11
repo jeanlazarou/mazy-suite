@@ -3,6 +3,7 @@ import { history, useStore } from '../store';
 import { TrackClipBlock } from './TrackClipBlock';
 import { VolumeKnob } from './VolumeKnob';
 import { isSilencedBySolo } from '../utils/trackAudibility';
+import { SNAP_PX, snapSpan, snapTargets } from '../utils/snapping';
 
 interface TrackProps {
   track: TrackType;
@@ -28,7 +29,15 @@ export function Track({ track, pixelsPerSecond, maxDuration, renderMode = 'both'
 
     // For clips from the library, position by left edge (no offset)
     // This makes sense since library elements have different visual width than track elements
-    const position = Math.max(0, x / pixelsPerSecond);
+    let position = Math.max(0, x / pixelsPerSecond);
+
+    const { snapEnabled, clips, playbackState } = useStore.getState();
+    const clip = clips.find((c) => c.id === clipId);
+    if (snapEnabled && clip) {
+      const targets = snapTargets(tracks, clips, playbackState.currentTime);
+      const snapped = snapSpan(position, clip.duration, targets, SNAP_PX / pixelsPerSecond);
+      if (snapped) position = snapped.start;
+    }
 
     addClipToTrack(track.id, clipId, position);
   };

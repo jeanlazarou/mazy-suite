@@ -1,6 +1,7 @@
 import { useStore } from '../store';
 import { Track } from './Track';
 import { getProjectDuration } from '../utils/clipTiming';
+import { seek } from '../utils/transport';
 import { useRef, useEffect, useState } from 'react';
 
 /** Keep the playhead inside this band of the viewport while following. */
@@ -10,7 +11,16 @@ const FOLLOW_TRAIL = 0.75;
 const FOLLOW_REST = 0.25;
 
 export function Timeline() {
-  const { tracks, clips, addTrack, pixelsPerSecond, setPixelsPerSecond } = useStore();
+  const {
+    tracks,
+    clips,
+    addTrack,
+    pixelsPerSecond,
+    setPixelsPerSecond,
+    snapEnabled,
+    setSnapEnabled,
+    snapGuide,
+  } = useStore();
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const tracksScrollRef = useRef<HTMLDivElement>(null);
   const controlsScrollRef = useRef<HTMLDivElement>(null);
@@ -45,6 +55,31 @@ export function Timeline() {
       minorMarkers.push(i);
     }
   }
+
+  // Click, or drag, along the ruler to move the playhead.
+  const handleRulerMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const ruler = e.currentTarget;
+    const seekTo = (clientX: number) =>
+      seek((clientX - ruler.getBoundingClientRect().left) / pixelsPerSecond);
+
+    seekTo(e.clientX);
+    const handleMove = (move: MouseEvent) => seekTo(move.clientX);
+    const handleUp = () => {
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+    };
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+  };
+
+  const snapGuideLine =
+    snapGuide === null ? null : (
+      <div
+        className="absolute top-0 bottom-0 w-px bg-amber-300 pointer-events-none z-30"
+        style={{ left: `${snapGuide * pixelsPerSecond}px` }}
+      />
+    );
 
   // Synchronize scroll between header and tracks (horizontal) and controls and tracks (vertical)
   useEffect(() => {
@@ -170,8 +205,10 @@ export function Timeline() {
         </div>
         <div className="flex-1 relative overflow-x-auto" ref={headerScrollRef}>
           <div
-            className="relative h-8 bg-gray-800"
+            className="relative h-8 bg-gray-800 cursor-pointer"
             style={{ minWidth: `${maxDuration * pixelsPerSecond}px` }}
+            onMouseDown={handleRulerMouseDown}
+            title="Click or drag to move the playhead"
           >
             {/* Minor markers (every second) */}
             {minorMarkers.map((time) => (
@@ -202,6 +239,8 @@ export function Timeline() {
                 style={{ clipPath: 'polygon(0 0, 100% 0, 50% 100%)' }}
               />
             </div>
+
+            {snapGuideLine}
           </div>
         </div>
       </div>
@@ -218,6 +257,18 @@ export function Timeline() {
           className="w-32"
         />
         <span className="text-xs">{pixelsPerSecond}px/s</span>
+
+        <label
+          className="ml-4 flex items-center gap-1.5 text-xs select-none cursor-pointer"
+          title="While dragging or resizing a clip, pull its edges onto other clips' edges and the playhead"
+        >
+          <input
+            type="checkbox"
+            checked={snapEnabled}
+            onChange={(e) => setSnapEnabled(e.target.checked)}
+          />
+          Snap
+        </label>
 
         <label
           className={`ml-4 flex items-center gap-1.5 text-xs select-none ${
@@ -292,6 +343,8 @@ export function Timeline() {
               ref={playheadTracksRef}
               className="absolute top-0 bottom-0 w-px bg-red-500/80 pointer-events-none z-20"
             />
+
+            {snapGuideLine}
           </div>
         </div>
       </div>
