@@ -1,4 +1,4 @@
-import { useStore } from '../store';
+import { useStore, useStoreFields } from '../store';
 import { Track } from './Track';
 import { getProjectDuration } from '../utils/clipTiming';
 import { seek } from '../utils/transport';
@@ -20,7 +20,16 @@ export function Timeline() {
     snapEnabled,
     setSnapEnabled,
     snapGuide,
-  } = useStore();
+  } = useStoreFields(
+    'tracks',
+    'clips',
+    'addTrack',
+    'pixelsPerSecond',
+    'setPixelsPerSecond',
+    'snapEnabled',
+    'setSnapEnabled',
+    'snapGuide'
+  );
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const tracksScrollRef = useRef<HTMLDivElement>(null);
   const controlsScrollRef = useRef<HTMLDivElement>(null);

@@ -9,12 +9,17 @@ import { ClipPropertiesPanel } from './components/ClipPropertiesPanel';
 import { RestoreSessionDialog } from './components/RestoreSessionDialog';
 import { TourButton } from './components/AppTour';
 import { useTour } from '@reactour/tour';
-import { useStore } from './store';
+import { useStoreFields } from './store';
 import { SavedSession, findSavedSession, startAutosave } from './utils/autosave';
 import { markTourSeen, tourSeen } from './utils/tourState';
 
 function App() {
-  const { projectName, setProjectName, selectedTrackClip, clips } = useStore();
+  const { projectName, setProjectName, selectedTrackClip, clips } = useStoreFields(
+    'projectName',
+    'setProjectName',
+    'selectedTrackClip',
+    'clips'
+  );
   const [isLibraryOpen, setIsLibraryOpen] = useState(true);
   const [savedSession, setSavedSession] = useState<SavedSession | null>(null);
   const { setIsOpen: setTourOpen, setCurrentStep: setTourStep } = useTour();

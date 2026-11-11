@@ -8,7 +8,7 @@ import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CompressIcon from '@mui/icons-material/Compress';
 import { OptimizeDialog } from './OptimizeDialog';
-import { useStore } from '../store';
+import { useStoreFields } from '../store';
 import { exportMix, saveProject, loadProject, downloadBlob } from '../utils/projectManager';
 import { AudioFile } from '../types';
 import { shortcutLabel } from '../utils/keyboard';
@@ -32,7 +32,17 @@ export function ProjectActions() {
     loadProjectState,
     ensureAudioContext,
     showToast,
-  } = useStore();
+  } = useStoreFields(
+    'tracks',
+    'clips',
+    'audioFiles',
+    'pixelsPerSecond',
+    'projectName',
+    'addAudioFile',
+    'loadProjectState',
+    'ensureAudioContext',
+    'showToast'
+  );
 
   const handleUploadAudio = () => {
     fileInputRef.current?.click();

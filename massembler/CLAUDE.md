@@ -52,6 +52,13 @@ The entire application state is managed by a single Zustand store in `src/store.
 
 Key store actions follow patterns like `addAudioFile`, `createClip`, `updateTrackClip`, etc.
 
+Components subscribe to the fields they use with `useStoreFields('tracks',
+'addTrack', ...)` (or `useStore` with a selector), never the whole store with
+`useStore()`: the playhead updates the store every frame while playing, and a
+whole-store subscription redraws the component each time (a conventions test
+checks). Event handlers that only need a value at that moment read
+`useStore.getState()`.
+
 ### Core Data Flow
 1. **Audio Upload**: Files are processed into AudioBuffers and stored as `AudioFile` objects
 2. **Clip Creation**: Users select regions to create `AudioClip` objects

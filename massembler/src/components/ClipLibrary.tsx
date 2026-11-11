@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore } from '../store';
+import { useStore, useStoreFields } from '../store';
 import { AudioClip } from '../types';
 import { Waveform, WaveformSelection } from './Waveform';
 import { WaveformEditorModal } from './WaveformEditorModal';
@@ -19,7 +19,15 @@ interface ClipLibraryProps {
 
 export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
   const { audioFiles, clips, tracks, addClip, updateClip, removeClip, showToast } =
-    useStore();
+    useStoreFields(
+      'audioFiles',
+      'clips',
+      'tracks',
+      'addClip',
+      'updateClip',
+      'removeClip',
+      'showToast'
+    );
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [clipName, setClipName] = useState('');
   const [selection, setSelection] = useState<WaveformSelection | null>(null);

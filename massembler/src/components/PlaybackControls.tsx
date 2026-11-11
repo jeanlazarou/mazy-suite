@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
-import { useStore } from '../store';
+import { useStoreFields } from '../store';
 import { isTextEntry } from '../utils/keyboard';
 import { pause, play, seek, stop, togglePlay } from '../utils/transport';
 
 export function PlaybackControls() {
-  const { playbackState } = useStore();
+  // The one component that should redraw on every frame while playing.
+  const { playbackState } = useStoreFields('playbackState');
 
   // Space plays and pauses, except while typing or inside a dialog. It is
   // taken from focused buttons too: after clicking "+ Track", Space should

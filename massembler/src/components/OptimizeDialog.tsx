@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { useStore } from '../store';
+import { useStore, useStoreFields } from '../store';
 import {
   OptimizationReport,
   analyzeProject,
@@ -22,7 +22,15 @@ export function OptimizeDialog({ onClose }: OptimizeDialogProps) {
     projectName,
     loadProjectState,
     showToast,
-  } = useStore();
+  } = useStoreFields(
+    'tracks',
+    'clips',
+    'audioFiles',
+    'pixelsPerSecond',
+    'projectName',
+    'loadProjectState',
+    'showToast'
+  );
 
   const reports = useMemo(
     () => analyzeProject(audioFiles, clips, tracks),

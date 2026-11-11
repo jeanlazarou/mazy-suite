@@ -1,5 +1,5 @@
 import { Track as TrackType } from '../types';
-import { history, useStore } from '../store';
+import { history, useStore, useStoreFields } from '../store';
 import { TrackClipBlock } from './TrackClipBlock';
 import { VolumeKnob } from './VolumeKnob';
 import { isSilencedBySolo } from '../utils/trackAudibility';
@@ -13,7 +13,12 @@ interface TrackProps {
 }
 
 export function Track({ track, pixelsPerSecond, maxDuration, renderMode = 'both' }: TrackProps) {
-  const { updateTrack, removeTrack, addClipToTrack, tracks } = useStore();
+  const { updateTrack, removeTrack, addClipToTrack, tracks } = useStoreFields(
+    'updateTrack',
+    'removeTrack',
+    'addClipToTrack',
+    'tracks'
+  );
 
   // Not muted, but inaudible because something else is soloed. Shown dimmed so
   // a silent track never looks like a broken one.

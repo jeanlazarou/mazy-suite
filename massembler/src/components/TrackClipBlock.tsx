@@ -17,7 +17,7 @@ import {
 } from '../utils/clipLinks';
 import { SNAP_PX, snapPoint, snapSpan, snapTargets } from '../utils/snapping';
 import { contiguousRange } from '../utils/projectOptimizer';
-import { history, useStore } from '../store';
+import { history, useStore, useStoreFields } from '../store';
 import { ClipWaveform } from './ClipWaveform';
 
 /** A colour per group, so linked clips can be told apart at a glance. */
@@ -37,7 +37,31 @@ export function TrackClipBlock({
   trackClip,
   pixelsPerSecond,
 }: TrackClipBlockProps) {
-  const { clips, updateTrackClip, moveClipBetweenTracks, audioFiles, tracks, selectedTrackClips, setSelectedTrackClip, toggleTrackClipSelection, applyTrackClipPatches, applyTrackClipMoves, setSnapGuide } = useStore();
+  const {
+    clips,
+    updateTrackClip,
+    moveClipBetweenTracks,
+    audioFiles,
+    tracks,
+    selectedTrackClips,
+    setSelectedTrackClip,
+    toggleTrackClipSelection,
+    applyTrackClipPatches,
+    applyTrackClipMoves,
+    setSnapGuide,
+  } = useStoreFields(
+    'clips',
+    'updateTrackClip',
+    'moveClipBetweenTracks',
+    'audioFiles',
+    'tracks',
+    'selectedTrackClips',
+    'setSelectedTrackClip',
+    'toggleTrackClipSelection',
+    'applyTrackClipPatches',
+    'applyTrackClipMoves',
+    'setSnapGuide'
+  );
   const clip = clips.find((s) => s.id === trackClip.clipId);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);

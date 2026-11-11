@@ -1,9 +1,14 @@
 import { useEffect } from 'react';
-import { useStore } from '../store';
+import { useStoreFields } from '../store';
 import { isTextEntry, shortcutLabel } from '../utils/keyboard';
 
 export function UndoRedoControls() {
-  const { undo, redo, undoAvailable, redoAvailable } = useStore();
+  const { undo, redo, undoAvailable, redoAvailable } = useStoreFields(
+    'undo',
+    'redo',
+    'undoAvailable',
+    'redoAvailable'
+  );
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

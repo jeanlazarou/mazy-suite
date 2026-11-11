@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { history, useStore } from '../store';
+import { history, useStoreFields } from '../store';
 import { ClipEffectId } from '../types';
 import { CLIP_EFFECTS } from '../utils/clipEffects';
 import Button from '@mui/material/Button';
@@ -23,7 +23,18 @@ export function ClipPropertiesPanel() {
     removeTrackClipGroup,
     linkTrackClips,
     unlinkTrackClips,
-  } = useStore();
+  } = useStoreFields(
+    'selectedTrackClip',
+    'selectedTrackClips',
+    'setSelectedTrackClip',
+    'tracks',
+    'clips',
+    'audioFiles',
+    'updateTrackClip',
+    'removeTrackClipGroup',
+    'linkTrackClips',
+    'unlinkTrackClips'
+  );
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);

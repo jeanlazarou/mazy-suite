@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { AudioFile, AudioClip, Track, TrackClip, PlaybackState } from './types';
 import { History } from './utils/undoRedo';
 import { getTrackClipDuration, getTrackClipEnd, spansOverlap } from './utils/clipTiming';
@@ -557,6 +558,21 @@ export const useStore = create<AppState>((set, get) => ({
       toasts: state.toasts.filter((t) => t.id !== id),
     })),
 }));
+
+/**
+ * Subscribe a component to just these fields of the store: it re-renders only
+ * when one of them changes. Reading the whole store instead (`useStore()`)
+ * re-renders on every change - 60 times a second while the playhead moves.
+ */
+export function useStoreFields<K extends keyof AppState>(...keys: K[]): Pick<AppState, K> {
+  return useStore(
+    useShallow((state) => {
+      const picked = {} as Pick<AppState, K>;
+      for (const key of keys) picked[key] = state[key];
+      return picked;
+    })
+  );
+}
 
 /**
  * The undo history. Every change to tracks or clips is recorded through the

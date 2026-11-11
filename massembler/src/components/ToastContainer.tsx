@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import { useStore } from '../store';
+import { useStoreFields } from '../store';
 
 export function ToastContainer() {
-  const { toasts, removeToast } = useStore();
+  const { toasts, removeToast } = useStoreFields('toasts', 'removeToast');
 
   return (
     <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
