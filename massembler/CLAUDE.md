@@ -23,7 +23,22 @@ pnpm preview
 
 # Run linter
 pnpm lint
+
+# Run the tests (or keep them running with test:watch)
+pnpm test
 ```
+
+## Testing
+Vitest, configured in `vite.config.ts`; test files sit next to the code
+(`src/**/*.test.ts`). They run in Node, without a browser:
+- `src/test/mockAudio.ts` stands in for the Web Audio API and records what is
+  scheduled; its clock only moves when a test sets `currentTime`.
+- `src/test/setup.ts` gives every file an in-memory `localStorage`.
+- Autosave runs against `fake-indexeddb`; only `setTimeout` is faked there,
+  since the fake database works on `setImmediate`.
+
+The tests are type-checked by `pnpm build` along with the app, which targets
+ES2020: no `Array.prototype.at` (use `last()` from the mock helpers).
 
 ## Architecture Overview
 

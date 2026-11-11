@@ -214,6 +214,11 @@ pnpm dev
 
 4. Open your browser and navigate to `http://localhost:5173`
 
+5. Run the tests (Vitest, no browser needed):
+```bash
+pnpm test
+```
+
 ## 🎮 How to Use
 
 New here? The tour starts by itself on your first visit; the **?** button at
