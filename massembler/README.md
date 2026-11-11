@@ -83,6 +83,7 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - Playback and export share one implementation, so the exported WAV matches
     what you hear; reverb tails are given room rather than being cut off
 - **Undo/Redo**: Every change to the arrangement can be undone, 100 steps deep:
+  - Audio files: uploading, and removing - with every clip made from the file
   - Library clips: creating, editing, duplicating, deleting
   - Track clips: placing, moving, resizing, fades, effects, repeats, linking, deleting
   - Tracks: adding, removing, renaming, volume, mute, solo
@@ -183,7 +184,9 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
 - **Collapsible Clip Library**: Hide the whole sidebar down to a narrow rail
   when you are arranging rather than defining clips, giving the timeline the
   space back. The rail keeps the clip count in view and reopens on a click.
-- **Collapsible Audio Files list**: Save space in sidebar when not needed
+- **Audio Files list**: Each file opens the Waveform Editor; its trash button
+  removes it, along with the clips made from it and their place on the
+  timeline (one Undo brings them all back). Collapsible to save space
 - **Editable Project Name**: Click title in header to rename project
 - **Version in the header**: Shows which build is running, so a stale cached
   page is easy to spot
@@ -332,14 +335,14 @@ only the name can be edited. The row tells you which case applies.
 
 - **Undo**: Click the "Undo" button or press Ctrl+Z (Cmd+Z on Mac)
 - **Redo**: Click the "Redo" button or press Ctrl+Shift+Z (Cmd+Shift+Z on Mac) or Ctrl+Y (Cmd+Y on Mac)
-- Everything you do to clips and tracks can be undone: placing, moving,
-  resizing, fades, effects, repeats, linking, deleting, and the track controls
-  (name, volume, mute, solo)
+- Everything you do to audio files, clips and tracks can be undone: uploading
+  or removing a file, placing, moving, resizing, fades, effects, repeats,
+  linking, deleting, and the track controls (name, volume, mute, solo)
 - A move or resize undoes in one step, putting every clip it carried back
   where it was. Turning a knob or typing a name is one step too, not one per
   notch or keystroke
-- Uploading audio, the project name and the zoom level are not undone. While
-  typing in a text field, Ctrl+Z undoes the typing
+- The project name and the zoom level are not undone. While typing in a text
+  field, Ctrl+Z undoes the typing
 - Loading a project starts a fresh history
 
 ### 7. Save and Export

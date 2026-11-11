@@ -1,14 +1,15 @@
-import { AudioClip, Track } from '../types';
+import { AudioClip, AudioFile, Track } from '../types';
 
 /**
- * Undo history, kept as snapshots of the arrangement.
+ * Undo history, kept as snapshots of the project.
  *
- * Tracks and clips are immutable, so a snapshot is just the two arrays as
- * they stood: whatever did not change is shared between entries and costs
- * nothing. Audio files are left out - they are only ever added, and they are
- * what is heavy.
+ * Tracks, clips and audio files are immutable, so a snapshot is just the
+ * three arrays as they stood: whatever did not change is shared between
+ * entries and costs nothing. An audio file is held by reference, so no audio
+ * is ever copied - but a removed file stays in memory for as long as a step
+ * in the history could bring it back.
  *
- * Every change to tracks or clips is recorded as it happens (the store
+ * Every change to those arrays is recorded as it happens (the store
  * subscribes and calls record), so no action has to opt in. Two things group
  * changes into a single entry:
  *
@@ -22,6 +23,12 @@ import { AudioClip, Track } from '../types';
 export interface Snapshot {
   tracks: Track[];
   clips: AudioClip[];
+  audioFiles: AudioFile[];
+}
+
+/** Whether two snapshots hold different arrays: anything changed in between. */
+export function snapshotsDiffer(a: Snapshot, b: Snapshot): boolean {
+  return a.tracks !== b.tracks || a.clips !== b.clips || a.audioFiles !== b.audioFiles;
 }
 
 const MAX_ENTRIES = 100;
@@ -90,7 +97,7 @@ export class History {
     this.burst = null;
 
     const now = this.read();
-    if (now.tracks !== start.tracks || now.clips !== start.clips) this.push(start);
+    if (snapshotsDiffer(now, start)) this.push(start);
   }
 
   undo() {

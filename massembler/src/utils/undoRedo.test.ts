@@ -65,6 +65,16 @@ describe('what can be undone', () => {
     expect(s().clips.map((c) => c.id)).toEqual(['A']);
   });
 
+  it('uploading an audio file', () => {
+    s().addAudioFile({ id: 'f2', name: 'f2.mp3', duration: 3, buffer: {} as AudioBuffer });
+    expect(s().audioFiles.map((f) => f.id)).toEqual(['f2']);
+
+    s().undo();
+    expect(s().audioFiles).toEqual([]);
+    s().redo();
+    expect(s().audioFiles.map((f) => f.id)).toEqual(['f2']);
+  });
+
   it('mute and solo, as separate steps', () => {
     s().updateTrack('track-1', { muted: true });
     s().updateTrack('track-1', { solo: true });

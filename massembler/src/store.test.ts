@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { history, useStore } from './store';
 import { MockContext } from './test/mockAudio';
-import { AudioClip, Track, TrackClip } from './types';
+import { AudioClip, AudioFile, Track, TrackClip } from './types';
 
 const clip = (id: string): AudioClip => ({
   id, name: id, audioFileId: 'f', startTime: 0, endTime: 1, duration: 1,
@@ -73,6 +73,60 @@ describe('deleting a library clip', () => {
     const before = s().tracks;
     s().removeClip('D');
     expect(s().tracks).toBe(before);
+  });
+});
+
+describe('removing an audio file', () => {
+  const file = (id: string): AudioFile => ({
+    id, name: `${id}.mp3`, duration: 10, buffer: {} as AudioBuffer,
+  });
+
+  // A comes from f1 and is placed twice, once linked with B, which comes from f2.
+  beforeEach(() => {
+    const tracks: Track[] = [
+      {
+        id: 'track-1', name: 'T1', volume: 0.8, muted: false,
+        clips: [placed('tc-1', 'A', 0, 'link-1'), placed('tc-2', 'B', 2, 'link-1'), placed('tc-3', 'A', 4)],
+      },
+    ];
+    s().loadProjectState(
+      tracks,
+      [{ ...clip('A'), audioFileId: 'f1' }, { ...clip('B'), audioFileId: 'f2' }],
+      [file('f1'), file('f2')],
+      50,
+      'files'
+    );
+  });
+
+  it('takes its clips and their track clips with it, unlinking a partner left alone', () => {
+    s().removeAudioFile('f1');
+
+    expect(s().audioFiles.map((f) => f.id)).toEqual(['f2']);
+    expect(clipOrder()).toBe('B');
+    expect(find('tc-1')).toBeNull();
+    expect(find('tc-3')).toBeNull();
+    expect(find('tc-2')?.linkId).toBeUndefined();
+  });
+
+  it('undoes in one step, file, clips and track clips together', () => {
+    s().removeAudioFile('f1');
+    s().undo();
+
+    expect(s().audioFiles.map((f) => f.id)).toEqual(['f1', 'f2']);
+    expect(clipOrder()).toBe('A,B');
+    expect(find('tc-1')?.linkId).toBe('link-1');
+    expect(find('tc-3')).not.toBeNull();
+  });
+
+  it('leaves clips and tracks untouched when the file gave no clips', () => {
+    s().addAudioFile(file('f3'));
+    const { clips, tracks } = s();
+
+    s().removeAudioFile('f3');
+
+    expect(s().audioFiles.map((f) => f.id)).toEqual(['f1', 'f2']);
+    expect(s().clips).toBe(clips);
+    expect(s().tracks).toBe(tracks);
   });
 });
 

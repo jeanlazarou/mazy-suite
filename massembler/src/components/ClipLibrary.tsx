@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import ContentCutIcon from '@mui/icons-material/ContentCut';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useStore, useStoreFields } from '../store';
 import { AudioClip } from '../types';
 import { WaveformEditorModal } from './WaveformEditorModal';
@@ -24,7 +25,7 @@ interface ClipLibraryProps {
 }
 
 export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
-  const { audioFiles, clips, tracks, addClip, updateClip, removeClip, showToast } =
+  const { audioFiles, clips, tracks, addClip, updateClip, removeClip, removeAudioFile, showToast } =
     useStoreFields(
       'audioFiles',
       'clips',
@@ -32,6 +33,7 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
       'addClip',
       'updateClip',
       'removeClip',
+      'removeAudioFile',
       'showToast'
     );
   const [editor, setEditor] = useState<EditorTarget | null>(null);
@@ -43,6 +45,28 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
       (count, track) => count + track.clips.filter((tc) => tc.clipId === clipId).length,
       0
     );
+
+  /** How many clips a file has given, and how many of them sit on the timeline. */
+  const fileUsage = (audioFileId: string) => {
+    const made = clips.filter((c) => c.audioFileId === audioFileId);
+    return {
+      made: made.length,
+      placed: made.reduce((count, clip) => count + clipUsageCount(clip.id), 0),
+    };
+  };
+
+  const handleRemoveFile = (audioFileId: string, name: string) => {
+    const { made, placed } = fileUsage(audioFileId);
+    removeAudioFile(audioFileId);
+
+    const along =
+      made > 0
+        ? ` with its ${made} clip${made === 1 ? '' : 's'}${
+            placed > 0 ? ` (${placed} on the timeline)` : ''
+          }`
+        : '';
+    showToast(`Removed "${name}"${along} - Undo brings ${made > 0 ? 'them' : 'it'} back`, 'info', 5000);
+  };
 
   // The editor makes new clips from a file, or edits an existing one.
   const handleEditorSubmit = (start: number, end: number, name: string) => {
@@ -202,12 +226,15 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
               ) : (
                 <ul className="space-y-1 max-h-48 overflow-y-auto">
                   {audioFiles.map((file) => {
-                    const made = clips.filter((c) => c.audioFileId === file.id).length;
+                    const { made, placed } = fileUsage(file.id);
                     return (
-                      <li key={file.id}>
+                      <li
+                        key={file.id}
+                        className="flex items-stretch rounded bg-gray-800 border border-gray-700 hover:bg-gray-700 transition-colors"
+                      >
                         <button
                           onClick={() => setEditor({ mode: 'create', audioFileId: file.id })}
-                          className="w-full flex items-center gap-2 text-left px-2 py-1.5 rounded bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors"
+                          className="flex-1 min-w-0 flex items-center gap-2 text-left px-2 py-1.5"
                           title="Open in the Waveform Editor to make clips from it"
                         >
                           <span className="flex-1 min-w-0">
@@ -217,6 +244,20 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
                             </span>
                           </span>
                           <ContentCutIcon sx={{ fontSize: 16 }} className="text-gray-400 shrink-0" />
+                        </button>
+                        <button
+                          onClick={() => handleRemoveFile(file.id, file.name)}
+                          className="px-2 text-gray-500 hover:text-red-400 border-l border-gray-700"
+                          title={`Remove this file${
+                            made > 0
+                              ? `, with its ${made} clip${made === 1 ? '' : 's'}${
+                                  placed > 0 ? ` and ${placed} track clip${placed === 1 ? '' : 's'}` : ''
+                                }`
+                              : ''
+                          }`}
+                          aria-label={`Remove ${file.name}`}
+                        >
+                          <DeleteOutlineIcon sx={{ fontSize: 18 }} />
                         </button>
                       </li>
                     );

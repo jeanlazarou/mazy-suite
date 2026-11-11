@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { AudioFile, AudioClip, Track, TrackClip, PlaybackState } from './types';
-import { History } from './utils/undoRedo';
+import { History, Snapshot, snapshotsDiffer } from './utils/undoRedo';
 import { getTrackClipDuration, getTrackClipEnd, spansOverlap } from './utils/clipTiming';
 import {
   TrackClipMove,
@@ -17,6 +17,7 @@ interface AppState {
   // Audio files
   audioFiles: AudioFile[];
   addAudioFile: (file: AudioFile) => void;
+  /** Remove an audio file, the clips made from it, and their track clips. */
   removeAudioFile: (id: string) => void;
 
   // Clips
@@ -165,10 +166,18 @@ export const useStore = create<AppState>((set, get) => ({
   audioFiles: [],
   addAudioFile: (file) =>
     set((state) => ({ audioFiles: [...state.audioFiles, file] })),
-  removeAudioFile: (id) =>
-    set((state) => ({
+  removeAudioFile: (id) => {
+    const state = get();
+    if (!state.audioFiles.some((f) => f.id === id)) return;
+
+    // Its clips, and their track clips, would be left pointing at nothing.
+    const doomedClips = new Set(state.clips.filter((c) => c.audioFileId === id).map((c) => c.id));
+    set({
       audioFiles: state.audioFiles.filter((f) => f.id !== id),
-    })),
+      clips: doomedClips.size ? state.clips.filter((c) => !doomedClips.has(c.id)) : state.clips,
+      tracks: removeTrackClips(state.tracks, (tc) => doomedClips.has(tc.clipId)),
+    });
+  },
 
   clips: [],
   addClip: (clip) =>
@@ -575,21 +584,24 @@ export function useStoreFields<K extends keyof AppState>(...keys: K[]): Pick<App
 }
 
 /**
- * The undo history. Every change to tracks or clips is recorded through the
- * subscription below; components group a drag into one entry with
+ * The undo history. Every change to tracks, clips or audio files is recorded
+ * through the subscription below; components group a drag into one entry with
  * beginGesture/endGesture, and a burst of edits to one control with coalesced.
  */
+const snapshotOf = ({ tracks, clips, audioFiles }: AppState): Snapshot => ({
+  tracks,
+  clips,
+  audioFiles,
+});
+
 export const history = new History(
-  () => {
-    const { tracks, clips } = useStore.getState();
-    return { tracks, clips };
-  },
+  () => snapshotOf(useStore.getState()),
   (snapshot) => useStore.setState(snapshot)
 );
 
 useStore.subscribe((state, previous) => {
-  if (state.tracks !== previous.tracks || state.clips !== previous.clips) {
-    history.record({ tracks: previous.tracks, clips: previous.clips });
+  if (snapshotsDiffer(snapshotOf(state), snapshotOf(previous))) {
+    history.record(snapshotOf(previous));
   }
 });
 

@@ -79,7 +79,7 @@ App.tsx
 ### Key Utilities
 - `src/utils/audioEngine.ts`: Web Audio API integration for playback and rendering
 - `src/utils/projectManager.ts`: Project save/load (.mass files) and WAV export
-- `src/utils/undoRedo.ts`: Undo/redo history, kept as snapshots of tracks and clips
+- `src/utils/undoRedo.ts`: Undo/redo history, kept as snapshots of tracks, clips and audio files
 - `src/utils/clipSelection.ts`: The Waveform Editor's selecting, zooming and
   looping-playhead maths, kept pure so it is tested; the editor
   (`WaveformEditorModal`, opened from the library's Audio Files list) is the
@@ -93,9 +93,10 @@ App.tsx
 ### Adding New Features
 When adding features that modify state:
 1. Add the action to the store in `src/store.ts` and call it from components
-2. Undo needs nothing more: every change to `tracks` or `clips` is recorded
-   as a snapshot. Audio files, project name, zoom, selection and playback are
-   not part of the history.
+2. Undo needs nothing more: every change to `tracks`, `clips` or `audioFiles`
+   is recorded as a snapshot (by reference: no audio is copied, but a removed
+   file stays in memory while the history can bring it back). Project name,
+   zoom, selection and playback are not part of the history.
 3. A drag should be one undo step: call `history.beginGesture()` on mousedown
    and `history.endGesture()` on mouseup.
 4. A control that fires in bursts (knob, text or number field) wraps its
