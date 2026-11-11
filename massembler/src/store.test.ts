@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { history, useStore } from './store';
+import { MockContext } from './test/mockAudio';
 import { AudioClip, Track, TrackClip } from './types';
 
 const clip = (id: string): AudioClip => ({
@@ -96,6 +97,20 @@ describe('loading a project', () => {
 
     loadProject();
     expect(history.canUndo()).toBe(false);
+  });
+});
+
+describe('the audio context', () => {
+  it('is made once, on first use, and shared after that', () => {
+    vi.stubGlobal('AudioContext', MockContext);
+    const before = MockContext.created.length;
+
+    const first = s().ensureAudioContext();
+    const second = s().ensureAudioContext();
+
+    expect(second).toBe(first);
+    expect(MockContext.created.length).toBe(before + 1);
+    vi.unstubAllGlobals();
   });
 });
 

@@ -30,8 +30,7 @@ export function ProjectActions() {
     projectName,
     addAudioFile,
     loadProjectState,
-    audioContext,
-    setAudioContext,
+    ensureAudioContext,
     showToast,
   } = useStore();
 
@@ -44,12 +43,7 @@ export function ProjectActions() {
     const files = e.target.files;
     if (!files) return;
 
-    // Initialize audio context if it doesn't exist
-    let ctx = audioContext;
-    if (!ctx) {
-      ctx = new AudioContext();
-      setAudioContext(ctx);
-    }
+    const ctx = ensureAudioContext();
 
     for (const file of Array.from(files)) {
       try {
@@ -171,6 +165,7 @@ export function ProjectActions() {
     try {
       const { projectData, audioFiles: loadedAudioFiles } = await loadProject(
         file,
+        ensureAudioContext(),
         (p) => {
           setProgress(Math.round(p * 100));
         }

@@ -93,9 +93,11 @@ export function OptimizeDialog({ onClose }: OptimizeDialogProps) {
     if (!file || !audioFileId) return;
 
     try {
-      const context = new AudioContext();
       const blob = file.slice();
-      const buffer = await context.decodeAudioData(await file.arrayBuffer());
+      const buffer = await useStore
+        .getState()
+        .ensureAudioContext()
+        .decodeAudioData(await file.arrayBuffer());
       const target = audioFiles.find((a) => a.id === audioFileId);
 
       // A shorter file than the one optimized cannot contain the segments.

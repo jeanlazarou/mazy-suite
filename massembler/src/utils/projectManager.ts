@@ -299,10 +299,12 @@ export async function saveProject(
 }
 
 /**
- * Load a project from a .mass file
+ * Load a project from a .mass file, decoding its audio with the app's own
+ * audio context.
  */
 export async function loadProject(
   file: File,
+  audioContext: BaseAudioContext,
   onProgress?: (progress: number) => void
 ): Promise<{
   projectData: ProjectData;
@@ -338,7 +340,6 @@ export async function loadProject(
 
   // Drive the load from the metadata rather than from whatever is in the
   // folder, so the stored encoding can be anything the browser can decode.
-  const audioContext = new AudioContext();
   const metas = projectData.audioFiles ?? [];
 
   for (let i = 0; i < metas.length; i++) {

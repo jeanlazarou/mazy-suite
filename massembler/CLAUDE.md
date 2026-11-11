@@ -93,6 +93,9 @@ When adding features that modify state:
 
 ### Working with Audio
 - All audio processing uses Web Audio API
+- One audio context for the whole app: get it with the store's
+  `ensureAudioContext()`, never `new AudioContext()` (a conventions test
+  checks). Each open context holds an audio device.
 - AudioBuffers are the primary audio data format
 - The audio engine handles real-time playback and offline rendering
 

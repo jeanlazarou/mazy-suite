@@ -20,15 +20,7 @@ let frame: number | null = null;
 let rescheduleTimer: ReturnType<typeof setTimeout> | undefined;
 
 function getEngine(): AudioEngine {
-  if (!engine) {
-    const store = useStore.getState();
-    let ctx = store.audioContext;
-    if (!ctx) {
-      ctx = new AudioContext();
-      store.setAudioContext(ctx);
-    }
-    engine = new AudioEngine(ctx);
-  }
+  engine ??= new AudioEngine(useStore.getState().ensureAudioContext());
   return engine;
 }
 

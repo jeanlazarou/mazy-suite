@@ -72,7 +72,12 @@ interface AppState {
 
   // Audio context
   audioContext: AudioContext | null;
-  setAudioContext: (ctx: AudioContext) => void;
+  /**
+   * The app's one audio context, made on first use. Everything that decodes
+   * or plays goes through it: each context holds on to an audio device, and
+   * browsers limit how many may be open.
+   */
+  ensureAudioContext: () => AudioContext;
 
   // Timeline zoom
   pixelsPerSecond: number;
@@ -434,7 +439,14 @@ export const useStore = create<AppState>((set, get) => ({
     }),
 
   audioContext: null,
-  setAudioContext: (ctx) => set({ audioContext: ctx }),
+  ensureAudioContext: () => {
+    let ctx = get().audioContext;
+    if (!ctx) {
+      ctx = new AudioContext();
+      set({ audioContext: ctx });
+    }
+    return ctx;
+  },
 
   pixelsPerSecond: 50,
   setPixelsPerSecond: (pps) => set({ pixelsPerSecond: pps }),

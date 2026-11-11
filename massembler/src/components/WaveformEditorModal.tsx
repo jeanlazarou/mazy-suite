@@ -39,7 +39,6 @@ export function WaveformEditorModal({
   const [clipName, setClipName] = useState(initialName);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 1200, height: 300 });
   const [zoomLevel, setZoomLevel] = useState(1);
   const [viewStart, setViewStart] = useState(0);
@@ -50,21 +49,17 @@ export function WaveformEditorModal({
   const [dragOffset, setDragOffset] = useState(0);
   const [hoverEdge, setHoverEdge] = useState<'start' | 'end' | null>(null);
 
+  // The preview plays through the app's shared context: closing the editor
+  // stops it, and leaves the context to the rest of the app.
   useEffect(() => {
-    // Initialize audio context
-    audioContextRef.current = new AudioContext();
-
     return () => {
-      // Cleanup
-      if (audioSourceRef.current) {
-        try {
-          audioSourceRef.current.stop();
-        } catch (e) {
-          // Already stopped
-        }
-      }
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
+      const source = audioSourceRef.current;
+      if (!source) return;
+      source.onended = null;
+      try {
+        source.stop();
+      } catch {
+        // Already stopped
       }
     };
   }, []);
@@ -269,7 +264,8 @@ export function WaveformEditorModal({
   };
 
   const handlePlaySelection = () => {
-    if (!audioContextRef.current) return;
+    const ctx = useStore.getState().ensureAudioContext();
+    if (ctx.state === 'suspended') void ctx.resume();
 
     // Stop any currently playing audio
     if (audioSourceRef.current) {
@@ -285,9 +281,9 @@ export function WaveformEditorModal({
     const duration = end - start;
 
     // Create and play audio source
-    const source = audioContextRef.current.createBufferSource();
+    const source = ctx.createBufferSource();
     source.buffer = audioFile.buffer;
-    source.connect(audioContextRef.current.destination);
+    source.connect(ctx.destination);
 
     source.onended = () => {
       setIsPlaying(false);

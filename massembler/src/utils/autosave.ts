@@ -153,11 +153,7 @@ export async function findSavedSession(): Promise<SavedSession | null> {
 
 export async function restoreSession({ project, audio }: SavedSession): Promise<void> {
   const store = useStore.getState();
-  let ctx = store.audioContext;
-  if (!ctx) {
-    ctx = new AudioContext();
-    store.setAudioContext(ctx);
-  }
+  const ctx = store.ensureAudioContext();
 
   const audioFiles: AudioFile[] = [];
   for (const meta of project.audioFiles) {
