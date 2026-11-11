@@ -80,6 +80,10 @@ App.tsx
 - `src/utils/audioEngine.ts`: Web Audio API integration for playback and rendering
 - `src/utils/projectManager.ts`: Project save/load (.mass files) and WAV export
 - `src/utils/undoRedo.ts`: Undo/redo history, kept as snapshots of tracks and clips
+- `src/utils/clipSelection.ts`: The Waveform Editor's selecting, zooming and
+  looping-playhead maths, kept pure so it is tested; the editor
+  (`WaveformEditorModal`, opened from the library's Audio Files list) is the
+  one place clips are made
 - `src/utils/autosave.ts` / `sessionStore.ts`: Keeps the open project in
   IndexedDB a second after each change, and offers it back on startup
   (`RestoreSessionDialog`). Saving starts only after that offer is answered.

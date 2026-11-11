@@ -57,12 +57,32 @@ describe('drawWaveform', () => {
     expect(rects[0]).toEqual([0, 50, 1, 1]);
   });
 
+  it('reads the samples themselves when zoomed in past the peak bins', () => {
+    // A single loud sample: a peak bin would smear it across many pixels.
+    const samples = new Float32Array(RATE);
+    samples[640] = 0.8;
+    const buffer = {
+      numberOfChannels: 1,
+      length: RATE,
+      sampleRate: RATE,
+      getChannelData: () => samples,
+    } as unknown as AudioBuffer;
+    const { canvas, rects } = makeCanvas(100, 100);
+
+    drawWaveform(canvas, buffer, 0.49, 0.51, 'blue'); // 25.6 samples, 100 pixels
+
+    // One sample spans about 4 pixels here; a peak bin would light all 100.
+    const loud = rects.filter(([, , , h]) => h > 1);
+    expect(loud.length).toBeGreaterThan(0);
+    expect(loud.length).toBeLessThanOrEqual(4);
+    expect(loud[0][1]).toBeCloseTo(50 - 0.8 * 50);
+  });
+
   it('reads the samples once per buffer, however often it draws', () => {
     const { buffer, reads } = makeBuffer();
-    const { canvas } = makeCanvas(20, 100);
 
-    drawWaveform(canvas, buffer, 0, 2, 'blue');
-    drawWaveform(canvas, buffer, 0.5, 1.5, 'blue');
+    drawWaveform(makeCanvas(20, 100).canvas, buffer, 0, 2, 'blue');
+    drawWaveform(makeCanvas(10, 100).canvas, buffer, 0.5, 1.5, 'blue'); // still 128 samples a pixel
 
     expect(reads()).toBe(2); // one read per channel, the first time only
   });

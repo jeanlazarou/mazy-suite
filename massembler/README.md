@@ -10,16 +10,17 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
 
 ### Core Editing Features
 - **Audio File Upload**: Any format the browser can decode (WAV, MP3, M4A, FLAC…), via Material UI Speed Dial
-- **Waveform Visualization**: Visual representation of audio with interactive selection
-- **Advanced Waveform Editor**:
-  - Large popup modal for precise waveform editing
-  - Audio preview playback for selected regions
-  - Better visualization for creating clips
-- **Adjustable Selections**: A region stays put until you commit it
-  - Drag either green edge to move that bound, with the other anchored
-  - Drag the middle to slide the whole region
-  - A stray click no longer discards the selection
-  - Creating the clip is an explicit action
+- **Waveform Editor**: The one place clips are made, opened from a file in the
+  library's Audio Files list
+  - Drag to select a region; drag an edge, or the middle, to adjust it. A
+    stray click leaves the selection alone
+  - **Listen while you cut**: Space plays and stops the selection, with a
+    playhead; **Loop** repeats it and follows its edges as you move them, so
+    the cut points can be heard while they are placed
+  - Zoom with the wheel around the pointer, pan with a sideways swipe or
+    Shift+drag; close up, the waveform is drawn from the samples themselves
+  - Regions already made into clips show behind the waveform
+  - Stays open after **Create Clip**, ready for the next clip from the same file
 - **Clip Library**: Create and manage audio clips from uploaded files (collapsible sidebar)
 - **Editable Clips**: Clips are not write-once
   - A clip nothing references can have its region and name changed
@@ -182,7 +183,7 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
 - **Collapsible Clip Library**: Hide the whole sidebar down to a narrow rail
   when you are arranging rather than defining clips, giving the timeline the
   space back. The rail keeps the clip count in view and reopens on a click.
-- **Collapsible Quick Clip Definition**: Save space in sidebar when not needed
+- **Collapsible Audio Files list**: Save space in sidebar when not needed
 - **Editable Project Name**: Click title in header to rename project
 - **Version in the header**: Shows which build is running, so a stale cached
   page is easy to spot
@@ -234,24 +235,16 @@ Click the **Speed Dial** button (the blue **+** at the bottom-right) → **Uploa
 
 ### 2. Create Clips
 
-**Option A: Quick Selection (in sidebar)**
-1. Expand "Quick Clip Definition" section if collapsed
-2. Select an audio file from the dropdown
-3. Click and drag on the waveform to select a region
-4. Fine-tune it: drag either green edge to move that bound, or drag the middle
-   to slide the whole region. The selection survives clicks elsewhere.
-5. Enter a name for your clip
-6. Click "Create Clip"
-
-**Option B: Advanced Editor (recommended)**
-1. Select an audio file from the dropdown
-2. Click "Open Waveform Editor" button
-3. Use the large waveform display to precisely select a region
-4. Drag the green edges to adjust; `Shift`+drag pans, `Alt`+drag moves the whole
-   selection, and the mouse wheel zooms
-5. Click "Play Selection" to preview your selection
-6. Enter a name for your clip
-7. Click "Create Clip"
+1. Click a file in the library's **Audio Files** list: the Waveform Editor opens on it
+2. Drag across the waveform to select a region
+3. Press **Space** to hear it. Tick **Loop** to keep it repeating, then drag
+   the green edges (or the middle, to slide the whole region) until the cut
+   points sound right - the loop follows them as they move
+4. Zoom in with the wheel where you need precision; swipe sideways or
+   Shift+drag to pan
+5. Type a name and press **Enter** (or click **Create Clip**)
+6. The editor stays open, the new clip shown in grey behind the waveform:
+   select the next region, or click **Done**
 
 Once your clips are defined, collapse the library with the **«** button in its
 header — it shrinks to a rail on the left and hands the width to the timeline.

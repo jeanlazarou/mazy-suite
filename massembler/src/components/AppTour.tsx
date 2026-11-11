@@ -16,7 +16,7 @@ const steps: StepType[] = [
   {
     selector: '[data-tour="clip-source"]',
     content:
-      'Pick an uploaded file here, select a region on its waveform and name it to make a clip. Open Waveform Editor zooms in and lets you listen to the selection first.',
+      'Your uploaded audio files. Click one to open the Waveform Editor: select a region, listen to it (Loop repeats it while you move its edges), name it and create a clip. The editor stays open for as many clips as you need.',
   },
   {
     selector: '[data-tour="clip-list"]',

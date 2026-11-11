@@ -7,7 +7,7 @@ export function PlaybackControls() {
   // The one component that should redraw on every frame while playing.
   const { playbackState } = useStoreFields('playbackState');
 
-  // Space plays and pauses, except while typing or inside a dialog. It is
+  // Space plays and pauses, except while typing or with a dialog open. It is
   // taken from focused buttons too: after clicking "+ Track", Space should
   // play rather than add another track.
   useEffect(() => {
@@ -15,7 +15,9 @@ export function PlaybackControls() {
       if (e.code !== 'Space' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
       const target = e.target;
       if (isTextEntry(target) || target instanceof HTMLSelectElement) return;
-      if (target instanceof Element && target.closest('[role="dialog"]')) return;
+      // Not while a dialog is open, wherever focus is: the Waveform Editor
+      // takes Space for its own preview.
+      if (document.querySelector('[role="dialog"]')) return;
 
       e.preventDefault();
       togglePlay();

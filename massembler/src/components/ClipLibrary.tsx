@@ -1,8 +1,14 @@
 import { useState } from 'react';
+import ContentCutIcon from '@mui/icons-material/ContentCut';
 import { useStore, useStoreFields } from '../store';
 import { AudioClip } from '../types';
-import { Waveform, WaveformSelection } from './Waveform';
 import { WaveformEditorModal } from './WaveformEditorModal';
+
+/** What the Waveform Editor is open for, if anything. */
+type EditorTarget = { mode: 'create'; audioFileId: string } | { mode: 'edit'; clip: AudioClip };
+
+const formatLength = (seconds: number) =>
+  `${Math.floor(seconds / 60)}:${Math.floor(seconds % 60).toString().padStart(2, '0')}`;
 
 /**
  * Unique clip id. Includes a random suffix rather than the timestamp alone:
@@ -28,14 +34,8 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
       'removeClip',
       'showToast'
     );
-  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
-  const [clipName, setClipName] = useState('');
-  const [selection, setSelection] = useState<WaveformSelection | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [editingClip, setEditingClip] = useState<AudioClip | null>(null);
-  const [isQuickClipExpanded, setIsQuickClipExpanded] = useState(true);
-
-  const selectedFile = audioFiles.find((f) => f.id === selectedFileId);
+  const [editor, setEditor] = useState<EditorTarget | null>(null);
+  const [isFilesExpanded, setIsFilesExpanded] = useState(true);
 
   /** A clip placed on any track cannot have its region changed. */
   const clipUsageCount = (clipId: string) =>
@@ -44,56 +44,17 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
       0
     );
 
-  const handleCreateClip = () => {
-    if (!selectedFileId || !selection) return;
+  // The editor makes new clips from a file, or edits an existing one.
+  const handleEditorSubmit = (start: number, end: number, name: string) => {
+    const region = { startTime: start, endTime: end, duration: end - start };
 
-    if (!clipName.trim()) {
-      showToast('Please enter a clip name', 'warning');
-      return;
-    }
-
-    addClip({
-      id: createClipId(),
-      name: clipName,
-      audioFileId: selectedFileId,
-      startTime: selection.start,
-      endTime: selection.end,
-      duration: selection.end - selection.start,
-    });
-
-    setClipName('');
-    setSelection(null);
-    showToast('Clip created!', 'success');
-  };
-
-  // The modal is used both to define a new clip and to edit an existing one.
-  const handleModalSubmit = (start: number, end: number, name: string) => {
-    if (editingClip) {
-      updateClip(editingClip.id, {
-        name,
-        startTime: start,
-        endTime: end,
-        duration: end - start,
-      });
+    if (editor?.mode === 'edit') {
+      updateClip(editor.clip.id, { name, ...region });
       showToast('Clip updated', 'success');
-      return;
+    } else if (editor?.mode === 'create') {
+      addClip({ id: createClipId(), name, audioFileId: editor.audioFileId, ...region });
+      showToast(`Created "${name}"`, 'success');
     }
-
-    if (!selectedFileId) return;
-
-    addClip({
-      id: createClipId(),
-      name,
-      audioFileId: selectedFileId,
-      startTime: start,
-      endTime: end,
-      duration: end - start,
-    });
-  };
-
-  const handleEditClip = (clip: AudioClip) => {
-    setEditingClip(clip);
-    setShowModal(true);
   };
 
   /** "name copy", then "name copy 2" and so on, so names stay distinguishable. */
@@ -129,16 +90,11 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
     }
   };
 
-  const closeModal = () => {
-    setShowModal(false);
-    setEditingClip(null);
-  };
-
-  // Editing works on the clip's own audio file, which need not be the one
-  // currently selected for defining new clips.
-  const modalAudioFile = editingClip
-    ? audioFiles.find((f) => f.id === editingClip.audioFileId)
-    : selectedFile;
+  const editorAudioFile = editor
+    ? audioFiles.find(
+        (f) => f.id === (editor.mode === 'edit' ? editor.clip.audioFileId : editor.audioFileId)
+      )
+    : undefined;
 
   const handleDragStart = (e: React.DragEvent, clipId: string) => {
     e.dataTransfer.setData('clipId', clipId);
@@ -219,15 +175,15 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
           )}
         </div>
 
-        {/* Quick Clip Definition - Collapsible */}
-        <div className="border-t border-gray-700">
+        {/* Audio files: each opens the Waveform Editor to make clips from it */}
+        <div className="border-t border-gray-700" data-tour="clip-source">
           <button
-            onClick={() => setIsQuickClipExpanded(!isQuickClipExpanded)}
+            onClick={() => setIsFilesExpanded(!isFilesExpanded)}
             className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-800 transition-colors"
           >
-            <span className="text-sm font-semibold">Quick Clip Definition</span>
+            <span className="text-sm font-semibold">Audio Files ({audioFiles.length})</span>
             <svg
-              className={`w-5 h-5 transition-transform ${isQuickClipExpanded ? 'rotate-180' : ''}`}
+              className={`w-5 h-5 transition-transform ${isFilesExpanded ? 'rotate-180' : ''}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -236,54 +192,36 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
             </svg>
           </button>
 
-          {isQuickClipExpanded && (
-            <div className="p-4 pt-0">
-              {/* Audio file selector */}
-              <div className="mb-4" data-tour="clip-source">
-                <label className="block text-sm mb-2">Select Audio File:</label>
-                <select
-                  value={selectedFileId || ''}
-                  onChange={(e) => setSelectedFileId(e.target.value || null)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1"
-                >
-                  <option value="">-- Select File --</option>
-                  {audioFiles.map((file) => (
-                    <option key={file.id} value={file.id}>
-                      {file.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Waveform for selection */}
-              {selectedFile && (
-                <div className="mb-4">
-                  <button
-                    onClick={() => setShowModal(true)}
-                    className="w-full mb-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded font-semibold"
-                  >
-                    Open Waveform Editor
-                  </button>
-                  <Waveform
-                    audioFile={selectedFile}
-                    selection={selection}
-                    onSelectionChange={setSelection}
-                  />
-                  <input
-                    type="text"
-                    value={clipName}
-                    onChange={(e) => setClipName(e.target.value)}
-                    placeholder="Clip name..."
-                    className="w-full mt-2 bg-gray-800 border border-gray-700 rounded px-2 py-1"
-                  />
-                  <button
-                    onClick={handleCreateClip}
-                    disabled={!selection || selection.end - selection.start < 0.01}
-                    className="w-full mt-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 rounded font-semibold"
-                  >
-                    Create Clip
-                  </button>
-                </div>
+          {isFilesExpanded && (
+            <div className="px-4 pb-4">
+              {audioFiles.length === 0 ? (
+                <p className="text-xs text-gray-500">
+                  Upload audio with the round button at the bottom right, then click a
+                  file here to make clips from it.
+                </p>
+              ) : (
+                <ul className="space-y-1 max-h-48 overflow-y-auto">
+                  {audioFiles.map((file) => {
+                    const made = clips.filter((c) => c.audioFileId === file.id).length;
+                    return (
+                      <li key={file.id}>
+                        <button
+                          onClick={() => setEditor({ mode: 'create', audioFileId: file.id })}
+                          className="w-full flex items-center gap-2 text-left px-2 py-1.5 rounded bg-gray-800 hover:bg-gray-700 border border-gray-700 transition-colors"
+                          title="Open in the Waveform Editor to make clips from it"
+                        >
+                          <span className="flex-1 min-w-0">
+                            <span className="block text-sm truncate">{file.name}</span>
+                            <span className="block text-xs text-gray-500">
+                              {formatLength(file.duration)} · {made} clip{made === 1 ? '' : 's'}
+                            </span>
+                          </span>
+                          <ContentCutIcon sx={{ fontSize: 16 }} className="text-gray-400 shrink-0" />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </div>
           )}
@@ -322,7 +260,7 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
                   </div>
                   <div className="flex flex-col items-end gap-1 ml-2">
                     <button
-                      onClick={() => handleEditClip(clip)}
+                      onClick={() => setEditor({ mode: 'edit', clip })}
                       className="text-blue-400 hover:text-blue-300 text-xs"
                     >
                       Edit
@@ -353,18 +291,20 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
         </div>
       </div>
 
-      {/* Waveform Editor Modal - defines a new clip, or edits an existing one */}
-      {showModal && modalAudioFile && (
+      {/* Waveform Editor - makes new clips from a file, or edits an existing one */}
+      {editor && editorAudioFile && (
         <WaveformEditorModal
-          audioFile={modalAudioFile}
-          onClose={closeModal}
-          onCreateClip={handleModalSubmit}
-          initialStart={editingClip?.startTime}
-          initialEnd={editingClip?.endTime}
-          initialName={editingClip?.name}
-          regionLocked={!!editingClip && clipUsageCount(editingClip.id) > 0}
-          title={editingClip ? 'Edit Clip' : 'Waveform Editor'}
-          submitLabel={editingClip ? 'Save Changes' : 'Create Clip'}
+          key={editor.mode === 'edit' ? editor.clip.id : editor.audioFileId}
+          audioFile={editorAudioFile}
+          mode={editor.mode}
+          onClose={() => setEditor(null)}
+          onSubmit={handleEditorSubmit}
+          {...(editor.mode === 'edit' && {
+            initialSelection: { start: editor.clip.startTime, end: editor.clip.endTime },
+            initialName: editor.clip.name,
+            regionLocked: clipUsageCount(editor.clip.id) > 0,
+            editingClipId: editor.clip.id,
+          })}
         />
       )}
     </div>
