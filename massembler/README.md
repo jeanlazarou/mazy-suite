@@ -60,6 +60,8 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - Each group wears its own colour and a chain badge carrying its size
   - Deleting a linked clip deletes its group; **Unlink** rescues a member first
 - **Fades**: Per-clip fade in/out, draggable directly on the clip's waveform
+  - Starting playback inside a fade picks it up at the right level
+  - Fades longer than half the clip meet in a peak rather than jumping
 - **Clip Effects**: One-click treatments applied per track clip, no parameters to tune
   - **Reverse** — plays the clip backwards
   - **Underwater** — muffled, slowly wobbling
@@ -105,6 +107,9 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - Disabled, and marked *(not needed)*, while the whole arrangement already
     fits on screen
 - **Timeline Scrubbing**: Jump to any position
+- **Edits heard while playing**: Volume, mute and solo take effect at once;
+  moving, trimming or changing clips is picked up as soon as you pause or let
+  go, without stopping playback
 - **Real-time Progress**: Visual playback position display
 - **Timeline Zoom**: Adjust scale for precision editing
 
@@ -291,6 +296,8 @@ only the name can be edited. The row tells you which case applies.
 - **Pause**: Pause playback (can be resumed)
 - **Stop**: Stop playback and return to the beginning
 - **Seek**: Drag the timeline scrubber to jump to a specific position
+- **Edit while listening**: No need to stop - turn a knob, mute or solo a
+  track, or move a clip, and you hear the change straight away
 - **Zoom**: Adjust the timeline zoom level for better precision
 - **Follow the playhead**: A red line tracks playback across the ruler and
   tracks. Tick **Follow playhead** (next to the zoom slider) and the view

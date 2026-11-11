@@ -136,6 +136,29 @@ export interface EffectChain {
   dispose: () => void;
 }
 
+// Made once per context and shape: playback rebuilds every chain each time it
+// reschedules, and filling seconds of noise per clip pass adds up.
+const impulseResponses = new WeakMap<BaseAudioContext, Map<string, AudioBuffer>>();
+
+function getImpulseResponse(
+  ctx: BaseAudioContext,
+  duration: number,
+  decay: number
+): AudioBuffer {
+  let cache = impulseResponses.get(ctx);
+  if (!cache) {
+    cache = new Map();
+    impulseResponses.set(ctx, cache);
+  }
+  const key = `${duration}:${decay}`;
+  let impulse = cache.get(key);
+  if (!impulse) {
+    impulse = createImpulseResponse(ctx, duration, decay);
+    cache.set(key, impulse);
+  }
+  return impulse;
+}
+
 function createImpulseResponse(
   ctx: BaseAudioContext,
   duration: number,
@@ -262,7 +285,7 @@ export function createEffectChain(
       const output = ctx.createGain();
 
       const convolver = ctx.createConvolver();
-      convolver.buffer = createImpulseResponse(ctx, 2.8, 2.2);
+      convolver.buffer = getImpulseResponse(ctx, 2.8, 2.2);
 
       const dry = ctx.createGain();
       dry.gain.value = 0.7;
@@ -289,7 +312,7 @@ export function createEffectChain(
       muffle.frequency.value = 900;
 
       const convolver = ctx.createConvolver();
-      convolver.buffer = createImpulseResponse(ctx, 1.2, 3);
+      convolver.buffer = getImpulseResponse(ctx, 1.2, 3);
 
       const dry = ctx.createGain();
       dry.gain.value = 0.6;

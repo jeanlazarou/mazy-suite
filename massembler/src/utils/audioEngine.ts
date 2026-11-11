@@ -1,205 +1,146 @@
-import { Track, AudioClip, AudioFile, TrackClip } from '../types';
-import {
-  EffectChain,
-  createEffectChain,
-  resolveClipBuffer,
-  resolveClipOffset,
-  resolveClipPlaybackRate,
-} from './clipEffects';
+import { Track, AudioClip, AudioFile } from '../types';
+import { CLIP_EFFECTS, getEffectTailSeconds } from './clipEffects';
+import { Scheduled, scheduleArrangement } from './scheduler';
 import { isTrackAudible } from './trackAudibility';
+
+/**
+ * Fade used whenever playback is cut or replaced mid-sound: long enough to
+ * avoid a click, too short to hear as a fade.
+ */
+const DECLICK_SECONDS = 0.015;
+
+/** Scheduling slightly ahead, so new sources start exactly where intended. */
+const LOOKAHEAD_SECONDS = 0.02;
+
+const RING_OUT_SECONDS = Math.max(...CLIP_EFFECTS.map((e) => getEffectTailSeconds(e.id)));
+
+/** One scheduling of the arrangement, with everything needed to end it. */
+interface Run {
+  bus: GainNode;
+  trackGains: Map<string, GainNode>;
+  scheduled: Scheduled;
+}
+
+const levelOf = (track: Track, tracks: Track[]) =>
+  isTrackAudible(track, tracks) ? track.volume : 0;
 
 export class AudioEngine {
   private audioContext: AudioContext;
-  private sources: AudioBufferSourceNode[] = [];
-  private gainNodes: GainNode[] = [];
-  private effectChains: EffectChain[] = [];
-  private startTime: number = 0;
+  private run: Run | null = null;
+  /** Context time at which timeline time zero plays. */
+  private origin = 0;
 
   constructor(audioContext: AudioContext) {
     this.audioContext = audioContext;
   }
 
-  async play(
-    tracks: Track[],
-    clips: AudioClip[],
-    audioFiles: AudioFile[],
-    startFrom: number = 0
-  ) {
-    this.stop();
-    this.startTime = this.audioContext.currentTime - startFrom;
-
-    tracks.forEach((track) => {
-      if (!isTrackAudible(track, tracks)) return;
-
-      const trackGain = this.audioContext.createGain();
-      trackGain.gain.value = track.volume;
-      trackGain.connect(this.audioContext.destination);
-
-      track.clips.forEach((trackClip) => {
-        const clip = clips.find((s) => s.id === trackClip.clipId);
-        if (!clip) return;
-
-        const audioFile = audioFiles.find((f) => f.id === clip.audioFileId);
-        if (!audioFile) return;
-
-        this.playClip(
-          audioFile.buffer,
-          clip,
-          trackClip,
-          trackGain,
-          startFrom
-        );
-      });
-
-      this.gainNodes.push(trackGain);
-    });
+  get playing(): boolean {
+    return this.run !== null;
   }
 
-  private playClip(
-    buffer: AudioBuffer,
-    clip: AudioClip,
-    trackClip: TrackClip,
-    destination: AudioNode,
-    startFrom: number
-  ) {
-    const playClipOnce = (offset: number = 0) => {
-      const source = this.audioContext.createBufferSource();
-      source.buffer = resolveClipBuffer(this.audioContext, buffer, trackClip.effect);
+  /**
+   * Play the arrangement from timeline time `from`. While already playing,
+   * the new scheduling crossfades in over the old one instead of cutting.
+   */
+  play(tracks: Track[], clips: AudioClip[], audioFiles: AudioFile[], from: number) {
+    if (this.audioContext.state === 'suspended') void this.audioContext.resume();
+    this.start(tracks, clips, audioFiles, from, this.audioContext.currentTime + LOOKAHEAD_SECONDS);
+  }
 
-      // Create a gain node for fade in/out
-      const fadeGain = this.audioContext.createGain();
+  /** Pick up arrangement edits while playing, from wherever playback has got to. */
+  replay(tracks: Track[], clips: AudioClip[], audioFiles: AudioFile[]) {
+    if (!this.run) return;
+    const at = this.audioContext.currentTime + LOOKAHEAD_SECONDS;
+    this.start(tracks, clips, audioFiles, at - this.origin, at);
+  }
 
-      // Route the clip through its effect chain, if it has one
-      const effectChain = createEffectChain(this.audioContext, trackClip.effect);
-      if (effectChain) {
-        source.connect(effectChain.input);
-        effectChain.output.connect(fadeGain);
-        this.effectChains.push(effectChain);
-      } else {
-        source.connect(fadeGain);
-      }
-      fadeGain.connect(destination);
-
-      // Use trimStart/trimEnd if set, otherwise use clip's default values
-      const effectiveStartTime = trackClip.trimStart ?? clip.startTime;
-      const effectiveEndTime = trackClip.trimEnd ?? clip.endTime;
-      const clipDuration = effectiveEndTime - effectiveStartTime;
-      const startPosition = trackClip.position + offset;
-
-      // Reversed clips read from the mirrored position in the buffer
-      const sourceOffset = resolveClipOffset(
-        source.buffer,
-        trackClip.effect,
-        effectiveStartTime,
-        effectiveEndTime
-      );
-
-      // Pitch presets read `rate` seconds of buffer per second of timeline,
-      // so the clip still fills exactly its slot.
-      const rate = resolveClipPlaybackRate(trackClip.effect);
-      source.playbackRate.value = rate;
-
-      const fadeIn = trackClip.fadeIn || 0;
-      const fadeOut = trackClip.fadeOut || 0;
-
-      // Only play if this clip should be playing at the current time
-      if (startFrom < startPosition + clipDuration && startFrom >= startPosition) {
-        const offsetInClip = Math.max(0, startFrom - startPosition);
-        const playTime = this.audioContext.currentTime;
-        const remainingDuration = clipDuration - offsetInClip;
-
-        // Apply fade in (if we're starting from the beginning)
-        if (offsetInClip < fadeIn) {
-          const remainingFadeIn = fadeIn - offsetInClip;
-          fadeGain.gain.setValueAtTime(0, playTime);
-          fadeGain.gain.linearRampToValueAtTime(1, playTime + remainingFadeIn);
-        } else {
-          fadeGain.gain.setValueAtTime(1, playTime);
-        }
-
-        // Apply fade out
-        if (fadeOut > 0 && remainingDuration > fadeOut) {
-          fadeGain.gain.setValueAtTime(1, playTime + remainingDuration - fadeOut);
-          fadeGain.gain.linearRampToValueAtTime(0, playTime + remainingDuration);
-        }
-
-        source.start(
-          playTime,
-          sourceOffset + offsetInClip * rate,
-          remainingDuration * rate
-        );
-      } else if (startFrom < startPosition) {
-        const playTime = this.audioContext.currentTime + (startPosition - startFrom);
-
-        // Apply fade in
-        if (fadeIn > 0) {
-          fadeGain.gain.setValueAtTime(0, playTime);
-          fadeGain.gain.linearRampToValueAtTime(1, playTime + fadeIn);
-        } else {
-          fadeGain.gain.setValueAtTime(1, playTime);
-        }
-
-        // Apply fade out
-        if (fadeOut > 0 && clipDuration > fadeOut) {
-          fadeGain.gain.setValueAtTime(1, playTime + clipDuration - fadeOut);
-          fadeGain.gain.linearRampToValueAtTime(0, playTime + clipDuration);
-        }
-
-        source.start(
-          playTime,
-          sourceOffset,
-          clipDuration * rate
-        );
-      }
-
-      this.sources.push(source);
-
-      return clipDuration;
-    };
-
-    if (trackClip.repeat && trackClip.repeatCount) {
-      const clipDuration = playClipOnce();
-      for (let i = 1; i < trackClip.repeatCount; i++) {
-        playClipOnce(i * clipDuration);
-      }
-    } else {
-      playClipOnce();
+  /** Follow volume, mute and solo changes while playing. */
+  setTrackLevels(tracks: Track[]) {
+    if (!this.run) return;
+    const now = this.audioContext.currentTime;
+    for (const track of tracks) {
+      this.run.trackGains
+        .get(track.id)
+        ?.gain.setTargetAtTime(levelOf(track, tracks), now, DECLICK_SECONDS / 3);
     }
   }
 
-  stop() {
-    this.sources.forEach((source) => {
-      try {
-        source.stop();
-      } catch (e) {
-        // Source might already be stopped
-      }
-    });
-    this.sources = [];
-    this.gainNodes = [];
-
-    // Effect chains own generators (the underwater LFO) that outlive the
-    // source nodes, so they have to be torn down explicitly.
-    this.effectChains.forEach((chain) => chain.dispose());
-    this.effectChains = [];
-  }
-
-  pause(_currentTime: number) {
-    this.stop();
-  }
-
-  updateTrackVolume(trackIndex: number, volume: number) {
-    if (this.gainNodes[trackIndex]) {
-      this.gainNodes[trackIndex].gain.value = volume;
-    }
+  /**
+   * Stop playing. With `ringOut`, as at the natural end, reverb tails are
+   * left to die away rather than cut.
+   */
+  stop(ringOut = false) {
+    this.release(ringOut, this.audioContext.currentTime);
   }
 
   getCurrentTime(): number {
-    if (this.startTime === 0) {
-      return 0;
+    return this.run ? this.audioContext.currentTime - this.origin : 0;
+  }
+
+  private start(
+    tracks: Track[],
+    clips: AudioClip[],
+    audioFiles: AudioFile[],
+    from: number,
+    at: number
+  ) {
+    const ctx = this.audioContext;
+    this.release(false, at);
+
+    const bus = ctx.createGain();
+    bus.gain.setValueAtTime(0, at);
+    bus.gain.setTargetAtTime(1, at, DECLICK_SECONDS / 3);
+    bus.connect(ctx.destination);
+
+    // Every track gets a gain, muted or silenced ones at zero, so turning one
+    // back on mid-playback is heard at once.
+    const trackGains = new Map<string, GainNode>();
+    for (const track of tracks) {
+      const gain = ctx.createGain();
+      gain.gain.value = levelOf(track, tracks);
+      gain.connect(bus);
+      trackGains.set(track.id, gain);
     }
-    const currentTime = this.audioContext.currentTime - this.startTime;
-    return currentTime;
+
+    const scheduled = scheduleArrangement(
+      ctx,
+      tracks,
+      clips,
+      audioFiles,
+      (track) => trackGains.get(track.id) ?? null,
+      from,
+      at
+    );
+
+    this.run = { bus, trackGains, scheduled };
+    this.origin = at - from;
+  }
+
+  /** End the current run: faded out from `when`, or left to ring out. */
+  private release(ringOut: boolean, when: number) {
+    const run = this.run;
+    if (!run) return;
+    this.run = null;
+
+    let lingerSeconds = RING_OUT_SECONDS;
+    if (!ringOut) {
+      run.bus.gain.setTargetAtTime(0, when, DECLICK_SECONDS / 3);
+      const end = when + DECLICK_SECONDS * 2;
+      for (const source of run.scheduled.sources) {
+        try {
+          source.stop(end);
+        } catch {
+          // already stopped
+        }
+      }
+      lingerSeconds = end - this.audioContext.currentTime;
+    }
+
+    setTimeout(() => {
+      run.bus.disconnect();
+      // Effect chains own generators (the LFOs) that outlive their sources.
+      run.scheduled.chains.forEach((chain) => chain.dispose());
+    }, lingerSeconds * 1000 + 100);
   }
 }
 

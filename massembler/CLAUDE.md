@@ -99,10 +99,13 @@ When adding features that modify state:
 3. Update types if needed
 
 ### Modifying audio playback
-Work with `src/utils/audioEngine.ts` - it manages:
-- AudioContext lifecycle
-- Source node scheduling
-- Gain node routing for mixing
+- `src/utils/scheduler.ts` turns the arrangement into scheduled nodes (clip
+  passes, fades, effects). Playback and WAV export both use it, so change
+  scheduling there, never in one of them only.
+- `src/utils/audioEngine.ts` runs realtime playback: a gain per track (muted
+  tracks too, at zero) so volume/mute/solo follow live, and `replay` to
+  reschedule mid-play with a short crossfade. `PlaybackControls` decides when
+  to call which.
 
 ### Changing project save/load
 Modify `src/utils/projectManager.ts` - handles:

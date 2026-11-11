@@ -1,7 +1,30 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from '../store';
+import { AudioClip, AudioFile, Track } from '../types';
 import { AudioEngine } from '../utils/audioEngine';
 import { getProjectDuration } from '../utils/clipTiming';
+
+/**
+ * Arrangement edits made while playing are picked up once they pause for
+ * this long, so a drag is not rescheduled on every mouse move.
+ */
+const RESCHEDULE_DELAY_MS = 120;
+
+interface Arrangement {
+  tracks: Track[];
+  clips: AudioClip[];
+  audioFiles: AudioFile[];
+}
+
+/** Whether only track settings (volume, mute, solo, name) differ. */
+function sameArrangement(a: Arrangement, b: Arrangement): boolean {
+  return (
+    a.clips === b.clips &&
+    a.audioFiles === b.audioFiles &&
+    a.tracks.length === b.tracks.length &&
+    a.tracks.every((track, i) => track.id === b.tracks[i].id && track.clips === b.tracks[i].clips)
+  );
+}
 
 export function PlaybackControls() {
   const {
@@ -23,22 +46,71 @@ export function PlaybackControls() {
     }
   }, [audioContext]);
 
-  const updatePlaybackTime = () => {
-    if (audioEngineRef.current) {
-      const currentTime = audioEngineRef.current.getCurrentTime();
-      setPlaybackState({ currentTime });
+  // While playing, edits are heard: track settings at once, the arrangement
+  // after a short pause.
+  useEffect(() => {
+    if (!playbackState.isPlaying) return;
 
-      // Read the duration live rather than from this callback's closure. The
-      // loop re-schedules itself, so it kept whatever value was current when
-      // play started - which on the very first play is still the initial 0,
-      // ending playback on the first frame.
-      const { duration } = useStore.getState().playbackState;
-
-      if (currentTime < duration) {
-        animationFrameRef.current = requestAnimationFrame(updatePlaybackTime);
-      } else {
-        handleStop();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const unsubscribe = useStore.subscribe((state, previous) => {
+      const engine = audioEngineRef.current;
+      if (!engine || !state.playbackState.isPlaying) return;
+      if (
+        state.tracks === previous.tracks &&
+        state.clips === previous.clips &&
+        state.audioFiles === previous.audioFiles
+      ) {
+        return;
       }
+
+      engine.setTrackLevels(state.tracks);
+      if (sameArrangement(state, previous)) return;
+
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!engine.playing) return;
+        const { tracks, clips, audioFiles } = useStore.getState();
+        engine.replay(tracks, clips, audioFiles);
+        setPlaybackState({ duration: getProjectDuration(tracks, clips, 1) });
+      }, RESCHEDULE_DELAY_MS);
+    });
+
+    return () => {
+      unsubscribe();
+      clearTimeout(timer);
+    };
+  }, [playbackState.isPlaying, setPlaybackState]);
+
+  const endPlayback = (rewind: boolean, ringOut = false) => {
+    audioEngineRef.current?.stop(ringOut);
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    setPlaybackState(rewind ? { isPlaying: false, currentTime: 0 } : { isPlaying: false });
+  };
+
+  const updatePlaybackTime = () => {
+    const engine = audioEngineRef.current;
+    if (!engine) return;
+
+    // Read live rather than from this callback's closure: the loop
+    // re-schedules itself, so it would keep whatever was current when play
+    // started.
+    const { duration, isPlaying } = useStore.getState().playbackState;
+
+    // Stopped from elsewhere - a project was loaded over this one.
+    if (!isPlaying) {
+      engine.stop();
+      return;
+    }
+
+    const currentTime = engine.getCurrentTime();
+    if (currentTime < duration) {
+      setPlaybackState({ currentTime });
+      animationFrameRef.current = requestAnimationFrame(updatePlaybackTime);
+    } else {
+      endPlayback(true, true);
     }
   };
 
@@ -54,43 +126,14 @@ export function PlaybackControls() {
       audioEngineRef.current = new AudioEngine(ctx);
     }
 
-    // Calculate total duration
-    const maxDuration = getProjectDuration(tracks, clips, 1);
+    audioEngineRef.current.play(tracks, clips, audioFiles, playbackState.currentTime);
 
-    audioEngineRef.current.play(
-      tracks,
-      clips,
-      audioFiles,
-      playbackState.currentTime
-    );
-
-    setPlaybackState({ isPlaying: true, duration: maxDuration });
+    setPlaybackState({ isPlaying: true, duration: getProjectDuration(tracks, clips, 1) });
     animationFrameRef.current = requestAnimationFrame(updatePlaybackTime);
   };
 
-  const handlePause = () => {
-    if (audioEngineRef.current) {
-      audioEngineRef.current.pause(playbackState.currentTime);
-    }
-
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-
-    setPlaybackState({ isPlaying: false });
-  };
-
-  const handleStop = () => {
-    if (audioEngineRef.current) {
-      audioEngineRef.current.stop();
-    }
-
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-    }
-
-    setPlaybackState({ isPlaying: false, currentTime: 0 });
-  };
+  const handlePause = () => endPlayback(false);
+  const handleStop = () => endPlayback(true);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = parseFloat(e.target.value);

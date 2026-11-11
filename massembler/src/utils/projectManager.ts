@@ -1,13 +1,8 @@
 import JSZip from 'jszip';
 import { AudioFile, AudioFileOptimization, Track, AudioClip } from '../types';
-import {
-  createEffectChain,
-  getEffectTailSeconds,
-  resolveClipBuffer,
-  resolveClipOffset,
-  resolveClipPlaybackRate,
-} from './clipEffects';
+import { getEffectTailSeconds } from './clipEffects';
 import { getTrackClipEnd } from './clipTiming';
+import { scheduleArrangement } from './scheduler';
 import { isTrackAudible } from './trackAudibility';
 
 /**
@@ -115,81 +110,26 @@ export async function exportMix(
   const sampleRate = audioFiles[0]?.buffer.sampleRate || 44100;
   const offlineContext = new OfflineAudioContext(2, Math.ceil(maxDuration * sampleRate), sampleRate);
 
-  // Render each track
-  tracks.forEach((track, trackIndex) => {
-    // Solo affects the export too: what you hear is what gets rendered.
-    if (!isTrackAudible(track, tracks)) return;
+  // Solo affects the export too: what you hear is what gets rendered.
+  const trackGains = new Map<string, GainNode>();
+  for (const track of tracks) {
+    if (!isTrackAudible(track, tracks)) continue;
+    const gain = offlineContext.createGain();
+    gain.gain.value = track.volume;
+    gain.connect(offlineContext.destination);
+    trackGains.set(track.id, gain);
+  }
 
-    const trackGain = offlineContext.createGain();
-    trackGain.gain.value = track.volume;
-    trackGain.connect(offlineContext.destination);
-
-    track.clips.forEach((trackClip) => {
-      const clip = clips.find((c) => c.id === trackClip.clipId);
-      if (!clip) return;
-
-      const audioFile = audioFiles.find((f) => f.id === clip.audioFileId);
-      if (!audioFile) return;
-
-      const effectiveStartTime = trackClip.trimStart ?? clip.startTime;
-      const effectiveEndTime = trackClip.trimEnd ?? clip.endTime;
-      const clipDuration = effectiveEndTime - effectiveStartTime;
-
-      const playClipOnce = (offset: number = 0) => {
-        const source = offlineContext.createBufferSource();
-        source.buffer = resolveClipBuffer(offlineContext, audioFile.buffer, trackClip.effect);
-
-        // Create a gain node for fade in/out
-        const fadeGain = offlineContext.createGain();
-
-        // Same effect chain as realtime playback, so the export matches
-        const effectChain = createEffectChain(offlineContext, trackClip.effect);
-        if (effectChain) {
-          source.connect(effectChain.input);
-          effectChain.output.connect(fadeGain);
-        } else {
-          source.connect(fadeGain);
-        }
-        fadeGain.connect(trackGain);
-
-        const startPosition = trackClip.position + offset;
-        const fadeIn = trackClip.fadeIn || 0;
-        const fadeOut = trackClip.fadeOut || 0;
-
-        // Apply fade in
-        if (fadeIn > 0) {
-          fadeGain.gain.setValueAtTime(0, startPosition);
-          fadeGain.gain.linearRampToValueAtTime(1, startPosition + fadeIn);
-        } else {
-          fadeGain.gain.setValueAtTime(1, startPosition);
-        }
-
-        // Apply fade out
-        if (fadeOut > 0 && clipDuration > fadeOut) {
-          fadeGain.gain.setValueAtTime(1, startPosition + clipDuration - fadeOut);
-          fadeGain.gain.linearRampToValueAtTime(0, startPosition + clipDuration);
-        }
-
-        const rate = resolveClipPlaybackRate(trackClip.effect);
-        source.playbackRate.value = rate;
-        source.start(
-          startPosition,
-          resolveClipOffset(source.buffer, trackClip.effect, effectiveStartTime, effectiveEndTime),
-          clipDuration * rate
-        );
-      };
-
-      if (trackClip.repeat && trackClip.repeatCount) {
-        for (let i = 0; i < trackClip.repeatCount; i++) {
-          playClipOnce(i * clipDuration);
-        }
-      } else {
-        playClipOnce();
-      }
-    });
-
-    onProgress?.(0.1 + (trackIndex / tracks.length) * 0.4);
-  });
+  // The same scheduling as realtime playback, from the top.
+  scheduleArrangement(
+    offlineContext,
+    tracks,
+    clips,
+    audioFiles,
+    (track) => trackGains.get(track.id) ?? null,
+    0,
+    0
+  );
 
   onProgress?.(0.5);
 
