@@ -1,6 +1,15 @@
 import { useEffect } from 'react';
 import { useStore } from '../store';
 
+const NON_TEXT_INPUTS = ['checkbox', 'radio', 'range', 'button', 'submit', 'reset', 'file', 'color'];
+
+/** A field with its own text undo, which the shortcuts must be left to. */
+function isTextEntry(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable || target instanceof HTMLTextAreaElement) return true;
+  return target instanceof HTMLInputElement && !NON_TEXT_INPUTS.includes(target.type);
+}
+
 export function UndoRedoControls() {
   // undoAvailable/redoAvailable are state, so the buttons update when the
   // history changes. canUndo/canRedo are called at keypress time, where
@@ -9,6 +18,8 @@ export function UndoRedoControls() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTextEntry(e.target)) return;
+
       // Ctrl+Z or Cmd+Z for undo
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
