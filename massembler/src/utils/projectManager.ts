@@ -14,10 +14,10 @@ import { isTrackAudible } from './trackAudibility';
  * Version of the .mass container format.
  *
  * Bump this whenever the archive layout or project.json shape changes in a
- * way older readers could not handle. Loading refuses anything it does not
- * recognise rather than guessing.
+ * way older readers could not handle. Loading upgrades older versions (see
+ * upgradeProjectData) and refuses newer ones rather than guessing.
  *
- * 1 - audio always stored as `<id>.wav` (decoded PCM)
+ * 1 - audio always stored as `<id>.wav` (decoded PCM); version written as '1.0.0'
  * 2 - audio stored in its source encoding, named by `storedFile`
  * 3 - audio may be trimmed to used regions, described by `optimization`
  */
@@ -38,6 +38,38 @@ export interface ProjectData {
     optimization?: AudioFileOptimization;
   }>;
   pixelsPerSecond: number;
+}
+
+/** project.json as any version of the format wrote it. */
+type StoredProjectData = Omit<ProjectData, 'version' | 'audioFiles'> & {
+  version?: number | string;
+  audioFiles?: Array<
+    Omit<ProjectData['audioFiles'][number], 'storedFile'> & { storedFile?: string }
+  >;
+};
+
+/** Bring a project.json from any earlier format version up to the current one. */
+export function upgradeProjectData(stored: StoredProjectData): ProjectData {
+  const version = stored.version === '1.0.0' ? 1 : stored.version;
+
+  if (typeof version !== 'number' || version < 1) {
+    throw new Error(`Unsupported project format (found version ${stored.version ?? 'none'})`);
+  }
+  if (version > PROJECT_FORMAT_VERSION) {
+    throw new Error(
+      `This project was saved by a newer Massembler (format version ${version}); ` +
+        `this build reads up to version ${PROJECT_FORMAT_VERSION}`
+    );
+  }
+
+  return {
+    ...stored,
+    version: PROJECT_FORMAT_VERSION,
+    audioFiles: (stored.audioFiles ?? []).map((meta) => ({
+      ...meta,
+      storedFile: meta.storedFile ?? `${meta.id}.wav`,
+    })),
+  };
 }
 
 /** Extension to store an audio file under, derived from its original name. */
@@ -324,14 +356,7 @@ export async function loadProject(
   }
 
   const projectJsonText = await projectJsonFile.async('text');
-  const projectData: ProjectData = JSON.parse(projectJsonText);
-
-  if (projectData.version !== PROJECT_FORMAT_VERSION) {
-    throw new Error(
-      `Unsupported project format (found version ${projectData.version ?? 'none'}, ` +
-        `this build reads version ${PROJECT_FORMAT_VERSION})`
-    );
-  }
+  const projectData = upgradeProjectData(JSON.parse(projectJsonText));
 
   onProgress?.(0.3);
 
