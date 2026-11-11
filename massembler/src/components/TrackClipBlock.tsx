@@ -1,61 +1,20 @@
 import { useState, useRef } from 'react';
 import LinkIcon from '@mui/icons-material/Link';
 import { TrackClip } from '../types';
-import { UndoAction, batchActions } from '../utils/undoRedo';
 import { getEffectInfo } from '../utils/clipEffects';
 import { getRepeatCount, getTrackClipDuration, getTrackClipEnd } from '../utils/clipTiming';
 import {
-  LinkedMember,
-  diffTrackClip,
-  findTrackClip,
   linkedResizeLimit,
   snapshotGroup,
   solveLinkedMove,
   solveLinkedResize,
 } from '../utils/clipLinks';
-import { useStore } from '../store';
+import { history, useStore } from '../store';
 
 /** A colour per group, so linked clips can be told apart at a glance. */
 function linkColor(linkId: string): string {
   const seed = [...linkId].reduce((hash, ch) => hash * 31 + ch.charCodeAt(0), 7);
   return `hsl(${seed % 360}, 75%, 62%)`;
-}
-
-/** Where a clip sits now, whichever track a drag has left it on. */
-function currentPlacement(trackClipId: string) {
-  for (const track of useStore.getState().tracks) {
-    const trackClip = track.clips.find((tc) => tc.id === trackClipId);
-    if (trackClip) return { trackId: track.id, trackClip };
-  }
-  return null;
-}
-
-/**
- * What a gesture did to the rest of the group, as undo actions. Members the
- * dragged edge never reached come back unchanged and are left out.
- */
-function groupUndoActions(snapshot: LinkedMember[], selfId: string): UndoAction[] {
-  const { tracks } = useStore.getState();
-  const actions: UndoAction[] = [];
-
-  for (const member of snapshot) {
-    if (member.trackClipId === selfId) continue;
-
-    const current = findTrackClip(tracks, member);
-    if (!current) continue;
-
-    const diff = diffTrackClip(member.trackClip, current);
-    if (!diff) continue;
-
-    actions.push({
-      type: 'UPDATE_TRACK_CLIP_OPTIONS',
-      trackId: member.trackId,
-      trackClipId: member.trackClipId,
-      ...diff,
-    });
-  }
-
-  return actions;
 }
 
 interface TrackClipBlockProps {
@@ -69,7 +28,7 @@ export function TrackClipBlock({
   trackClip,
   pixelsPerSecond,
 }: TrackClipBlockProps) {
-  const { clips, updateTrackClip, moveTrackClip, moveClipBetweenTracks, recordClipMovedBetweenTracks, audioFiles, tracks, selectedTrackClips, setSelectedTrackClip, toggleTrackClipSelection, applyTrackClipPatches, applyTrackClipMoves } = useStore();
+  const { clips, updateTrackClip, moveClipBetweenTracks, audioFiles, tracks, selectedTrackClips, setSelectedTrackClip, toggleTrackClipSelection, applyTrackClipPatches, applyTrackClipMoves } = useStore();
   const clip = clips.find((s) => s.id === trackClip.clipId);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
@@ -216,8 +175,7 @@ export function TrackClipBlock({
               updates: { trimStart: newTrimStart, position: newPosition },
             },
             ...(self ? solveLinkedResize(group, self, 'left', newPosition) : []),
-          ],
-          false
+          ]
         );
       } else {
         // Resize from right edge - adjust trimEnd only
@@ -259,8 +217,7 @@ export function TrackClipBlock({
           [
             { trackId, trackClipId: trackClip.id, updates: { trimEnd: newTrimEnd } },
             ...(self ? solveLinkedResize(group, self, 'right', edgeValue) : []),
-          ],
-          false
+          ]
         );
       }
     };
@@ -269,39 +226,11 @@ export function TrackClipBlock({
       setIsResizing(null);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
-
-      // Get final state after resize
-      const { tracks, undoManager } = useStore.getState();
-      const finalTrack = tracks.find((t) => t.id === trackId);
-      const finalTrackClip = finalTrack?.clips.find((tc) => tc.id === trackClip.id);
-
-      if (finalTrackClip) {
-        const finalTrimStart = finalTrackClip.trimStart ?? clip.startTime;
-        const finalTrimEnd = finalTrackClip.trimEnd ?? clip.endTime;
-
-        // Record resize action to undo history
-        const resizeAction: UndoAction = {
-          type: 'RESIZE_CLIP',
-          trackId: trackId,
-          trackClipId: trackClip.id,
-          oldTrimStart: originalStartTime,
-          oldTrimEnd: originalEndTime,
-          newTrimStart: finalTrimStart,
-          newTrimEnd: finalTrimEnd,
-          oldPosition: originalPosition,
-          newPosition: finalTrackClip.position,
-        };
-
-        // Whatever the gesture carried along goes in the same entry: one
-        // resize, one undo.
-        const action = batchActions([
-          resizeAction,
-          ...groupUndoActions(group, trackClip.id),
-        ]);
-        if (action) undoManager.addAction(action);
-      }
+      history.endGesture();
     };
 
+    // One undo step for the whole resize, linked members included.
+    history.beginGesture();
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
@@ -380,7 +309,7 @@ export function TrackClipBlock({
         // One member blocked blocks the group: nothing moves until it fits.
         if (!moves) return;
 
-        applyTrackClipMoves(moves, false);
+        applyTrackClipMoves(moves);
         currentTrackId = targetTrackId;
         return;
       }
@@ -391,15 +320,12 @@ export function TrackClipBlock({
         return;
       }
 
-      // Nothing here is recorded in the undo history: this runs on every
-      // mouse move, so it would bury the drag under hundreds of entries.
-      // handleMouseUp files one action for the whole gesture.
       if (targetTrackId !== currentTrackId) {
-        moveClipBetweenTracks(currentTrackId, targetTrackId, trackClip.id, newPosition, false);
+        moveClipBetweenTracks(currentTrackId, targetTrackId, trackClip.id, newPosition);
         currentTrackId = targetTrackId;
       } else {
         // Same track - just update position
-        updateTrackClip(currentTrackId, trackClip.id, { position: newPosition }, false);
+        updateTrackClip(currentTrackId, trackClip.id, { position: newPosition });
       }
     };
 
@@ -407,65 +333,11 @@ export function TrackClipBlock({
       setIsDragging(false);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
-
-      if (group.length > 0) {
-        // One entry for the whole group's drag.
-        const actions: UndoAction[] = [];
-
-        for (const member of group) {
-          const placement = currentPlacement(member.trackClipId);
-          if (!placement) continue;
-
-          if (placement.trackId !== member.trackId) {
-            actions.push({
-              type: 'MOVE_CLIP_BETWEEN_TRACKS',
-              sourceTrackId: member.trackId,
-              targetTrackId: placement.trackId,
-              trackClipId: member.trackClipId,
-              oldPosition: member.start,
-              newPosition: placement.trackClip.position,
-            });
-          } else if (Math.abs(placement.trackClip.position - member.start) > 0.01) {
-            actions.push({
-              type: 'MOVE_TRACK_CLIP',
-              trackId: member.trackId,
-              trackClipId: member.trackClipId,
-              oldPosition: member.start,
-              newPosition: placement.trackClip.position,
-            });
-          }
-        }
-
-        const action = batchActions(actions);
-        if (action) useStore.getState().undoManager.addAction(action);
-        return;
-      }
-
-      // Get the final position from the store
-      const state = useStore.getState();
-      const finalTrack = state.tracks.find(t => t.id === currentTrackId);
-      const currentClip = finalTrack?.clips.find(tc => tc.id === trackClip.id);
-
-      if (currentClip) {
-        const finalPosition = currentClip.position;
-
-        // One undo entry for the whole drag
-        if (currentTrackId !== startTrackId) {
-          // Ended on a different track
-          recordClipMovedBetweenTracks(
-            startTrackId,
-            currentTrackId,
-            trackClip.id,
-            dragStartPosRef.current,
-            finalPosition
-          );
-        } else if (Math.abs(finalPosition - dragStartPosRef.current) > 0.01) {
-          // Same track, position changed
-          moveTrackClip(currentTrackId, trackClip.id, dragStartPosRef.current, finalPosition);
-        }
-      }
+      history.endGesture();
     };
 
+    // One undo step for the whole drag, however many mouse moves it takes.
+    history.beginGesture();
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };

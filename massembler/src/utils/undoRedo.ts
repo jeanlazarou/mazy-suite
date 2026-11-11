@@ -1,142 +1,138 @@
-import { AudioClip, Track, TrackClip } from '../types';
+import { AudioClip, Track } from '../types';
 
-export type UndoAction =
-  | {
-      type: 'REMOVE_CLIP';
-      clipId: string;
-      clip: AudioClip;
-      /** Where it sat in the library, so undo puts it back in place. */
-      clipIndex: number;
-    }
-  | {
-      type: 'REMOVE_TRACK_CLIP';
-      trackId: string;
-      trackClipId: string;
-      trackClip: TrackClip;
-    }
-  | {
-      type: 'MOVE_TRACK_CLIP';
-      trackId: string;
-      trackClipId: string;
-      oldPosition: number;
-      newPosition: number;
-    }
-  | {
-      type: 'DELETE_TRACK';
-      track: Track;
-      trackIndex: number;
-    }
-  | {
-      type: 'RESIZE_CLIP';
-      trackId: string;
-      trackClipId: string;
-      oldTrimStart: number;
-      oldTrimEnd: number;
-      newTrimStart: number;
-      newTrimEnd: number;
-      oldPosition: number;
-      newPosition: number;
-    }
-  | {
-      type: 'ADD_TRACK_CLIP';
-      trackId: string;
-      trackClipId: string;
-      trackClip: TrackClip;
-    }
-  | {
-      type: 'MOVE_CLIP_BETWEEN_TRACKS';
-      sourceTrackId: string;
-      targetTrackId: string;
-      trackClipId: string;
-      oldPosition: number;
-      newPosition: number;
-    }
-  | {
-      type: 'UPDATE_TRACK_CLIP_OPTIONS';
-      trackId: string;
-      trackClipId: string;
-      oldValues: Partial<TrackClip>;
-      newValues: Partial<TrackClip>;
-    }
-  | {
-      /**
-       * Several edits that happened as one gesture, so they undo as one.
-       * Linked clips make this the common case: dragging one member moves
-       * or trims all of them, and that should cost a single undo.
-       */
-      type: 'BATCH';
-      actions: UndoAction[];
-    };
+/**
+ * Undo history, kept as snapshots of the arrangement.
+ *
+ * Tracks and clips are immutable, so a snapshot is just the two arrays as
+ * they stood: whatever did not change is shared between entries and costs
+ * nothing. Audio files are left out - they are only ever added, and they are
+ * what is heavy.
+ *
+ * Every change to tracks or clips is recorded as it happens (the store
+ * subscribes and calls record), so no action has to opt in. Two things group
+ * changes into a single entry:
+ *
+ * - A gesture: everything between beginGesture and endGesture, such as a
+ *   drag, files one entry, and none at all if nothing changed.
+ * - A burst: changes made through coalesced() under the same key, close
+ *   together, join the entry the first of them opened. Typing a name or
+ *   turning a knob is one step, not one per keystroke or wheel notch.
+ */
 
-/** One entry for a gesture, however many clips it touched. */
-export function batchActions(actions: UndoAction[]): UndoAction | null {
-  if (actions.length === 0) return null;
-  if (actions.length === 1) return actions[0];
-  return { type: 'BATCH', actions };
+export interface Snapshot {
+  tracks: Track[];
+  clips: AudioClip[];
 }
 
-export class UndoRedoManager {
-  private undoStack: UndoAction[] = [];
-  private redoStack: UndoAction[] = [];
-  private maxStackSize = 50;
+const MAX_ENTRIES = 100;
+/** Changes under one key closer together than this are one burst. */
+const BURST_MS = 1500;
 
-  /**
-   * Called whenever the stacks change.
-   *
-   * These stacks live outside the store, so nothing re-renders on their own
-   * when history changes; anything showing whether undo is available has to
-   * be told. Without this it only refreshed when some unrelated state
-   * happened to change in the same breath.
-   */
+export class History {
+  private past: Snapshot[] = [];
+  private future: Snapshot[] = [];
+  /** The arrangement as it was when the running gesture began. */
+  private gestureStart: Snapshot | null = null;
+  private burst: { key: string; at: number } | null = null;
+  private pendingKey: string | null = null;
+  private restoring = false;
+
+  /** Called whenever canUndo or canRedo may have changed. */
   onChange: (() => void) | null = null;
 
-  addAction(action: UndoAction) {
-    this.undoStack.push(action);
-    if (this.undoStack.length > this.maxStackSize) {
-      this.undoStack.shift();
-    }
-    // Clear redo stack when a new action is performed
-    this.redoStack = [];
-    this.onChange?.();
-  }
+  constructor(
+    private read: () => Snapshot,
+    private write: (snapshot: Snapshot) => void
+  ) {}
 
   canUndo(): boolean {
-    return this.undoStack.length > 0;
+    return this.past.length > 0;
   }
 
   canRedo(): boolean {
-    return this.redoStack.length > 0;
+    return this.future.length > 0;
   }
 
-  undo(): UndoAction | null {
-    const action = this.undoStack.pop();
-    if (action) {
-      this.redoStack.push(action);
-    }
-    this.onChange?.();
-    return action || null;
+  /** Tracks or clips just changed; `before` is what they replaced. */
+  record(before: Snapshot) {
+    if (this.restoring || this.gestureStart) return;
+
+    const key = this.pendingKey;
+    const now = Date.now();
+    const continues =
+      key !== null && this.burst?.key === key && now - this.burst.at < BURST_MS;
+
+    this.burst = key === null ? null : { key, at: now };
+    if (!continues) this.push(before);
   }
 
-  redo(): UndoAction | null {
-    const action = this.redoStack.pop();
-    if (action) {
-      this.undoStack.push(action);
+  /** Make a change as part of the burst named by `key`. */
+  coalesced(key: string, change: () => void) {
+    this.pendingKey = key;
+    try {
+      change();
+    } finally {
+      this.pendingKey = null;
     }
-    this.onChange?.();
-    return action || null;
+  }
+
+  beginGesture() {
+    // A gesture whose end never arrived is closed here, rather than left
+    // open to swallow every change after it.
+    this.endGesture();
+    this.gestureStart = this.read();
+  }
+
+  endGesture() {
+    const start = this.gestureStart;
+    if (!start) return;
+    this.gestureStart = null;
+    this.burst = null;
+
+    const now = this.read();
+    if (now.tracks !== start.tracks || now.clips !== start.clips) this.push(start);
+  }
+
+  undo() {
+    // Not mid-gesture: the drag would carry on writing over the restored state.
+    if (this.gestureStart) return;
+    const previous = this.past.pop();
+    if (!previous) return;
+    this.future.push(this.read());
+    this.restore(previous);
+  }
+
+  redo() {
+    if (this.gestureStart) return;
+    const next = this.future.pop();
+    if (!next) return;
+    this.past.push(this.read());
+    this.restore(next);
   }
 
   clear() {
-    this.undoStack = [];
-    this.redoStack = [];
+    this.past = [];
+    this.future = [];
+    this.gestureStart = null;
+    this.burst = null;
     this.onChange?.();
   }
 
-  getUndoStackSize(): number {
-    return this.undoStack.length;
+  private push(snapshot: Snapshot) {
+    this.past.push(snapshot);
+    if (this.past.length > MAX_ENTRIES) this.past.shift();
+    this.future = [];
+    this.onChange?.();
   }
 
-  getRedoStackSize(): number {
-    return this.redoStack.length;
+  private restore(snapshot: Snapshot) {
+    this.burst = null;
+    this.restoring = true;
+    try {
+      this.write(snapshot);
+    } finally {
+      this.restoring = false;
+    }
+    this.onChange?.();
   }
 }

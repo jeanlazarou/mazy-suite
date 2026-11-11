@@ -11,43 +11,27 @@ function isTextEntry(target: EventTarget | null): boolean {
 }
 
 export function UndoRedoControls() {
-  // undoAvailable/redoAvailable are state, so the buttons update when the
-  // history changes. canUndo/canRedo are called at keypress time, where
-  // reading the stacks directly is what we want.
-  const { undo, redo, canUndo, canRedo, undoAvailable, redoAvailable } = useStore();
+  const { undo, redo, undoAvailable, redoAvailable } = useStore();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isTextEntry(e.target)) return;
+      if (!(e.ctrlKey || e.metaKey)) return;
 
-      // Ctrl+Z or Cmd+Z for undo
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      // Ctrl/Cmd+Z undoes; Ctrl/Cmd+Shift+Z and Ctrl/Cmd+Y redo.
+      const key = e.key.toLowerCase();
+      if (key === 'z' && !e.shiftKey) {
         e.preventDefault();
-        if (canUndo()) {
-          undo();
-        }
-      }
-
-      // Ctrl+Shift+Z or Cmd+Shift+Z for redo
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+        undo();
+      } else if ((key === 'z' && e.shiftKey) || key === 'y') {
         e.preventDefault();
-        if (canRedo()) {
-          redo();
-        }
-      }
-
-      // Ctrl+Y or Cmd+Y for redo (alternative)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
-        e.preventDefault();
-        if (canRedo()) {
-          redo();
-        }
+        redo();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, canUndo, canRedo]);
+  }, [undo, redo]);
 
   return (
     <div className="flex items-center gap-2">

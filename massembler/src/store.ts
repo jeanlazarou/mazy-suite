@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { AudioFile, AudioClip, Track, TrackClip, PlaybackState } from './types';
-import { UndoAction, UndoRedoManager, batchActions } from './utils/undoRedo';
+import { History } from './utils/undoRedo';
 import { getTrackClipDuration, getTrackClipEnd } from './utils/clipTiming';
 import {
   TrackClipMove,
@@ -21,7 +21,8 @@ interface AppState {
   // Clips
   clips: AudioClip[];
   addClip: (clip: AudioClip) => void;
-  removeClip: (id: string, addToHistory?: boolean) => void;
+  /** Remove a library clip, and every track clip that places it. */
+  removeClip: (id: string) => void;
   updateClip: (id: string, updates: Partial<AudioClip>) => void;
 
   // Tracks
@@ -30,15 +31,12 @@ interface AppState {
   removeTrack: (id: string) => void;
   updateTrack: (id: string, updates: Partial<Track>) => void;
   addClipToTrack: (trackId: string, clipId: string, position: number) => void;
-  removeClipFromTrack: (trackId: string, trackClipId: string, addToHistory?: boolean) => void;
-  updateTrackClip: (trackId: string, trackClipId: string, updates: Partial<TrackClip>, addToHistory?: boolean) => void;
-  moveTrackClip: (trackId: string, trackClipId: string, oldPosition: number, newPosition: number) => void;
-  moveClipBetweenTracks: (sourceTrackId: string, targetTrackId: string, trackClipId: string, position: number, addToHistory?: boolean) => void;
+  updateTrackClip: (trackId: string, trackClipId: string, updates: Partial<TrackClip>) => void;
   /**
-   * Record a completed cross-track drag in the undo history. The clip has
-   * already been moved; this only files the action, mirroring moveTrackClip.
+   * Carry a clip to another track. Refused silently when it would overlap
+   * there: a drag calls this on every mouse move.
    */
-  recordClipMovedBetweenTracks: (sourceTrackId: string, targetTrackId: string, trackClipId: string, oldPosition: number, newPosition: number) => void;
+  moveClipBetweenTracks: (sourceTrackId: string, targetTrackId: string, trackClipId: string, position: number) => void;
 
   // Linked clips
   /** Put every given clip in one group, merging any groups they already had. */
@@ -47,10 +45,10 @@ interface AppState {
   unlinkTrackClips: (refs: TrackClipRef[]) => void;
   /** Remove a clip and, if it is linked, the rest of its group with it. */
   removeTrackClipGroup: (trackId: string, trackClipId: string) => void;
-  /** Apply one edit to each of several clips, as a single change. */
-  applyTrackClipPatches: (patches: TrackClipPatch[], addToHistory?: boolean) => void;
-  /** Move several clips at once, across tracks if need be, as a single change. */
-  applyTrackClipMoves: (moves: TrackClipMove[], addToHistory?: boolean) => void;
+  /** Apply one edit to each of several clips. */
+  applyTrackClipPatches: (patches: TrackClipPatch[]) => void;
+  /** Move several clips at once, across tracks if need be. */
+  applyTrackClipMoves: (moves: TrackClipMove[]) => void;
 
   // Playback
   playbackState: PlaybackState;
@@ -80,25 +78,10 @@ interface AppState {
   pixelsPerSecond: number;
   setPixelsPerSecond: (pps: number) => void;
 
-  // Undo/Redo
-  undoManager: UndoRedoManager;
+  // Undo/Redo - see utils/undoRedo.ts and the `history` export below
   undo: () => void;
   redo: () => void;
-  /**
-   * Apply one recorded action. Called by undo/redo, and by themselves for the
-   * members of a BATCH - the entry a linked gesture files.
-   */
-  applyUndoAction: (action: UndoAction) => void;
-  applyRedoAction: (action: UndoAction) => void;
-  canUndo: () => boolean;
-  canRedo: () => boolean;
-  /**
-   * Whether anything is on the stacks, mirrored into the store.
-   *
-   * canUndo/canRedo read stacks held outside it, so calling them during
-   * render gives an answer nothing re-renders on. Anything displaying
-   * availability should read these instead.
-   */
+  /** Whether undo/redo is possible, mirrored from the history so buttons re-render. */
   undoAvailable: boolean;
   redoAvailable: boolean;
 
@@ -130,8 +113,6 @@ interface Toast {
 let nextTrackId = 1;
 let nextTrackClipId = 1;
 let nextLinkId = 0;
-
-const undoManager = new UndoRedoManager();
 
 // Helper function to check if a clip overlaps with existing clips on a track
 function checkOverlap(
@@ -173,41 +154,15 @@ export const useStore = create<AppState>((set, get) => ({
   clips: [],
   addClip: (clip) =>
     set((state) => ({ clips: [...state.clips, clip] })),
-  removeClip: (id, addToHistory = true) => {
+  removeClip: (id) => {
     const state = get();
-    const clipIndex = state.clips.findIndex((c) => c.id === id);
-    if (clipIndex < 0) return;
-    const clip = state.clips[clipIndex];
+    if (!state.clips.some((c) => c.id === id)) return;
 
-    // Its track clips go with it; left behind they would be invisible and silent.
-    const { tracks, removed, unlinked } = removeTrackClips(
-      state.tracks,
-      (tc) => tc.clipId === id
-    );
-
-    set({ clips: state.clips.filter((c) => c.id !== id), tracks });
-
-    if (!addToHistory) return;
-
-    const actions: UndoAction[] = [
-      ...removed.map(({ trackId, trackClip }): UndoAction => ({
-        type: 'REMOVE_TRACK_CLIP',
-        trackId,
-        trackClipId: trackClip.id,
-        trackClip,
-      })),
-      ...unlinked.map(({ trackId, trackClipId, linkId }): UndoAction => ({
-        type: 'UPDATE_TRACK_CLIP_OPTIONS',
-        trackId,
-        trackClipId,
-        oldValues: { linkId },
-        newValues: { linkId: undefined },
-      })),
-      { type: 'REMOVE_CLIP', clipId: id, clip: { ...clip }, clipIndex },
-    ];
-
-    const batched = batchActions(actions);
-    if (batched) undoManager.addAction(batched);
+    set({
+      clips: state.clips.filter((c) => c.id !== id),
+      // Its track clips go with it; left behind they would be invisible and silent.
+      tracks: removeTrackClips(state.tracks, (tc) => tc.clipId === id),
+    });
   },
   updateClip: (id, updates) =>
     set((state) => ({
@@ -239,22 +194,9 @@ export const useStore = create<AppState>((set, get) => ({
       ],
     })),
   removeTrack: (id) =>
-    set((state) => {
-      const trackIndex = state.tracks.findIndex((t) => t.id === id);
-      const track = state.tracks[trackIndex];
-
-      if (track) {
-        undoManager.addAction({
-          type: 'DELETE_TRACK',
-          track: { ...track, clips: [...track.clips] },
-          trackIndex,
-        });
-      }
-
-      return {
-        tracks: state.tracks.filter((t) => t.id !== id),
-      };
-    }),
+    set((state) => ({
+      tracks: state.tracks.filter((t) => t.id !== id),
+    })),
   updateTrack: (id, updates) =>
     set((state) => ({
       tracks: state.tracks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
@@ -272,111 +214,32 @@ export const useStore = create<AppState>((set, get) => ({
       return;
     }
 
-    set((state) => {
-      const newTrackClip = {
-        id: `tc-${++nextTrackClipId}`,
-        clipId,
-        position,
-        repeat: false,
-      };
+    const newTrackClip: TrackClip = {
+      id: `tc-${++nextTrackClipId}`,
+      clipId,
+      position,
+      repeat: false,
+    };
 
-      // Record to undo history
-      undoManager.addAction({
-        type: 'ADD_TRACK_CLIP',
-        trackId,
-        trackClipId: newTrackClip.id,
-        trackClip: { ...newTrackClip },
-      });
-
-      return {
-        tracks: state.tracks.map((t) =>
-          t.id === trackId
-            ? {
-                ...t,
-                clips: [...t.clips, newTrackClip],
-              }
-            : t
-        ),
-      };
-    });
+    set((state) => ({
+      tracks: state.tracks.map((t) =>
+        t.id === trackId ? { ...t, clips: [...t.clips, newTrackClip] } : t
+      ),
+    }));
   },
-  removeClipFromTrack: (trackId, trackClipId, addToHistory = true) =>
-    set((state) => {
-      const track = state.tracks.find((t) => t.id === trackId);
-      const trackClip = track?.clips.find((s) => s.id === trackClipId);
-
-      if (trackClip && addToHistory) {
-        undoManager.addAction({
-          type: 'REMOVE_TRACK_CLIP',
-          trackId,
-          trackClipId,
-          trackClip: { ...trackClip },
-        });
-      }
-
-      return {
-        tracks: state.tracks.map((t) =>
-          t.id === trackId
-            ? {
-                ...t,
-                clips: t.clips.filter((s) => s.id !== trackClipId),
-              }
-            : t
-        ),
-      };
-    }),
-  updateTrackClip: (trackId, trackClipId, updates, addToHistory = true) =>
-    set((state) => {
-      // Find the track and clip to get old values
-      const track = state.tracks.find((t) => t.id === trackId);
-      const trackClip = track?.clips.find((s) => s.id === trackClipId);
-
-      if (trackClip && addToHistory) {
-        // Record old values for properties being updated
-        const oldValues: Partial<TrackClip> = {};
-        (Object.keys(updates) as (keyof TrackClip)[]).forEach((key) => {
-          Object.assign(oldValues, { [key]: trackClip[key] });
-        });
-
-        // Add to undo history
-        undoManager.addAction({
-          type: 'UPDATE_TRACK_CLIP_OPTIONS',
-          trackId,
-          trackClipId,
-          oldValues,
-          newValues: updates,
-        });
-      }
-
-      return {
-        tracks: state.tracks.map((t) =>
-          t.id === trackId
-            ? {
-                ...t,
-                clips: t.clips.map((s) =>
-                  s.id === trackClipId ? { ...s, ...updates } : s
-                ),
-              }
-            : t
-        ),
-      };
-    }),
-  recordClipMovedBetweenTracks: (
-    sourceTrackId,
-    targetTrackId,
-    trackClipId,
-    oldPosition,
-    newPosition
-  ) => {
-    undoManager.addAction({
-      type: 'MOVE_CLIP_BETWEEN_TRACKS',
-      sourceTrackId,
-      targetTrackId,
-      trackClipId,
-      oldPosition,
-      newPosition,
-    });
-  },
+  updateTrackClip: (trackId, trackClipId, updates) =>
+    set((state) => ({
+      tracks: state.tracks.map((t) =>
+        t.id === trackId
+          ? {
+              ...t,
+              clips: t.clips.map((s) =>
+                s.id === trackClipId ? { ...s, ...updates } : s
+              ),
+            }
+          : t
+      ),
+    })),
 
   linkTrackClips: (refs) => {
     if (refs.length < 2) return;
@@ -399,8 +262,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     const linkId = `link-${++nextLinkId}`;
     state.applyTrackClipPatches(
-      [...members.values()].map((ref) => ({ ...ref, updates: { linkId } })),
-      true
+      [...members.values()].map((ref) => ({ ...ref, updates: { linkId } }))
     );
   },
   unlinkTrackClips: (refs) => {
@@ -427,48 +289,19 @@ export const useStore = create<AppState>((set, get) => ({
       }
     }
 
-    if (patches.size > 0) state.applyTrackClipPatches([...patches.values()], true);
+    if (patches.size > 0) state.applyTrackClipPatches([...patches.values()]);
   },
   removeTrackClipGroup: (trackId, trackClipId) => {
-    const state = get();
-    const group = getLinkedRefs(state.tracks, { trackId, trackClipId });
-    const doomed = group.length > 0 ? group : [{ trackId, trackClipId }];
+    const { tracks } = get();
+    const group = getLinkedRefs(tracks, { trackId, trackClipId });
+    const doomed = new Set(
+      group.length > 0 ? group.map((ref) => ref.trackClipId) : [trackClipId]
+    );
 
-    const actions: UndoAction[] = [];
-
-    set((state) => ({
-      tracks: state.tracks.map((t) => {
-        const removing = doomed.filter((ref) => ref.trackId === t.id);
-        if (removing.length === 0) return t;
-
-        for (const ref of removing) {
-          const trackClip = t.clips.find((tc) => tc.id === ref.trackClipId);
-          if (trackClip) {
-            actions.push({
-              type: 'REMOVE_TRACK_CLIP',
-              trackId: t.id,
-              trackClipId: ref.trackClipId,
-              trackClip: { ...trackClip },
-            });
-          }
-        }
-
-        return {
-          ...t,
-          clips: t.clips.filter(
-            (tc) => !removing.some((ref) => ref.trackClipId === tc.id)
-          ),
-        };
-      }),
-    }));
-
-    const batched = batchActions(actions);
-    if (batched) undoManager.addAction(batched);
+    set({ tracks: removeTrackClips(tracks, (tc) => doomed.has(tc.id)) });
   },
-  applyTrackClipPatches: (patches, addToHistory = true) => {
+  applyTrackClipPatches: (patches) => {
     if (patches.length === 0) return;
-
-    const actions: UndoAction[] = [];
 
     set((state) => ({
       tracks: state.tracks.map((t) => {
@@ -479,35 +312,14 @@ export const useStore = create<AppState>((set, get) => ({
           ...t,
           clips: t.clips.map((tc) => {
             const patch = mine.find((p) => p.trackClipId === tc.id);
-            if (!patch) return tc;
-
-            if (addToHistory) {
-              const oldValues: Partial<TrackClip> = {};
-              (Object.keys(patch.updates) as (keyof TrackClip)[]).forEach((key) => {
-                Object.assign(oldValues, { [key]: tc[key] });
-              });
-              actions.push({
-                type: 'UPDATE_TRACK_CLIP_OPTIONS',
-                trackId: t.id,
-                trackClipId: tc.id,
-                oldValues,
-                newValues: patch.updates,
-              });
-            }
-
-            return { ...tc, ...patch.updates };
+            return patch ? { ...tc, ...patch.updates } : tc;
           }),
         };
       }),
     }));
-
-    const batched = batchActions(actions);
-    if (batched) undoManager.addAction(batched);
   },
-  applyTrackClipMoves: (moves, addToHistory = true) => {
+  applyTrackClipMoves: (moves) => {
     if (moves.length === 0) return;
-
-    const actions: UndoAction[] = [];
 
     set((state) => {
       // Lift every mover out first, so clips swapping tracks do not collide
@@ -515,29 +327,7 @@ export const useStore = create<AppState>((set, get) => ({
       const lifted = new Map<string, TrackClip>();
       for (const move of moves) {
         const trackClip = findTrackClip(state.tracks, move);
-        if (!trackClip) continue;
-        lifted.set(move.trackClipId, trackClip);
-
-        if (addToHistory) {
-          actions.push(
-            move.targetTrackId === move.trackId
-              ? {
-                  type: 'MOVE_TRACK_CLIP',
-                  trackId: move.trackId,
-                  trackClipId: move.trackClipId,
-                  oldPosition: trackClip.position,
-                  newPosition: move.position,
-                }
-              : {
-                  type: 'MOVE_CLIP_BETWEEN_TRACKS',
-                  sourceTrackId: move.trackId,
-                  targetTrackId: move.targetTrackId,
-                  trackClipId: move.trackClipId,
-                  oldPosition: trackClip.position,
-                  newPosition: move.position,
-                }
-          );
-        }
+        if (trackClip) lifted.set(move.trackClipId, trackClip);
       }
 
       return {
@@ -564,98 +354,33 @@ export const useStore = create<AppState>((set, get) => ({
         }),
       };
     });
-
-    const batched = batchActions(actions);
-    if (batched) undoManager.addAction(batched);
   },
-  moveTrackClip: (trackId, trackClipId, oldPosition, newPosition) => {
-    // Only record the undo action - position is already updated by updateTrackClip
-    const state = useStore.getState();
-    const track = state.tracks.find((t) => t.id === trackId);
-    const trackClip = track?.clips.find((s) => s.id === trackClipId);
-
-    if (trackClip) {
-      undoManager.addAction({
-        type: 'MOVE_TRACK_CLIP',
-        trackId,
-        trackClipId,
-        oldPosition,
-        newPosition,
-      });
-    }
-  },
-  moveClipBetweenTracks: (sourceTrackId, targetTrackId, trackClipId, position, addToHistory = true) => {
+  moveClipBetweenTracks: (sourceTrackId, targetTrackId, trackClipId, position) => {
     const state = get();
-    // Find the clip to move
     const sourceTrack = state.tracks.find((t) => t.id === sourceTrackId);
     const targetTrack = state.tracks.find((t) => t.id === targetTrackId);
     const trackClip = sourceTrack?.clips.find((tc) => tc.id === trackClipId);
-
     if (!trackClip || !targetTrack) return;
 
-    // Get the clip to find its duration
     const clip = state.clips.find((c) => c.id === trackClip.clipId);
     if (!clip) return;
 
     // What it occupies on the timeline, repetitions included: the same
     // measure the existing clips are compared against.
     const occupied = getTrackClipDuration(trackClip, clip);
+    if (checkOverlap(targetTrack, position, occupied, trackClipId)) return;
 
-    // Check for overlap on target track
-    if (checkOverlap(targetTrack, position, occupied, trackClipId)) {
-      // A drag calls this on every mouse move and shows nothing when the clip
-      // simply will not fit; only a committed move is worth a toast.
-      if (addToHistory) {
-        state.showToast('Cannot move clip here - it would overlap with another clip', 'error');
-      }
-      return;
-    }
-
-    set((state) => {
-      const sourceTrack = state.tracks.find((t) => t.id === sourceTrackId);
-      const trackClip = sourceTrack?.clips.find((tc) => tc.id === trackClipId);
-
-      if (!trackClip) return state;
-
-      // A drag crosses tracks repeatedly, so the caller suppresses this and
-      // files one action for the whole gesture when the mouse is released.
-      if (addToHistory) {
-        undoManager.addAction({
-          type: 'MOVE_CLIP_BETWEEN_TRACKS',
-          sourceTrackId,
-          targetTrackId,
-          trackClipId,
-          oldPosition: trackClip.position,
-          newPosition: position,
-        });
-      }
-
-      // Remove from source track and add to target track
-      return {
-        tracks: state.tracks.map((t) => {
-          if (t.id === sourceTrackId) {
-            // Remove from source
-            return {
-              ...t,
-              clips: t.clips.filter((tc) => tc.id !== trackClipId),
-            };
-          } else if (t.id === targetTrackId) {
-            // Add to target with new position
-            return {
-              ...t,
-              clips: [
-                ...t.clips,
-                {
-                  ...trackClip,
-                  position,
-                },
-              ],
-            };
-          }
-          return t;
-        }),
-      };
-    });
+    set((state) => ({
+      tracks: state.tracks.map((t) => {
+        if (t.id === sourceTrackId) {
+          return { ...t, clips: t.clips.filter((tc) => tc.id !== trackClipId) };
+        }
+        if (t.id === targetTrackId) {
+          return { ...t, clips: [...t.clips, { ...trackClip, position }] };
+        }
+        return t;
+      }),
+    }));
   },
 
   playbackState: {
@@ -701,306 +426,8 @@ export const useStore = create<AppState>((set, get) => ({
   pixelsPerSecond: 50,
   setPixelsPerSecond: (pps) => set({ pixelsPerSecond: pps }),
 
-  // Undo/Redo
-  undoManager,
-  undo: () => {
-    const action = undoManager.undo();
-    if (action) get().applyUndoAction(action);
-  },
-  applyUndoAction: (action) => {
-    const state = get();
-
-    switch (action.type) {
-      case 'BATCH':
-        // Back to front: the gesture's last edit is the first one undone.
-        [...action.actions].reverse().forEach((member) => {
-          get().applyUndoAction(member);
-        });
-        break;
-
-      case 'REMOVE_CLIP':
-        set({
-          clips: [
-            ...state.clips.slice(0, action.clipIndex),
-            action.clip,
-            ...state.clips.slice(action.clipIndex),
-          ],
-        });
-        break;
-
-      case 'REMOVE_TRACK_CLIP':
-        // Restore the track clip
-        set({
-          tracks: state.tracks.map((t) =>
-            t.id === action.trackId
-              ? {
-                  ...t,
-                  clips: [...t.clips, action.trackClip],
-                }
-              : t
-          ),
-        });
-        break;
-
-      case 'MOVE_TRACK_CLIP':
-        // Restore the old position
-        set({
-          tracks: state.tracks.map((t) =>
-            t.id === action.trackId
-              ? {
-                  ...t,
-                  clips: t.clips.map((s) =>
-                    s.id === action.trackClipId
-                      ? { ...s, position: action.oldPosition }
-                      : s
-                  ),
-                }
-              : t
-          ),
-        });
-        break;
-
-      case 'DELETE_TRACK':
-        // Restore the deleted track at its original position
-        set({
-          tracks: [
-            ...state.tracks.slice(0, action.trackIndex),
-            action.track,
-            ...state.tracks.slice(action.trackIndex),
-          ],
-        });
-        break;
-
-      case 'RESIZE_CLIP':
-        // Restore the old trim values and position
-        set({
-          tracks: state.tracks.map((t) =>
-            t.id === action.trackId
-              ? {
-                  ...t,
-                  clips: t.clips.map((tc) =>
-                    tc.id === action.trackClipId
-                      ? {
-                          ...tc,
-                          trimStart: action.oldTrimStart,
-                          trimEnd: action.oldTrimEnd,
-                          position: action.oldPosition,
-                        }
-                      : tc
-                  ),
-                }
-              : t
-          ),
-        });
-        break;
-
-      case 'ADD_TRACK_CLIP':
-        // Remove the added clip (undo the addition)
-        set({
-          tracks: state.tracks.map((t) =>
-            t.id === action.trackId
-              ? {
-                  ...t,
-                  clips: t.clips.filter((tc) => tc.id !== action.trackClipId),
-                }
-              : t
-          ),
-        });
-        break;
-
-      case 'MOVE_CLIP_BETWEEN_TRACKS':
-        // Move the clip back to the source track with old position
-        set({
-          tracks: state.tracks.map((t) => {
-            if (t.id === action.targetTrackId) {
-              // Remove from target track
-              return {
-                ...t,
-                clips: t.clips.filter((tc) => tc.id !== action.trackClipId),
-              };
-            } else if (t.id === action.sourceTrackId) {
-              // Add back to source track
-              const trackClip = state.tracks
-                .find((track) => track.id === action.targetTrackId)
-                ?.clips.find((tc) => tc.id === action.trackClipId);
-              if (trackClip) {
-                return {
-                  ...t,
-                  clips: [
-                    ...t.clips,
-                    {
-                      ...trackClip,
-                      position: action.oldPosition,
-                    },
-                  ],
-                };
-              }
-            }
-            return t;
-          }),
-        });
-        break;
-
-      case 'UPDATE_TRACK_CLIP_OPTIONS':
-        // Restore old values
-        set({
-          tracks: state.tracks.map((t) =>
-            t.id === action.trackId
-              ? {
-                  ...t,
-                  clips: t.clips.map((tc) =>
-                    tc.id === action.trackClipId
-                      ? { ...tc, ...action.oldValues }
-                      : tc
-                  ),
-                }
-              : t
-          ),
-        });
-        break;
-    }
-  },
-  redo: () => {
-    const action = undoManager.redo();
-    if (action) get().applyRedoAction(action);
-  },
-  applyRedoAction: (action) => {
-    const state = get();
-
-    switch (action.type) {
-      case 'BATCH':
-        // Front to back: the gesture replays in the order it happened.
-        action.actions.forEach((member) => {
-          get().applyRedoAction(member);
-        });
-        break;
-
-      case 'REMOVE_CLIP':
-        // Remove the clip again (without adding to history)
-        state.removeClip(action.clipId, false);
-        break;
-
-      case 'REMOVE_TRACK_CLIP':
-        // Remove the track clip again (without adding to history)
-        state.removeClipFromTrack(action.trackId, action.trackClipId, false);
-        break;
-
-      case 'MOVE_TRACK_CLIP':
-        // Move to the new position again
-        set({
-          tracks: state.tracks.map((t) =>
-            t.id === action.trackId
-              ? {
-                  ...t,
-                  clips: t.clips.map((s) =>
-                    s.id === action.trackClipId
-                      ? { ...s, position: action.newPosition }
-                      : s
-                  ),
-                }
-              : t
-          ),
-        });
-        break;
-
-      case 'DELETE_TRACK':
-        // Delete the track again
-        set({
-          tracks: state.tracks.filter((t) => t.id !== action.track.id),
-        });
-        break;
-
-      case 'RESIZE_CLIP':
-        // Apply the new trim values and position
-        set({
-          tracks: state.tracks.map((t) =>
-            t.id === action.trackId
-              ? {
-                  ...t,
-                  clips: t.clips.map((tc) =>
-                    tc.id === action.trackClipId
-                      ? {
-                          ...tc,
-                          trimStart: action.newTrimStart,
-                          trimEnd: action.newTrimEnd,
-                          position: action.newPosition,
-                        }
-                      : tc
-                  ),
-                }
-              : t
-          ),
-        });
-        break;
-
-      case 'ADD_TRACK_CLIP':
-        // Add the clip again
-        set({
-          tracks: state.tracks.map((t) =>
-            t.id === action.trackId
-              ? {
-                  ...t,
-                  clips: [...t.clips, action.trackClip],
-                }
-              : t
-          ),
-        });
-        break;
-
-      case 'MOVE_CLIP_BETWEEN_TRACKS':
-        // Move the clip to the target track with new position
-        set({
-          tracks: state.tracks.map((t) => {
-            if (t.id === action.sourceTrackId) {
-              // Remove from source track
-              return {
-                ...t,
-                clips: t.clips.filter((tc) => tc.id !== action.trackClipId),
-              };
-            } else if (t.id === action.targetTrackId) {
-              // Add to target track
-              const trackClip = state.tracks
-                .find((track) => track.id === action.sourceTrackId)
-                ?.clips.find((tc) => tc.id === action.trackClipId);
-              if (trackClip) {
-                return {
-                  ...t,
-                  clips: [
-                    ...t.clips,
-                    {
-                      ...trackClip,
-                      position: action.newPosition,
-                    },
-                  ],
-                };
-              }
-            }
-            return t;
-          }),
-        });
-        break;
-
-      case 'UPDATE_TRACK_CLIP_OPTIONS':
-        // Apply new values
-        set({
-          tracks: state.tracks.map((t) =>
-            t.id === action.trackId
-              ? {
-                  ...t,
-                  clips: t.clips.map((tc) =>
-                    tc.id === action.trackClipId
-                      ? { ...tc, ...action.newValues }
-                      : tc
-                  ),
-                }
-              : t
-          ),
-        });
-        break;
-    }
-  },
-  canUndo: () => undoManager.canUndo(),
-  canRedo: () => undoManager.canRedo(),
+  undo: () => history.undo(),
+  redo: () => history.redo(),
   undoAvailable: false,
   redoAvailable: false,
 
@@ -1008,15 +435,9 @@ export const useStore = create<AppState>((set, get) => ({
   projectName: 'Untitled Project',
   setProjectName: (name) => set({ projectName: name }),
   loadProjectState: (loadedTracks, clips, audioFiles, pixelsPerSecond, projectName) => {
-    // History belongs to the project that was open. Track and track-clip ids
-    // are sequential counters, so every project reuses the same id space and
-    // a leftover action would resolve against whatever the loaded project
-    // happens to have under that id - silently editing the wrong clip.
-    undoManager.clear();
-
     // Earlier builds left a deleted clip's track clips behind.
     const clipIds = new Set(clips.map((c) => c.id));
-    const { tracks } = removeTrackClips(loadedTracks, (tc) => !clipIds.has(tc.clipId));
+    const tracks = removeTrackClips(loadedTracks, (tc) => !clipIds.has(tc.clipId));
 
     // Update ID counters to prevent collisions
     tracks.forEach((track) => {
@@ -1054,12 +475,12 @@ export const useStore = create<AppState>((set, get) => ({
         duration: 0,
       },
     });
+
+    // History belongs to the project that was open: undoing into it would
+    // put the old arrangement back over the new project's audio.
+    history.clear();
   },
   clearProject: () => {
-    // Same reasoning as loadProjectState: nothing the history refers to
-    // survives, and the ids it names will be handed out again.
-    undoManager.clear();
-
     set({
       tracks: [],
       clips: [],
@@ -1074,6 +495,8 @@ export const useStore = create<AppState>((set, get) => ({
       selectedTrackClip: null,
       selectedTrackClips: [],
     });
+
+    history.clear();
   },
 
   // Toast notifications
@@ -1096,14 +519,32 @@ export const useStore = create<AppState>((set, get) => ({
     })),
 }));
 
-// Make history changes visible to the UI. Queued as a microtask because
-// actions are usually recorded from inside a set() updater, and updating the
-// store again mid-update is asking for trouble.
-undoManager.onChange = () => {
+/**
+ * The undo history. Every change to tracks or clips is recorded through the
+ * subscription below; components group a drag into one entry with
+ * beginGesture/endGesture, and a burst of edits to one control with coalesced.
+ */
+export const history = new History(
+  () => {
+    const { tracks, clips } = useStore.getState();
+    return { tracks, clips };
+  },
+  (snapshot) => useStore.setState(snapshot)
+);
+
+useStore.subscribe((state, previous) => {
+  if (state.tracks !== previous.tracks || state.clips !== previous.clips) {
+    history.record({ tracks: previous.tracks, clips: previous.clips });
+  }
+});
+
+// Queued as a microtask because changes are recorded from inside a set(),
+// and updating the store again mid-update is asking for trouble.
+history.onChange = () => {
   queueMicrotask(() => {
     useStore.setState({
-      undoAvailable: undoManager.canUndo(),
-      redoAvailable: undoManager.canRedo(),
+      undoAvailable: history.canUndo(),
+      redoAvailable: history.canRedo(),
     });
   });
 };

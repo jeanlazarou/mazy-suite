@@ -71,16 +71,12 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - **Deep** — slowed down and pitched below the original
   - Playback and export share one implementation, so the exported WAV matches
     what you hear; reverb tails are given room rather than being cut off
-- **Undo/Redo**: Comprehensive history system supporting:
-  - Adding/removing clips from library
-  - Adding/removing clips from tracks
-  - Moving clips within tracks
-  - Moving clips between tracks
-  - Resizing clips
-  - Linking and unlinking clips
-  - Deleting tracks
-  - A gesture on a linked group is a single entry, however many clips it moved
-    or trimmed along the way
+- **Undo/Redo**: Every change to the arrangement can be undone, 100 steps deep:
+  - Library clips: creating, editing, duplicating, deleting
+  - Track clips: placing, moving, resizing, fades, effects, repeats, linking, deleting
+  - Tracks: adding, removing, renaming, volume, mute, solo
+  - A drag is one step, however many clips it carried; so is a burst of
+    edits to one control, like turning a knob or typing a name
   - Keyboard shortcuts (Ctrl+Z / Cmd+Z for undo, Ctrl+Shift+Z / Cmd+Shift+Z for redo)
 
 ### Track Controls
@@ -297,16 +293,15 @@ only the name can be edited. The row tells you which case applies.
 
 - **Undo**: Click the "Undo" button or press Ctrl+Z (Cmd+Z on Mac)
 - **Redo**: Click the "Redo" button or press Ctrl+Shift+Z (Cmd+Shift+Z on Mac) or Ctrl+Y (Cmd+Y on Mac)
-- Supports undoing all major operations:
-  - Adding/removing clips
-  - Adding/removing tracks
-  - Moving clips within tracks
-  - Moving clips between tracks
-  - Resizing clips
-  - Linking and unlinking clips
-  - Deleting tracks
-- A move or resize that carried a linked group undoes in one step, putting
-  every member back where it was
+- Everything you do to clips and tracks can be undone: placing, moving,
+  resizing, fades, effects, repeats, linking, deleting, and the track controls
+  (name, volume, mute, solo)
+- A move or resize undoes in one step, putting every clip it carried back
+  where it was. Turning a knob or typing a name is one step too, not one per
+  notch or keystroke
+- Uploading audio, the project name and the zoom level are not undone. While
+  typing in a text field, Ctrl+Z undoes the typing
+- Loading a project starts a fresh history
 
 ### 7. Save and Export
 

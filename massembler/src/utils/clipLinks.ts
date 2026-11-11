@@ -51,17 +51,6 @@ export interface LinkedMember extends TrackClipRef {
   repeats: number;
 }
 
-/** Fields a linked gesture may touch, used to diff a gesture for the undo history. */
-const GESTURE_KEYS = [
-  'position',
-  'trimStart',
-  'trimEnd',
-  'repeat',
-  'repeatCount',
-  'fadeIn',
-  'fadeOut',
-] as const;
-
 export function findTrackClip(
   tracks: Track[],
   ref: TrackClipRef
@@ -98,40 +87,29 @@ export function getGroupRefs(tracks: Track[], linkId: string): TrackClipRef[] {
 export function removeTrackClips(
   tracks: Track[],
   doomed: (trackClip: TrackClip) => boolean
-): {
-  tracks: Track[];
-  removed: Array<{ trackId: string; trackClip: TrackClip }>;
-  unlinked: Array<TrackClipRef & { linkId: string }>;
-} {
-  const removed: Array<{ trackId: string; trackClip: TrackClip }> = [];
+): Track[] {
+  const brokenLinks = new Set<string>();
 
-  let next = tracks.map((t) => {
+  const next = tracks.map((t) => {
     const gone = t.clips.filter(doomed);
     if (gone.length === 0) return t;
-    gone.forEach((trackClip) => removed.push({ trackId: t.id, trackClip }));
+    gone.forEach((tc) => tc.linkId && brokenLinks.add(tc.linkId));
     return { ...t, clips: t.clips.filter((tc) => !doomed(tc)) };
   });
 
-  if (removed.length === 0) return { tracks, removed, unlinked: [] };
+  if (next.every((t, i) => t === tracks[i])) return tracks;
 
-  const unlinked: Array<TrackClipRef & { linkId: string }> = [];
-  const brokenLinks = new Set(removed.map((r) => r.trackClip.linkId));
+  const lone = new Set<string>();
   for (const linkId of brokenLinks) {
-    if (!linkId) continue;
     const rest = getGroupRefs(next, linkId);
-    if (rest.length === 1) unlinked.push({ ...rest[0], linkId });
+    if (rest.length === 1) lone.add(rest[0].trackClipId);
   }
+  if (lone.size === 0) return next;
 
-  if (unlinked.length > 0) {
-    next = next.map((t) => ({
-      ...t,
-      clips: t.clips.map((tc) =>
-        unlinked.some((u) => u.trackClipId === tc.id) ? { ...tc, linkId: undefined } : tc
-      ),
-    }));
-  }
-
-  return { tracks: next, removed, unlinked };
+  return next.map((t) => ({
+    ...t,
+    clips: t.clips.map((tc) => (lone.has(tc.id) ? { ...tc, linkId: undefined } : tc)),
+  }));
 }
 
 /** How many clips are in a clip's group. 0 when it is unlinked. */
@@ -354,27 +332,4 @@ export function solveLinkedMove(
   }
 
   return moves;
-}
-
-/**
- * What a gesture did to one clip, as old and new values. Null when it left
- * the clip alone, so carried members that were never reached stay out of the
- * undo history.
- */
-export function diffTrackClip(
-  before: TrackClip,
-  after: TrackClip
-): { oldValues: Partial<TrackClip>; newValues: Partial<TrackClip> } | null {
-  const oldValues: Partial<TrackClip> = {};
-  const newValues: Partial<TrackClip> = {};
-  let changed = false;
-
-  for (const key of GESTURE_KEYS) {
-    if (before[key] === after[key]) continue;
-    Object.assign(oldValues, { [key]: before[key] });
-    Object.assign(newValues, { [key]: after[key] });
-    changed = true;
-  }
-
-  return changed ? { oldValues, newValues } : null;
 }

@@ -57,15 +57,21 @@ App.tsx
 ### Key Utilities
 - `src/utils/audioEngine.ts`: Web Audio API integration for playback and rendering
 - `src/utils/projectManager.ts`: Project save/load (.mass files) and WAV export
-- `src/utils/undoRedo.ts`: Undo/redo system that wraps store actions
+- `src/utils/undoRedo.ts`: Undo/redo history, kept as snapshots of tracks and clips
 
 ## Important Patterns
 
 ### Adding New Features
 When adding features that modify state:
-1. Add the action to the store in `src/store.ts`
-2. Wrap it with undo/redo support in `src/utils/undoRedo.ts`
-3. Use the wrapped action from components
+1. Add the action to the store in `src/store.ts` and call it from components
+2. Undo needs nothing more: every change to `tracks` or `clips` is recorded
+   as a snapshot. Audio files, project name, zoom, selection and playback are
+   not part of the history.
+3. A drag should be one undo step: call `history.beginGesture()` on mousedown
+   and `history.endGesture()` on mouseup.
+4. A control that fires in bursts (knob, text or number field) wraps its
+   store call in `history.coalesced(key, ...)`, the key naming the control,
+   so a burst of edits is one step.
 
 ### Working with Audio
 - All audio processing uses Web Audio API
@@ -86,9 +92,8 @@ When adding features that modify state:
 
 ### Adding a new track operation
 1. Define the action in the store
-2. Add undo/redo wrapper
-3. Create UI controls in Track component
-4. Update types if needed
+2. Create UI controls in Track component (gesture or coalesced, as above)
+3. Update types if needed
 
 ### Modifying audio playback
 Work with `src/utils/audioEngine.ts` - it manages:

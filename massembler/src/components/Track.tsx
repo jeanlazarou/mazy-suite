@@ -1,5 +1,5 @@
 import { Track as TrackType } from '../types';
-import { useStore } from '../store';
+import { history, useStore } from '../store';
 import { TrackClipBlock } from './TrackClipBlock';
 import { VolumeKnob } from './VolumeKnob';
 import { isSilencedBySolo } from '../utils/trackAudibility';
@@ -39,7 +39,7 @@ export function Track({ track, pixelsPerSecond, maxDuration, renderMode = 'both'
   };
 
   const handleVolumeChange = (value: number) => {
-    updateTrack(track.id, { volume: value });
+    history.coalesced(`volume:${track.id}`, () => updateTrack(track.id, { volume: value }));
   };
 
   const handleSoloToggle = () => {
@@ -51,7 +51,8 @@ export function Track({ track, pixelsPerSecond, maxDuration, renderMode = 'both'
   };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateTrack(track.id, { name: e.target.value });
+    const name = e.target.value;
+    history.coalesced(`name:${track.id}`, () => updateTrack(track.id, { name }));
   };
 
   // Render only controls

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useStore } from '../store';
+import { history, useStore } from '../store';
 import { ClipEffectId } from '../types';
 import { CLIP_EFFECTS } from '../utils/clipEffects';
 import Button from '@mui/material/Button';
@@ -30,7 +30,6 @@ export function ClipPropertiesPanel() {
   const [isDraggingFadeIn, setIsDraggingFadeIn] = useState(false);
   const [isDraggingFadeOut, setIsDraggingFadeOut] = useState(false);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-  const dragStartValuesRef = useRef<{ fadeIn: number; fadeOut: number }>({ fadeIn: 0, fadeOut: 0 });
 
   // Local state for form controls
   const [fadeIn, setFadeIn] = useState(0);
@@ -203,44 +202,20 @@ export function ClipPropertiesPanel() {
       if (isDraggingFadeIn) {
         const newFadeIn = Math.max(0, Math.min((x / width) * effectiveDuration, effectiveDuration - 0.1));
         setFadeIn(newFadeIn);
-        // Update without adding to undo history during drag
         updateTrackClip(selectedTrackClip.trackId, selectedTrackClip.trackClipId, {
           fadeIn: newFadeIn > 0 ? newFadeIn : undefined,
-        }, false);
+        });
       } else if (isDraggingFadeOut) {
         const newFadeOut = Math.max(0, Math.min(((width - x) / width) * effectiveDuration, effectiveDuration - 0.1));
         setFadeOut(newFadeOut);
-        // Update without adding to undo history during drag
         updateTrackClip(selectedTrackClip.trackId, selectedTrackClip.trackClipId, {
           fadeOut: newFadeOut > 0 ? newFadeOut : undefined,
-        }, false);
+        });
       }
     };
 
     const handleMouseUp = () => {
-      // Add single undo action when drag completes
-      const { undoManager, tracks } = useStore.getState();
-      const track = tracks.find(t => t.id === selectedTrackClip.trackId);
-      const currentTrackClip = track?.clips.find(tc => tc.id === selectedTrackClip.trackClipId);
-
-      if (currentTrackClip) {
-        const finalFadeIn = currentTrackClip.fadeIn;
-        const finalFadeOut = currentTrackClip.fadeOut;
-        const startFadeIn = dragStartValuesRef.current.fadeIn;
-        const startFadeOut = dragStartValuesRef.current.fadeOut;
-
-        // Only add undo action if values actually changed
-        if (finalFadeIn !== startFadeIn || finalFadeOut !== startFadeOut) {
-          undoManager.addAction({
-            type: 'UPDATE_TRACK_CLIP_OPTIONS',
-            trackId: selectedTrackClip.trackId,
-            trackClipId: selectedTrackClip.trackClipId,
-            oldValues: { fadeIn: startFadeIn, fadeOut: startFadeOut },
-            newValues: { fadeIn: finalFadeIn, fadeOut: finalFadeOut },
-          });
-        }
-      }
-
+      history.endGesture();
       setIsDraggingFadeIn(false);
       setIsDraggingFadeOut(false);
     };
@@ -275,7 +250,7 @@ export function ClipPropertiesPanel() {
 
     // Check if clicking near fade in handle
     if (Math.abs(x - fadeInWidth) < 10) {
-      dragStartValuesRef.current = { fadeIn: currentFadeIn, fadeOut: currentFadeOut };
+      history.beginGesture();
       setIsDraggingFadeIn(true);
       e.preventDefault();
       return;
@@ -283,7 +258,7 @@ export function ClipPropertiesPanel() {
 
     // Check if clicking near fade out handle
     if (Math.abs(x - fadeOutStart) < 10) {
-      dragStartValuesRef.current = { fadeIn: currentFadeIn, fadeOut: currentFadeOut };
+      history.beginGesture();
       setIsDraggingFadeOut(true);
       e.preventDefault();
       return;
@@ -311,18 +286,20 @@ export function ClipPropertiesPanel() {
     );
   };
 
+  const { trackId, trackClipId } = selectedTrackClip;
+
   const handleFadeInChange = (value: number) => {
     setFadeIn(value);
-    updateTrackClip(selectedTrackClip.trackId, selectedTrackClip.trackClipId, {
-      fadeIn: value > 0 ? value : undefined,
-    });
+    history.coalesced(`fade-in:${trackClipId}`, () =>
+      updateTrackClip(trackId, trackClipId, { fadeIn: value > 0 ? value : undefined })
+    );
   };
 
   const handleFadeOutChange = (value: number) => {
     setFadeOut(value);
-    updateTrackClip(selectedTrackClip.trackId, selectedTrackClip.trackClipId, {
-      fadeOut: value > 0 ? value : undefined,
-    });
+    history.coalesced(`fade-out:${trackClipId}`, () =>
+      updateTrackClip(trackId, trackClipId, { fadeOut: value > 0 ? value : undefined })
+    );
   };
 
   const currentEffect: ClipEffectId = trackClip.effect ?? 'none';
@@ -343,9 +320,9 @@ export function ClipPropertiesPanel() {
 
   const handleRepeatCountChange = (value: number) => {
     setRepeatCount(value);
-    updateTrackClip(selectedTrackClip.trackId, selectedTrackClip.trackClipId, {
-      repeatCount: value,
-    });
+    history.coalesced(`repeat-count:${trackClipId}`, () =>
+      updateTrackClip(trackId, trackClipId, { repeatCount: value })
+    );
   };
 
   return (
