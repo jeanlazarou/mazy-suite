@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useStore } from '../store';
-import { isTextEntry } from '../utils/keyboard';
+import { isTextEntry, shortcutLabel } from '../utils/keyboard';
 
 export function UndoRedoControls() {
   const { undo, redo, undoAvailable, redoAvailable } = useStore();
@@ -26,12 +26,12 @@ export function UndoRedoControls() {
   }, [undo, redo]);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" data-tour="undo">
       <button
         onClick={undo}
         disabled={!undoAvailable}
         className="px-3 py-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 disabled:cursor-not-allowed rounded text-sm transition-colors"
-        title="Undo (Ctrl+Z)"
+        title={`Undo (${shortcutLabel('Z')})`}
       >
         ↶ Undo
       </button>
@@ -39,7 +39,7 @@ export function UndoRedoControls() {
         onClick={redo}
         disabled={!redoAvailable}
         className="px-3 py-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 disabled:cursor-not-allowed rounded text-sm transition-colors"
-        title="Redo (Ctrl+Shift+Z)"
+        title={`Redo (${shortcutLabel('Z', true)})`}
       >
         ↷ Redo
       </button>

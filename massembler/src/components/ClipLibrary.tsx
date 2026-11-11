@@ -231,7 +231,7 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
           {isQuickClipExpanded && (
             <div className="p-4 pt-0">
               {/* Audio file selector */}
-              <div className="mb-4">
+              <div className="mb-4" data-tour="clip-source">
                 <label className="block text-sm mb-2">Select Audio File:</label>
                 <select
                   value={selectedFileId || ''}
@@ -283,7 +283,7 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
       </div>
 
       {/* Clip list */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4" data-tour="clip-list">
         <h3 className="text-sm font-semibold mb-2">Clips ({clips.length})</h3>
         <div className="space-y-2">
           {clips.map((clip) => {

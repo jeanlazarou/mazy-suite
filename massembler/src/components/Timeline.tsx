@@ -199,6 +199,7 @@ export function Timeline() {
           <button
             onClick={addTrack}
             className="px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs"
+            data-tour="add-track"
           >
             + Track
           </button>
@@ -209,6 +210,7 @@ export function Timeline() {
             style={{ minWidth: `${maxDuration * pixelsPerSecond}px` }}
             onMouseDown={handleRulerMouseDown}
             title="Click or drag to move the playhead"
+            data-tour="ruler"
           >
             {/* Minor markers (every second) */}
             {minorMarkers.map((time) => (
@@ -261,6 +263,7 @@ export function Timeline() {
         <label
           className="ml-4 flex items-center gap-1.5 text-xs select-none cursor-pointer"
           title="While dragging or resizing a clip, pull its edges onto other clips' edges and the playhead"
+          data-tour="snap"
         >
           <input
             type="checkbox"
@@ -308,7 +311,7 @@ export function Timeline() {
         </div>
 
         {/* Track timelines column (scrollable) */}
-        <div className="flex-1 overflow-auto" ref={tracksScrollRef}>
+        <div className="flex-1 overflow-auto" ref={tracksScrollRef} data-tour="timeline">
           {/* Positioning context for the playhead, spanning the full scroll
               width and height so the line covers every track */}
           <div

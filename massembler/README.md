@@ -168,10 +168,13 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
 ### UI/UX Features
 - **Material UI Speed Dial**: Beautiful floating action button (bottom-right) with:
   - 📁 Upload Audio
-  - 📂 Load Project
-  - 💾 Save Project
+  - 📂 Load Project (⌘O / Ctrl+O)
+  - 💾 Save Project (⌘S / Ctrl+S)
   - 🗜️ Optimize Project
   - 🎵 Export Mix
+- **Guided Tour**: Walks through the app step by step, the way the player's
+  tour does. It starts by itself on a first visit, and the **?** button next
+  to Undo/Redo replays it any time
 - **Collapsible Clip Library**: Hide the whole sidebar down to a narrow rail
   when you are arranging rather than defining clips, giving the timeline the
   space back. The rail keeps the clip count in view and reopens on a click.
@@ -212,6 +215,9 @@ pnpm dev
 4. Open your browser and navigate to `http://localhost:5173`
 
 ## 🎮 How to Use
+
+New here? The tour starts by itself on your first visit; the **?** button at
+the top right replays it.
 
 ### 1. Upload Audio Files
 

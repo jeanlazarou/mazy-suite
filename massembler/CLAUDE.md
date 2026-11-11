@@ -116,6 +116,13 @@ playhead, zero) and the maths; `TrackClipBlock` (drag, resize) and `Track`
 `OVERLAP_EPSILON` from `clipTiming.ts`, so clips snapped edge to edge do not
 read as overlapping.
 
+### The tour
+`src/components/AppTour.tsx` holds the steps (`@reactour/tour`, as in the
+player). Each step anchors to a `data-tour="..."` attribute on an element that
+exists even in an empty project, since the tour starts by itself on a first
+visit (`App`, via `utils/tourState.ts`). Moving or renaming one of those
+elements means keeping its `data-tour` attribute.
+
 ### Changing project save/load
 Modify `src/utils/projectManager.ts` - handles:
 - State serialization

@@ -3,13 +3,13 @@ import { history, useStore } from '../store';
 import { ClipEffectId } from '../types';
 import { CLIP_EFFECTS } from '../utils/clipEffects';
 import Button from '@mui/material/Button';
-import TextField from '@mui/material/TextField';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import LinkIcon from '@mui/icons-material/Link';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
+import { NumberField } from './NumberField';
 
 export function ClipPropertiesPanel() {
   const {
@@ -428,45 +428,27 @@ export function ClipPropertiesPanel() {
 
           {/* Fade In */}
           <div>
-            <TextField
+            <NumberField
               label="Fade In (seconds)"
-              type="number"
-              value={fadeIn.toFixed(2)}
-              onChange={(e) => handleFadeInChange(Math.max(0, parseFloat(e.target.value) || 0))}
-              fullWidth
-              inputProps={{ min: 0, max: effectiveDuration, step: 0.1 }}
-              variant="outlined"
-              size="small"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: 'white',
-                  '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.23)' },
-                  '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.4)' },
-                },
-                '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-              }}
+              value={fadeIn}
+              onChange={handleFadeInChange}
+              min={0}
+              max={effectiveDuration}
+              step={0.1}
+              decimals={2}
             />
           </div>
 
           {/* Fade Out */}
           <div>
-            <TextField
+            <NumberField
               label="Fade Out (seconds)"
-              type="number"
-              value={fadeOut.toFixed(2)}
-              onChange={(e) => handleFadeOutChange(Math.max(0, parseFloat(e.target.value) || 0))}
-              fullWidth
-              inputProps={{ min: 0, max: effectiveDuration, step: 0.1 }}
-              variant="outlined"
-              size="small"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  color: 'white',
-                  '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.23)' },
-                  '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.4)' },
-                },
-                '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-              }}
+              value={fadeOut}
+              onChange={handleFadeOutChange}
+              min={0}
+              max={effectiveDuration}
+              step={0.1}
+              decimals={2}
             />
           </div>
 
@@ -484,25 +466,15 @@ export function ClipPropertiesPanel() {
               sx={{ color: 'white' }}
             />
             {repeat && (
-              <TextField
-                label="Repeat Count"
-                type="number"
-                value={repeatCount}
-                onChange={(e) => handleRepeatCountChange(Math.max(1, parseInt(e.target.value) || 1))}
-                fullWidth
-                inputProps={{ min: 1, max: 100 }}
-                variant="outlined"
-                size="small"
-                sx={{
-                  mt: 1,
-                  '& .MuiOutlinedInput-root': {
-                    color: 'white',
-                    '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.23)' },
-                    '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.4)' },
-                  },
-                  '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-                }}
-              />
+              <div className="mt-2">
+                <NumberField
+                  label="Repeat Count"
+                  value={repeatCount}
+                  onChange={handleRepeatCountChange}
+                  min={1}
+                  max={100}
+                />
+              </div>
             )}
           </div>
 

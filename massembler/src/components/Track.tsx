@@ -72,6 +72,7 @@ export function Track({ track, pixelsPerSecond, maxDuration, renderMode = 'both'
           silencedBySolo ? 'opacity-50' : ''
         }`}
         title={silencedBySolo ? 'Silent while another track is soloed' : undefined}
+        data-tour="track-controls"
       >
         <input
           type="text"

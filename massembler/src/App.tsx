@@ -7,27 +7,40 @@ import { ProjectActions } from './components/ProjectActions';
 import { ToastContainer } from './components/ToastContainer';
 import { ClipPropertiesPanel } from './components/ClipPropertiesPanel';
 import { RestoreSessionDialog } from './components/RestoreSessionDialog';
+import { TourButton } from './components/AppTour';
+import { useTour } from '@reactour/tour';
 import { useStore } from './store';
 import { SavedSession, findSavedSession, startAutosave } from './utils/autosave';
+import { markTourSeen, tourSeen } from './utils/tourState';
 
 function App() {
   const { projectName, setProjectName, selectedTrackClip, clips } = useStore();
   const [isLibraryOpen, setIsLibraryOpen] = useState(true);
   const [savedSession, setSavedSession] = useState<SavedSession | null>(null);
+  const { setIsOpen: setTourOpen, setCurrentStep: setTourStep } = useTour();
 
   // Autosave waits until the last session has been offered back, so the empty
-  // project the app opens with cannot overwrite it first.
+  // project the app opens with cannot overwrite it first. With nothing to
+  // offer, a first visit gets the tour instead.
   useEffect(() => {
     let cancelled = false;
     findSavedSession().then((session) => {
       if (cancelled) return;
-      if (session) setSavedSession(session);
-      else startAutosave();
+      if (session) {
+        setSavedSession(session);
+        return;
+      }
+      startAutosave();
+      if (!tourSeen()) {
+        markTourSeen();
+        setTourStep(0);
+        setTourOpen(true);
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setTourOpen, setTourStep]);
 
   const handleSessionDecided = () => {
     setSavedSession(null);
@@ -55,7 +68,10 @@ function App() {
               • Use Speed Dial (bottom-right) for upload, save, load, and export
             </p>
           </div>
-          <UndoRedoControls />
+          <div className="flex items-center gap-2">
+            <UndoRedoControls />
+            <TourButton />
+          </div>
         </div>
       </header>
 

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import SpeedDial from '@mui/material/SpeedDial';
 import SpeedDialAction from '@mui/material/SpeedDialAction';
 import SpeedDialIcon from '@mui/material/SpeedDialIcon';
@@ -11,6 +11,7 @@ import { OptimizeDialog } from './OptimizeDialog';
 import { useStore } from '../store';
 import { exportMix, saveProject, loadProject, downloadBlob } from '../utils/projectManager';
 import { AudioFile } from '../types';
+import { shortcutLabel } from '../utils/keyboard';
 
 export function ProjectActions() {
   const [open, setOpen] = useState(false);
@@ -199,10 +200,32 @@ export function ProjectActions() {
     }
   };
 
+  // ⌘S saves and ⌘O opens, from anywhere: the browser's own Save Page and
+  // Open File are no use here. The ref keeps the listener on the latest state.
+  const shortcutsRef = useRef({ save: handleSaveProject, load: handleLoadProject, busy: isProcessing });
+  shortcutsRef.current = { save: handleSaveProject, load: handleLoadProject, busy: isProcessing };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (key !== 's' && key !== 'o') return;
+
+      e.preventDefault();
+      const { save, load, busy } = shortcutsRef.current;
+      if (busy || document.querySelector('[role="dialog"]')) return;
+      if (key === 's') void save();
+      else load();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const actions = [
     { icon: <CloudUploadIcon />, name: 'Upload Audio', onClick: handleUploadAudio },
-    { icon: <FolderOpenIcon />, name: 'Load Project', onClick: handleLoadProject },
-    { icon: <SaveIcon />, name: 'Save Project', onClick: handleSaveProject },
+    { icon: <FolderOpenIcon />, name: `Load Project (${shortcutLabel('O')})`, onClick: handleLoadProject },
+    { icon: <SaveIcon />, name: `Save Project (${shortcutLabel('S')})`, onClick: handleSaveProject },
     {
       icon: <CompressIcon />,
       name: 'Optimize Project',
@@ -217,6 +240,7 @@ export function ProjectActions() {
   return (
     <>
       <SpeedDial
+        data-tour="project-actions"
         ariaLabel="Project actions"
         sx={{ position: 'fixed', bottom: 24, right: 24 }}
         icon={<SpeedDialIcon />}

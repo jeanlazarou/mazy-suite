@@ -34,7 +34,7 @@ export function PlaybackControls() {
     <div className="bg-gray-800 border-t border-gray-700 p-4">
       <div className="flex items-center gap-4">
         {/* Play/Pause/Stop buttons */}
-        <div className="flex gap-2">
+        <div className="flex gap-2" data-tour="play">
           {!playbackState.isPlaying ? (
             <button
               onClick={play}
