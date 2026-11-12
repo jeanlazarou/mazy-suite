@@ -16,6 +16,8 @@ interface ClipWaveformProps {
   width: number;
   /** Drawn mirrored, for clips that play backwards. */
   reversed?: boolean;
+  /** The clip's volume, which the drawing follows. */
+  gain?: number;
 }
 
 /** A clip's waveform, filling the block it sits in. */
@@ -25,6 +27,7 @@ export const ClipWaveform = memo(function ClipWaveform({
   end,
   width,
   reversed = false,
+  gain = 1,
 }: ClipWaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -35,8 +38,8 @@ export const ClipWaveform = memo(function ClipWaveform({
     const ratio = window.devicePixelRatio || 1;
     canvas.width = Math.min(MAX_CANVAS_WIDTH, Math.max(1, Math.round(width * ratio)));
     canvas.height = Math.max(1, Math.round(canvas.clientHeight * ratio));
-    drawWaveform(canvas, buffer, start, end, 'rgba(191, 219, 254, 0.55)');
-  }, [buffer, start, end, width]);
+    drawWaveform(canvas, buffer, start, end, 'rgba(191, 219, 254, 0.55)', gain);
+  }, [buffer, start, end, width, gain]);
 
   return (
     <canvas

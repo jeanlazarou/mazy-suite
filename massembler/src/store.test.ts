@@ -76,6 +76,84 @@ describe('deleting a library clip', () => {
   });
 });
 
+describe('editing the selected clips', () => {
+  // From the shared project: clips are 1 s long; tc-1 (A) at 0 and tc-2 (B)
+  // at 2 on track 1 are linked; tc-3 (C) at 4 is linked with tc-5 and tc-6.
+  const select = (...ids: string[]) =>
+    useStore.setState({
+      selectedTrackClips: ids.map((id) => ({ trackId: find(id)!.trackId, trackClipId: id })),
+    });
+  const ids = () => s().selectedTrackClips.map((r) => r.trackClipId);
+
+  it('splits at the playhead in one undo step, selecting the second part', () => {
+    select('tc-4');
+    expect(s().splitSelectedAt(0.25)).toEqual({ split: 1, repeating: 0 });
+
+    const second = find(ids()[0])!;
+    expect(second.position).toBe(0.25);
+    expect(find('tc-4')?.trimEnd).toBe(0.25);
+
+    s().undo();
+    expect(find('tc-4')?.trimEnd).toBeUndefined();
+    expect(s().tracks[1].clips).toHaveLength(3);
+  });
+
+  it('reports a repeating clip under the playhead rather than splitting it', () => {
+    s().updateTrackClip('track-2', 'tc-4', { repeat: true, repeatCount: 3 });
+    select('tc-4');
+    expect(s().splitSelectedAt(1.5)).toEqual({ split: 0, repeating: 1 });
+  });
+
+  it('pastes copies at a time, selecting them; the clipboard survives undo', () => {
+    select('tc-4');
+    expect(s().copySelected()).toBe(1);
+    expect(s().pasteAt(10)).toBe(true);
+
+    const [pasted] = ids();
+    expect(pasted).not.toBe('tc-4');
+    expect(find(pasted)?.position).toBe(10);
+
+    s().undo();
+    expect(find(pasted)).toBeNull();
+    expect(s().clipboard).toHaveLength(1);
+    expect(s().pasteAt(0.5)).toBe(false); // over tc-4 itself
+    expect(s().pasteAt(1)).toBe(true); // just after it is fine
+  });
+
+  it('duplicates straight after the selection, again and again', () => {
+    select('tc-4');
+    expect(s().duplicateSelected()).toBe(true);
+    expect(find(ids()[0])?.position).toBe(1);
+    expect(s().duplicateSelected()).toBe(true);
+    expect(find(ids()[0])?.position).toBe(2);
+    expect(s().duplicateSelected()).toBe(true); // 3-4 ends exactly where tc-5 starts
+    expect(s().duplicateSelected()).toBe(false); // 4-5 is tc-5's
+  });
+
+  it('deletes the selected clips with the rest of their linked groups', () => {
+    select('tc-1', 'tc-4');
+    s().deleteSelected();
+
+    expect(find('tc-1')).toBeNull();
+    expect(find('tc-2')).toBeNull(); // tc-1's partner
+    expect(find('tc-4')).toBeNull();
+    expect(find('tc-3')).not.toBeNull();
+    expect(ids()).toEqual([]);
+  });
+
+  it('copies a whole group in place, as a group of its own', () => {
+    s().copyInPlace([
+      { trackId: 'track-1', trackClipId: 'tc-1' },
+      { trackId: 'track-1', trackClipId: 'tc-2' },
+    ]);
+
+    const copies = s().tracks[0].clips.filter((tc) => !['tc-1', 'tc-2', 'tc-3'].includes(tc.id));
+    expect(copies.map((tc) => tc.position)).toEqual([0, 2]);
+    expect(copies[0].linkId).toBe(copies[1].linkId);
+    expect(copies[0].linkId).not.toBe('link-1');
+  });
+});
+
 describe('removing an audio file', () => {
   const file = (id: string): AudioFile => ({
     id, name: `${id}.mp3`, duration: 10, buffer: {} as AudioBuffer,

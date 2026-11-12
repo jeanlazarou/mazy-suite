@@ -4,6 +4,13 @@ import { AudioFile, AudioClip, Track, TrackClip, PlaybackState } from './types';
 import { History, Snapshot, snapshotsDiffer } from './utils/undoRedo';
 import { getTrackClipDuration, getTrackClipEnd, spansOverlap } from './utils/clipTiming';
 import {
+  CopiedClip,
+  copiedSpan,
+  copyTrackClips,
+  placeCopies,
+  splitTrackClip,
+} from './utils/arrange';
+import {
   TrackClipMove,
   TrackClipPatch,
   TrackClipRef,
@@ -51,6 +58,26 @@ interface AppState {
   applyTrackClipPatches: (patches: TrackClipPatch[]) => void;
   /** Move several clips at once, across tracks if need be. */
   applyTrackClipMoves: (moves: TrackClipMove[]) => void;
+
+  // Editing the selected clips (see utils/arrange.ts); each is one undo step
+  /**
+   * Split every selected clip the time `at` falls inside; the second parts
+   * join the selection in place of the first. `repeating` counts selected
+   * clips under `at` that were left alone because they repeat.
+   */
+  splitSelectedAt: (at: number) => { split: number; repeating: number };
+  /** Remember the selected clips for pasting; returns how many. */
+  copySelected: () => number;
+  /** Place the copied clips, the earliest at `at`; false when one would overlap. */
+  pasteAt: (at: number) => boolean;
+  /** Place copies of the selected clips straight after them; false when one would overlap. */
+  duplicateSelected: () => boolean;
+  /** Delete the selected clips, and the rest of any linked group, as the panel's Delete does. */
+  deleteSelected: () => void;
+  /** Copies left exactly where these clips are: what an Alt-drag leaves behind. */
+  copyInPlace: (refs: TrackClipRef[]) => void;
+  /** What copySelected took. Not part of the undo history. */
+  clipboard: CopiedClip[];
 
   // Playback
   playbackState: PlaybackState;
@@ -127,6 +154,18 @@ interface Toast {
 let nextTrackId = 1;
 let nextTrackClipId = 1;
 let nextLinkId = 0;
+
+const newTrackClipId = () => `tc-${++nextTrackClipId}`;
+const newLinkId = () => `link-${++nextLinkId}`;
+
+/** The selection after an edit: these clips, the last of them shown in the panel. */
+const selecting = (refs: TrackClipRef[]) => ({
+  selectedTrackClips: refs,
+  selectedTrackClip: refs[refs.length - 1] ?? null,
+});
+
+/** Where a set of copied clips starts on the timeline. */
+const copiedStart = (copied: CopiedClip[]) => copied[0].trackClip.position - copied[0].offset;
 
 const SNAP_PREFERENCE_KEY = 'massembler.snap';
 
@@ -243,7 +282,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
 
     const newTrackClip: TrackClip = {
-      id: `tc-${++nextTrackClipId}`,
+      id: newTrackClipId(),
       clipId,
       position,
       repeat: false,
@@ -288,7 +327,7 @@ export const useStore = create<AppState>((set, get) => ({
 
     if (members.size < 2) return;
 
-    const linkId = `link-${++nextLinkId}`;
+    const linkId = newLinkId();
     state.applyTrackClipPatches(
       [...members.values()].map((ref) => ({ ...ref, updates: { linkId } }))
     );
@@ -346,6 +385,84 @@ export const useStore = create<AppState>((set, get) => ({
       }),
     }));
   },
+  clipboard: [],
+  splitSelectedAt: (at) => {
+    const state = get();
+    let split = 0;
+    let repeating = 0;
+    const selection: TrackClipRef[] = [];
+
+    const tracks = state.tracks.map((track) => {
+      if (!state.selectedTrackClips.some((r) => r.trackId === track.id)) return track;
+
+      const next: TrackClip[] = [];
+      for (const trackClip of track.clips) {
+        const selected = state.selectedTrackClips.some((r) => r.trackClipId === trackClip.id);
+        const clip = state.clips.find((c) => c.id === trackClip.clipId);
+        const parts = selected && clip ? splitTrackClip(trackClip, clip, at, newTrackClipId()) : null;
+
+        if (parts) {
+          next.push(...parts);
+          selection.push({ trackId: track.id, trackClipId: parts[1].id });
+          split++;
+          continue;
+        }
+        next.push(trackClip);
+        if (!selected || !clip) continue;
+        selection.push({ trackId: track.id, trackClipId: trackClip.id });
+        const under = at > trackClip.position && at < getTrackClipEnd(trackClip, clip);
+        if (under && trackClip.repeat && (trackClip.repeatCount ?? 1) > 1) repeating++;
+      }
+      return { ...track, clips: next };
+    });
+
+    if (split > 0) set({ tracks, ...selecting(selection) });
+    return { split, repeating };
+  },
+  copySelected: () => {
+    const { tracks, selectedTrackClips } = get();
+    const clipboard = copyTrackClips(tracks, selectedTrackClips);
+    if (clipboard.length > 0) set({ clipboard });
+    return clipboard.length;
+  },
+  pasteAt: (at) => {
+    const { tracks, clips, clipboard } = get();
+    if (clipboard.length === 0) return false;
+    const result = placeCopies(tracks, clips, clipboard, at, newTrackClipId, newLinkId);
+    if (!result) return false;
+    set({ tracks: result.tracks, ...selecting(result.placed) });
+    return true;
+  },
+  duplicateSelected: () => {
+    const { tracks, clips, selectedTrackClips } = get();
+    const copied = copyTrackClips(tracks, selectedTrackClips);
+    if (copied.length === 0) return false;
+    const after = copiedStart(copied) + copiedSpan(copied, clips);
+    const result = placeCopies(tracks, clips, copied, after, newTrackClipId, newLinkId);
+    if (!result) return false;
+    set({ tracks: result.tracks, ...selecting(result.placed) });
+    return true;
+  },
+  deleteSelected: () => {
+    const { tracks, selectedTrackClips } = get();
+    if (selectedTrackClips.length === 0) return;
+    const doomed = new Set<string>();
+    for (const ref of selectedTrackClips) {
+      const group = getLinkedRefs(tracks, ref);
+      for (const member of group.length > 0 ? group : [ref]) doomed.add(member.trackClipId);
+    }
+    set({ tracks: removeTrackClips(tracks, (tc) => doomed.has(tc.id)), ...selecting([]) });
+  },
+  copyInPlace: (refs) => {
+    const { tracks, clips } = get();
+    const copied = copyTrackClips(tracks, refs);
+    if (copied.length === 0) return;
+    const result = placeCopies(
+      tracks, clips, copied, copiedStart(copied), newTrackClipId, newLinkId, true
+    );
+    if (result) set({ tracks: result.tracks });
+  },
+
   applyTrackClipMoves: (moves) => {
     if (moves.length === 0) return;
 

@@ -119,6 +119,17 @@ describe('scheduled fades', () => {
     expect(last(events)).toEqual(['ramp', 0, 10.5]);
   });
 
+  it("scales the envelope by the clip's own volume", () => {
+    const events = schedule(placed({ ...fades, gain: 1.5 }), 4.5).gains[0].gain.events;
+    expect(events[0]).toEqual(['set', 0.75, 10]); // half way down the fade-out, at 1.5
+  });
+
+  it("sets a clip's volume directly when it has no fades", () => {
+    const fade = schedule(placed({ gain: 0.5 }), 0).gains[0];
+    expect(fade.gain.value).toBe(0.5);
+    expect(fade.gain.events).toEqual([]);
+  });
+
   it('picks a fade-in up part-way, not from silence', () => {
     const events = automation(2.5);
     expect(events[0]).toEqual(['set', 0.5, 10]);

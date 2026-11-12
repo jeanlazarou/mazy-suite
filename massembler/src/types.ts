@@ -73,6 +73,8 @@ export interface TrackClip {
   // Fade settings
   fadeIn?: number;    // Fade-in duration in seconds
   fadeOut?: number;   // Fade-out duration in seconds
+  /** Clip volume, linear: 1 (or unset) plays it as recorded, up to 2. */
+  gain?: number;
 }
 
 export interface Track {

@@ -99,6 +99,7 @@ export function TrackClipBlock({
       end={effectiveStartTime + effectiveDuration * resolveClipPlaybackRate(trackClip.effect)}
       width={width}
       reversed={trackClip.effect === 'reverse'}
+      gain={trackClip.gain ?? 1}
     />
   );
 
@@ -107,7 +108,7 @@ export function TrackClipBlock({
    * reaches for them. Null when snapping is off.
    */
   const startSnapping = (exclude: Set<string>) => {
-    const { snapEnabled, playbackState } = useStore.getState();
+    const { snapEnabled, playbackState, tracks, clips } = useStore.getState();
     if (!snapEnabled) return null;
     return {
       targets: snapTargets(tracks, clips, playbackState.currentTime, exclude),
@@ -115,9 +116,10 @@ export function TrackClipBlock({
     };
   };
 
-  // Helper to check if a position would cause overlap
+  // Helper to check if a position would cause overlap. Reads the timeline as
+  // it is now: an Alt-drag leaves a copy behind mid-gesture.
   const checkOverlap = (targetTrackId: string, position: number): boolean => {
-    const targetTrack = tracks.find((t) => t.id === targetTrackId);
+    const targetTrack = useStore.getState().tracks.find((t) => t.id === targetTrackId);
     if (!targetTrack) return false;
 
     const newStart = position;
@@ -350,10 +352,17 @@ export function TrackClipBlock({
 
     // The dragged clip's edges snap; the rest of its group follows it, so
     // none of them are targets.
-    const snapping = startSnapping(
-      new Set(group.length > 0 ? group.map((m) => m.trackClipId) : [trackClip.id])
-    );
+    const moving = group.length > 0 ? group : [{ trackId, trackClipId: trackClip.id }];
+    const movingIds = new Set(moving.map((m) => m.trackClipId));
+    let snapping = startSnapping(movingIds);
     const footprint = getTrackClipDuration(trackClip, clip);
+
+    // Alt-drag leaves a copy behind - of the whole group, for a linked clip -
+    // made once the pointer has really moved, so an Alt-click copies nothing.
+    // If the drag then never gets anywhere, the copy is taken back.
+    const duplicating = e.altKey;
+    const pressedAt = { x: e.clientX, y: e.clientY };
+    let beforeCopy: ReturnType<typeof useStore.getState>['tracks'] | null = null;
 
     // A clip that is already sitting on top of another one - an arrangement
     // made back when repetitions did not count towards a clip's footprint -
@@ -365,6 +374,15 @@ export function TrackClipBlock({
         : checkOverlap(trackId, trackClip.position);
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (duplicating && !beforeCopy) {
+        const moved = Math.hypot(moveEvent.clientX - pressedAt.x, moveEvent.clientY - pressedAt.y);
+        if (moved < 3) return;
+        beforeCopy = useStore.getState().tracks;
+        useStore.getState().copyInPlace(moving);
+        // The copy's edges are worth snapping back to.
+        snapping = startSnapping(movingIds);
+      }
+
       // Find which track the mouse is currently over
       const allTrackElements = document.querySelectorAll('[data-track-id]');
       let targetTrackId = currentTrackId;
@@ -439,6 +457,14 @@ export function TrackClipBlock({
       setSnapGuide(null);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+
+      if (beforeCopy) {
+        const now = useStore.getState().tracks.find((t) => t.clips.some((tc) => tc.id === trackClip.id));
+        const stayed =
+          now?.id === startTrackId &&
+          now.clips.find((tc) => tc.id === trackClip.id)?.position === dragStartPosRef.current;
+        if (stayed) useStore.setState({ tracks: beforeCopy });
+      }
       history.endGesture();
     };
 

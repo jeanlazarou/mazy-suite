@@ -2,6 +2,14 @@ import { useStore, useStoreFields } from '../store';
 import { Track } from './Track';
 import { getProjectDuration } from '../utils/clipTiming';
 import { seek } from '../utils/transport';
+import { isTextEntry } from '../utils/keyboard';
+import {
+  copySelection,
+  deleteSelection,
+  duplicateSelection,
+  pasteAtPlayhead,
+  splitAtPlayhead,
+} from '../utils/arrangeCommands';
 import { useRef, useEffect, useState } from 'react';
 
 /** Keep the playhead inside this band of the viewport while following. */
@@ -64,6 +72,48 @@ export function Timeline() {
       minorMarkers.push(i);
     }
   }
+
+  // Editing shortcuts on the selected clips: S splits at the playhead, ⌘C/⌘V
+  // copy and paste at the playhead, ⌘D duplicates, Delete deletes, Escape
+  // clears the selection. Not while typing, or with a dialog open.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat || isTextEntry(e.target)) return;
+      if (document.querySelector('[role="dialog"]')) return;
+
+      const key = e.key.toLowerCase();
+      const selected = useStore.getState().selectedTrackClips.length > 0;
+
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+        // Without a selection, ⌘C is left to copy text on the page.
+        if (key === 'c' && selected) {
+          e.preventDefault();
+          copySelection();
+        } else if (key === 'v') {
+          e.preventDefault();
+          pasteAtPlayhead();
+        } else if (key === 'd') {
+          e.preventDefault();
+          duplicateSelection();
+        }
+        return;
+      }
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      if (key === 's') {
+        e.preventDefault();
+        splitAtPlayhead();
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && selected) {
+        e.preventDefault();
+        deleteSelection();
+      } else if (e.key === 'Escape' && selected) {
+        useStore.getState().setSelectedTrackClip(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Click, or drag, along the ruler to move the playhead.
   const handleRulerMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {

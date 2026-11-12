@@ -9,7 +9,12 @@ import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import LinkIcon from '@mui/icons-material/Link';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
+import ContentCutIcon from '@mui/icons-material/ContentCut';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { NumberField } from './NumberField';
+import { VolumeKnob } from './VolumeKnob';
+import { duplicateSelection, splitAtPlayhead } from '../utils/arrangeCommands';
+import { shortcutLabel } from '../utils/keyboard';
 
 export function ClipPropertiesPanel() {
   const {
@@ -287,6 +292,14 @@ export function ClipPropertiesPanel() {
     setSelectedTrackClip(null);
   };
 
+  const handleGainChange = (value: number) => {
+    history.coalesced(`clip-gain:${selectedTrackClip.trackClipId}`, () =>
+      updateTrackClip(selectedTrackClip.trackId, selectedTrackClip.trackClipId, {
+        gain: Math.abs(value - 1) < 0.005 ? undefined : value,
+      })
+    );
+  };
+
   const handleLink = () => {
     linkTrackClips(selectedTrackClips);
   };
@@ -374,10 +387,29 @@ export function ClipPropertiesPanel() {
             </Button>
           )}
           <Button
+            onClick={splitAtPlayhead}
+            size="small"
+            startIcon={<ContentCutIcon />}
+            sx={{ color: '#d1d5db' }}
+            title="Split at the playhead (S)"
+          >
+            Split
+          </Button>
+          <Button
+            onClick={duplicateSelection}
+            size="small"
+            startIcon={<ContentCopyIcon />}
+            sx={{ color: '#d1d5db' }}
+            title={`Place a copy straight after it (${shortcutLabel('D')}). Alt-drag a clip to place a copy anywhere.`}
+          >
+            Duplicate
+          </Button>
+          <Button
             onClick={handleDelete}
             size="small"
             startIcon={<DeleteIcon />}
             sx={{ color: '#ef4444' }}
+            title="Delete (Delete key)"
           >
             {groupSize > 0 ? `Delete group (${groupSize})` : 'Delete'}
           </Button>
@@ -413,6 +445,22 @@ export function ClipPropertiesPanel() {
 
         {/* Controls */}
         <div className="space-y-4">
+          {/* Volume */}
+          <div className="flex items-center gap-3">
+            <VolumeKnob
+              value={trackClip.gain ?? 1}
+              onChange={handleGainChange}
+              max={2}
+              defaultValue={1}
+              label="Clip volume"
+              size={40}
+            />
+            <div className="text-sm text-gray-300">
+              Volume
+              <div className="text-xs text-gray-500">100 plays it as recorded; up to 200</div>
+            </div>
+          </div>
+
           {/* Effect */}
           <div>
             <div className="text-sm mb-2 text-gray-300">Effect</div>

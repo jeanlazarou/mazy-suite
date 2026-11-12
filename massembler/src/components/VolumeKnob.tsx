@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 
 interface VolumeKnobProps {
-  value: number; // 0 to 1
+  value: number; // 0 to max
   onChange: (value: number) => void;
   size?: number;
   /** Value restored on double-click. */
   defaultValue?: number;
   label?: string;
+  /** Top of the range: 1 is full volume, above it boosts. Shown as a percentage of 1. */
+  max?: number;
 }
 
 /** Pixels of vertical travel that sweep the whole range. */
@@ -19,7 +21,7 @@ const COARSE_STEP = 0.1;
 const ANGLE_MIN = -135;
 const ANGLE_SWEEP = 270;
 
-const clamp = (value: number) => Math.max(0, Math.min(1, value));
+const clampTo = (max: number) => (value: number) => Math.max(0, Math.min(max, value));
 
 /** Point on the knob's arc, in a 0-100 viewBox. */
 function polar(angleDeg: number, radius: number) {
@@ -40,8 +42,10 @@ export function VolumeKnob({
   size = 40,
   defaultValue = 0.8,
   label = 'Volume',
+  max = 1,
 }: VolumeKnobProps) {
   const knobRef = useRef<HTMLDivElement>(null);
+  const clamp = clampTo(max);
   const [isDragging, setIsDragging] = useState(false);
 
   // Live during a drag: the pointer's last Y and the value we have accumulated.
@@ -64,7 +68,7 @@ export function VolumeKnob({
       const dy = drag.lastY - moveEvent.clientY;
       drag.lastY = moveEvent.clientY;
       drag.value = clamp(
-        drag.value + (dy / RANGE_PX) * (moveEvent.shiftKey ? FINE_FACTOR : 1)
+        drag.value + (dy / RANGE_PX) * max * (moveEvent.shiftKey ? FINE_FACTOR : 1)
       );
       onChange(drag.value);
     };
@@ -88,25 +92,25 @@ export function VolumeKnob({
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const step = STEP * (e.shiftKey ? FINE_FACTOR : 1);
-      onChange(clamp(value + (e.deltaY < 0 ? step : -step)));
+      const step = STEP * max * (e.shiftKey ? FINE_FACTOR : 1);
+      onChange(clampTo(max)(value + (e.deltaY < 0 ? step : -step)));
     };
 
     node.addEventListener('wheel', handleWheel, { passive: false });
     return () => node.removeEventListener('wheel', handleWheel);
-  }, [value, onChange]);
+  }, [value, onChange, max]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    const step = STEP * (e.shiftKey ? FINE_FACTOR : 1);
+    const step = STEP * max * (e.shiftKey ? FINE_FACTOR : 1);
     const moves: Record<string, number | undefined> = {
       ArrowUp: value + step,
       ArrowRight: value + step,
       ArrowDown: value - step,
       ArrowLeft: value - step,
-      PageUp: value + COARSE_STEP,
-      PageDown: value - COARSE_STEP,
+      PageUp: value + COARSE_STEP * max,
+      PageDown: value - COARSE_STEP * max,
       Home: 0,
-      End: 1,
+      End: max,
     };
 
     const next = moves[e.key];
@@ -117,7 +121,9 @@ export function VolumeKnob({
   };
 
   const percent = Math.round(value * 100);
-  const angle = ANGLE_MIN + value * ANGLE_SWEEP;
+  // How far round the dial: the arc spans the whole range, whatever its top.
+  const fraction = value / max;
+  const angle = ANGLE_MIN + fraction * ANGLE_SWEEP;
 
   return (
     <div
@@ -126,7 +132,7 @@ export function VolumeKnob({
       tabIndex={0}
       aria-label={label}
       aria-valuemin={0}
-      aria-valuemax={100}
+      aria-valuemax={Math.round(max * 100)}
       aria-valuenow={percent}
       aria-valuetext={`${percent}%`}
       title={`${label}: ${percent}% - drag up/down, wheel, or arrow keys. Shift for fine, double-click to reset.`}
@@ -147,9 +153,9 @@ export function VolumeKnob({
           strokeWidth={8}
           strokeLinecap="round"
         />
-        {value > 0.001 && (
+        {fraction > 0.001 && (
           <path
-            d={arcPath(0, value, 42)}
+            d={arcPath(0, fraction, 42)}
             fill="none"
             stroke="#60a5fa"
             strokeWidth={8}

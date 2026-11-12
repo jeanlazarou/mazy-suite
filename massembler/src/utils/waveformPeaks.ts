@@ -45,13 +45,17 @@ function getPeaks(buffer: AudioBuffer): Peaks {
   return peaks;
 }
 
-/** Draw the stretch [start, end] of a buffer (in seconds) across the whole canvas. */
+/**
+ * Draw the stretch [start, end] of a buffer (in seconds) across the whole
+ * canvas, at `gain` - the volume it will play at - clipped to the canvas.
+ */
 export function drawWaveform(
   canvas: HTMLCanvasElement,
   buffer: AudioBuffer,
   start: number,
   end: number,
-  color: string
+  color: string,
+  gain = 1
 ) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -66,7 +70,9 @@ export function drawWaveform(
 
   ctx.fillStyle = color;
   for (let x = 0; x < width; x++) {
-    const [lo, hi] = rangeAt(start + (x * (end - start)) / width, start + ((x + 1) * (end - start)) / width);
+    const [low, high] = rangeAt(start + (x * (end - start)) / width, start + ((x + 1) * (end - start)) / width);
+    const lo = Math.max(-1, low * gain);
+    const hi = Math.min(1, high * gain);
     ctx.fillRect(x, mid - hi * mid, 1, Math.max(1, (hi - lo) * mid));
   }
 }

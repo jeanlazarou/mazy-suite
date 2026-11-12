@@ -46,6 +46,20 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
     is remembered
 
 ### Advanced Editing
+- **Split**: **S** (or **Split** in the clip panel) cuts the selected clips in
+  two at the playhead; each part keeps its own audio, effect and volume, the
+  fade-in staying with the first and the fade-out going to the second
+- **Duplicate and copy**:
+  - **Alt-drag** a clip to drag a copy away, leaving the original in place
+    (a linked group is copied whole, as a new group)
+  - **⌘D / Ctrl+D** places a copy straight after the selection; press it again
+    to keep going
+  - **⌘C / ⌘V** copy the selection and paste it at the playhead, each clip on
+    the track it came from
+- **Delete** (or Backspace) deletes the selected clips; **Escape** clears the
+  selection
+- **Clip volume**: A knob in the clip panel, from silent up to 200%; the clip's
+  waveform on the timeline grows and shrinks with it
 - **Clip Resizing**: Adjust clip length by dragging left or right edges
   - Each clip instance can be trimmed independently
   - Left edge resize moves the clip position for intuitive editing
@@ -277,11 +291,15 @@ only the name can be edited. The row tells you which case applies.
    - Each instance can be resized independently
    - Left edge resize moves the clip position for intuitive editing
 6. Click a clip block to open its properties panel below the timeline:
+   - Turn its **volume** up or down
    - Pick a one-click **effect** (reverse, underwater, cathedral, …)
    - Set fade in/out, either numerically or by dragging the green/red handles
      on the clip's waveform
    - Toggle repeat on/off and adjust the repeat count (set to 1 to disable)
-   - Delete it from the track
+   - **Split** it at the playhead (**S**), **Duplicate** it (**⌘D**), or
+     delete it from the track (**Delete**)
+   - Alt-drag a clip to place a copy anywhere; ⌘C / ⌘V copy and paste at the
+     playhead
 
    Clips carrying an effect show a badge on the timeline block.
 

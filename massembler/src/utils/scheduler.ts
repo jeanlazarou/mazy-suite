@@ -82,15 +82,19 @@ function schedulePass(
   }
   fade.connect(destination);
 
+  // The clip's own volume scales its fade envelope.
+  const level = trackClip.gain ?? 1;
   const fadeIn = trackClip.fadeIn ?? 0;
   const fadeOut = trackClip.fadeOut ?? 0;
   if (fadeIn > 0 || fadeOut > 0) {
-    fade.gain.setValueAtTime(fadeGainAt(length, fadeIn, fadeOut, skip), when);
+    fade.gain.setValueAtTime(level * fadeGainAt(length, fadeIn, fadeOut, skip), when);
     for (const point of fadeEnvelope(length, fadeIn, fadeOut)) {
       if (point.time > skip) {
-        fade.gain.linearRampToValueAtTime(point.gain, when + point.time - skip);
+        fade.gain.linearRampToValueAtTime(level * point.gain, when + point.time - skip);
       }
     }
+  } else if (level !== 1) {
+    fade.gain.value = level;
   }
 
   const offset = resolveClipOffset(source.buffer, trackClip.effect, range.start, range.end);
