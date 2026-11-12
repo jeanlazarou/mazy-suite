@@ -20,6 +20,7 @@ export function OptimizeDialog({ onClose }: OptimizeDialogProps) {
     audioFiles,
     pixelsPerSecond,
     projectName,
+    masterVolume,
     loadProjectState,
     showToast,
   } = useStoreFields(
@@ -28,6 +29,7 @@ export function OptimizeDialog({ onClose }: OptimizeDialogProps) {
     'audioFiles',
     'pixelsPerSecond',
     'projectName',
+    'masterVolume',
     'loadProjectState',
     'showToast'
   );
@@ -70,7 +72,8 @@ export function OptimizeDialog({ onClose }: OptimizeDialogProps) {
         optimized.tracks,
         optimized.clips,
         optimized.audioFiles,
-        pixelsPerSecond
+        pixelsPerSecond,
+        masterVolume
       );
       downloadBlob(blob, `${projectName}-optimized.mass`);
       showToast(
@@ -130,7 +133,8 @@ export function OptimizeDialog({ onClose }: OptimizeDialogProps) {
         restored.clips,
         restored.audioFiles,
         pixelsPerSecond,
-        projectName
+        projectName,
+        masterVolume
       );
       showToast(`Relinked ${file.name}`, 'success');
     } catch (error) {

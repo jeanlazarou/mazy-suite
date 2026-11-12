@@ -36,6 +36,8 @@ export interface SessionProject {
   tracks: Track[];
   clips: AudioClip[];
   pixelsPerSecond: number;
+  /** Absent in sessions kept before it existed: full volume. */
+  masterVolume?: number;
   audioFiles: SessionAudioMeta[];
 }
 

@@ -55,14 +55,17 @@ function schedulePass(
   destination: AudioNode,
   from: number,
   at: number,
+  until: number,
   scheduled: Scheduled
 ) {
   const length = range.duration;
-  if (passStart + length <= from) return;
+  if (passStart + length <= from || passStart >= until) return;
 
-  // Seconds of this pass already behind the playhead, and when it sounds.
+  // Seconds of this pass already behind the playhead, when it sounds, and
+  // how much of it sounds before `until` cuts it.
   const skip = Math.max(0, from - passStart);
   const when = at + Math.max(0, passStart - from);
+  const playing = Math.min(length - skip, until - Math.max(passStart, from));
 
   const source = ctx.createBufferSource();
   source.buffer = resolveClipBuffer(ctx, buffer, trackClip.effect);
@@ -98,13 +101,14 @@ function schedulePass(
   }
 
   const offset = resolveClipOffset(source.buffer, trackClip.effect, range.start, range.end);
-  source.start(when, offset + skip * rate, (length - skip) * rate);
+  source.start(when, offset + skip * rate, playing * rate);
   scheduled.sources.push(source);
 }
 
 /**
  * Schedule every clip pass that sounds at or after timeline time `from`, so
- * that `from` lands on context time `at`. Each track's clips go to the node
+ * that `from` lands on context time `at` - and, given `until`, nothing at or
+ * past it: a loop's pass ends there. Each track's clips go to the node
  * `inputFor` returns; a track it returns null for is left out.
  */
 export function scheduleArrangement(
@@ -114,7 +118,8 @@ export function scheduleArrangement(
   audioFiles: AudioFile[],
   inputFor: (track: Track) => AudioNode | null,
   from: number,
-  at: number
+  at: number,
+  until = Infinity
 ): Scheduled {
   const scheduled: Scheduled = { sources: [], chains: [] };
 
@@ -138,6 +143,7 @@ export function scheduleArrangement(
           destination,
           from,
           at,
+          until,
           scheduled
         );
       }

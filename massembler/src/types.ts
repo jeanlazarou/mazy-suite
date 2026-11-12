@@ -82,9 +82,17 @@ export interface Track {
   name: string;
   clips: TrackClip[];
   volume: number;    // 0 to 1
+  /** Stereo position: -1 left, 0 (or unset) centre, 1 right. */
+  pan?: number;
   muted: boolean;
   /** Several tracks may be soloed at once; see isTrackAudible. */
   solo?: boolean;
+}
+
+/** A stretch of the timeline that playback goes round, in seconds. */
+export interface LoopRegion {
+  start: number;
+  end: number;
 }
 
 export interface PlaybackState {

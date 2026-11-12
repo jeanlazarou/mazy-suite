@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
-import { AudioFile, AudioClip, Track, TrackClip, PlaybackState } from './types';
+import { AudioFile, AudioClip, LoopRegion, Track, TrackClip, PlaybackState } from './types';
 import { History, Snapshot, snapshotsDiffer } from './utils/undoRedo';
 import { getTrackClipDuration, getTrackClipEnd, spansOverlap } from './utils/clipTiming';
 import {
@@ -134,9 +134,20 @@ interface AppState {
     clips: AudioClip[],
     audioFiles: AudioFile[],
     pixelsPerSecond: number,
-    projectName: string
+    projectName: string,
+    masterVolume?: number
   ) => void;
   clearProject: () => void;
+
+  // Playback setup
+  /** The region playback goes round while looping is on. For the session only. */
+  loopRegion: LoopRegion | null;
+  setLoopRegion: (region: LoopRegion | null) => void;
+  loopEnabled: boolean;
+  setLoopEnabled: (enabled: boolean) => void;
+  /** Volume of the whole mix, 0 to 1, in playback and export. Saved with the project; not undoable. */
+  masterVolume: number;
+  setMasterVolume: (volume: number) => void;
 
   // Toast notifications
   toasts: Toast[];
@@ -600,7 +611,7 @@ export const useStore = create<AppState>((set, get) => ({
   // Project management
   projectName: 'Untitled Project',
   setProjectName: (name) => set({ projectName: name }),
-  loadProjectState: (loadedTracks, clips, audioFiles, pixelsPerSecond, projectName) => {
+  loadProjectState: (loadedTracks, clips, audioFiles, pixelsPerSecond, projectName, masterVolume = 1) => {
     // Earlier builds left a deleted clip's track clips behind.
     const clipIds = new Set(clips.map((c) => c.id));
     const tracks = removeTrackClips(loadedTracks, (tc) => !clipIds.has(tc.clipId));
@@ -631,10 +642,13 @@ export const useStore = create<AppState>((set, get) => ({
       audioFiles,
       pixelsPerSecond,
       projectName,
+      masterVolume,
       // Ids are reused across projects, so a leftover selection would point
       // at whatever clip inherits its id here.
       selectedTrackClip: null,
       selectedTrackClips: [],
+      loopRegion: null,
+      loopEnabled: false,
       playbackState: {
         isPlaying: false,
         currentTime: 0,
@@ -660,10 +674,21 @@ export const useStore = create<AppState>((set, get) => ({
       selectedClipId: null,
       selectedTrackClip: null,
       selectedTrackClips: [],
+      loopRegion: null,
+      loopEnabled: false,
+      masterVolume: 1,
     });
 
     history.clear();
   },
+
+  loopRegion: null,
+  setLoopRegion: (region) =>
+    set(region ? { loopRegion: region } : { loopRegion: null, loopEnabled: false }),
+  loopEnabled: false,
+  setLoopEnabled: (enabled) => set({ loopEnabled: enabled && get().loopRegion !== null }),
+  masterVolume: 1,
+  setMasterVolume: (volume) => set({ masterVolume: volume }),
 
   // Toast notifications
   toasts: [],

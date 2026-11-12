@@ -246,6 +246,37 @@ describe('the audio context', () => {
   });
 });
 
+describe('loop and master', () => {
+  it('only loops once there is a region, and stops looping when it is cleared', () => {
+    s().setLoopEnabled(true);
+    expect(s().loopEnabled).toBe(false);
+
+    s().setLoopRegion({ start: 1, end: 3 });
+    s().setLoopEnabled(true);
+    expect(s().loopEnabled).toBe(true);
+
+    s().setLoopRegion(null);
+    expect(s().loopEnabled).toBe(false);
+  });
+
+  it('takes the master volume from a loaded project, and leaves the loop behind', () => {
+    s().setLoopRegion({ start: 1, end: 3 });
+    s().loadProjectState([], [], [], 50, 'quiet', 0.6);
+
+    expect(s().masterVolume).toBe(0.6);
+    expect(s().loopRegion).toBeNull();
+
+    s().loadProjectState([], [], [], 50, 'older'); // saved before master volume existed
+    expect(s().masterVolume).toBe(1);
+  });
+
+  it('keeps the master volume and the loop out of the undo history', () => {
+    s().setMasterVolume(0.3);
+    s().setLoopRegion({ start: 1, end: 3 });
+    expect(history.canUndo()).toBe(false);
+  });
+});
+
 describe('snap setting', () => {
   it('is on by default and remembered when changed', () => {
     expect(s().snapEnabled).toBe(true);

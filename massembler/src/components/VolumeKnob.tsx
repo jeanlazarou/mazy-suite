@@ -1,27 +1,32 @@
 import { useEffect, useRef, useState } from 'react';
 
 interface VolumeKnobProps {
-  value: number; // 0 to max
+  value: number; // min to max
   onChange: (value: number) => void;
   size?: number;
   /** Value restored on double-click. */
   defaultValue?: number;
   label?: string;
-  /** Top of the range: 1 is full volume, above it boosts. Shown as a percentage of 1. */
+  /** Bottom of the range. */
+  min?: number;
+  /** Top of the range: for a volume, 1 is full and above it boosts. */
   max?: number;
+  /** Where the arc grows from: the bottom of the range, or its centre for a pan. */
+  origin?: number;
+  /** How the value reads on the knob; by default, as a percentage of 1. */
+  format?: (value: number) => string;
 }
 
 /** Pixels of vertical travel that sweep the whole range. */
 const RANGE_PX = 150;
 /** Multiplier while Shift is held, for fine adjustment. */
 const FINE_FACTOR = 0.25;
+/** Steps as fractions of the whole range. */
 const STEP = 0.02;
 const COARSE_STEP = 0.1;
 
 const ANGLE_MIN = -135;
 const ANGLE_SWEEP = 270;
-
-const clampTo = (max: number) => (value: number) => Math.max(0, Math.min(max, value));
 
 /** Point on the knob's arc, in a 0-100 viewBox. */
 function polar(angleDeg: number, radius: number) {
@@ -36,17 +41,24 @@ function arcPath(fromValue: number, toValue: number, radius: number) {
   return `M ${from.x} ${from.y} A ${radius} ${radius} 0 ${largeArc} 1 ${to.x} ${to.y}`;
 }
 
+const asPercent = (value: number) => `${Math.round(value * 100)}`;
+
+/** A rotary control: a volume by default, or any range given min, max and origin. */
 export function VolumeKnob({
   value,
   onChange,
   size = 40,
   defaultValue = 0.8,
   label = 'Volume',
+  min = 0,
   max = 1,
+  origin = min,
+  format = asPercent,
 }: VolumeKnobProps) {
   const knobRef = useRef<HTMLDivElement>(null);
-  const clamp = clampTo(max);
   const [isDragging, setIsDragging] = useState(false);
+  const span = max - min;
+  const clamp = (v: number) => Math.max(min, Math.min(max, v));
 
   // Live during a drag: the pointer's last Y and the value we have accumulated.
   // Accumulating (rather than deriving from the press point) means toggling
@@ -68,7 +80,7 @@ export function VolumeKnob({
       const dy = drag.lastY - moveEvent.clientY;
       drag.lastY = moveEvent.clientY;
       drag.value = clamp(
-        drag.value + (dy / RANGE_PX) * max * (moveEvent.shiftKey ? FINE_FACTOR : 1)
+        drag.value + (dy / RANGE_PX) * span * (moveEvent.shiftKey ? FINE_FACTOR : 1)
       );
       onChange(drag.value);
     };
@@ -92,24 +104,24 @@ export function VolumeKnob({
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const step = STEP * max * (e.shiftKey ? FINE_FACTOR : 1);
-      onChange(clampTo(max)(value + (e.deltaY < 0 ? step : -step)));
+      const step = STEP * (max - min) * (e.shiftKey ? FINE_FACTOR : 1);
+      onChange(Math.max(min, Math.min(max, value + (e.deltaY < 0 ? step : -step))));
     };
 
     node.addEventListener('wheel', handleWheel, { passive: false });
     return () => node.removeEventListener('wheel', handleWheel);
-  }, [value, onChange, max]);
+  }, [value, onChange, min, max]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    const step = STEP * max * (e.shiftKey ? FINE_FACTOR : 1);
+    const step = STEP * span * (e.shiftKey ? FINE_FACTOR : 1);
     const moves: Record<string, number | undefined> = {
       ArrowUp: value + step,
       ArrowRight: value + step,
       ArrowDown: value - step,
       ArrowLeft: value - step,
-      PageUp: value + COARSE_STEP * max,
-      PageDown: value - COARSE_STEP * max,
-      Home: 0,
+      PageUp: value + COARSE_STEP * span,
+      PageDown: value - COARSE_STEP * span,
+      Home: min,
       End: max,
     };
 
@@ -120,9 +132,10 @@ export function VolumeKnob({
     onChange(clamp(next));
   };
 
-  const percent = Math.round(value * 100);
-  // How far round the dial: the arc spans the whole range, whatever its top.
-  const fraction = value / max;
+  const text = format(value);
+  // How far round the dial, and where its arc grows from.
+  const fraction = (value - min) / span;
+  const from = (origin - min) / span;
   const angle = ANGLE_MIN + fraction * ANGLE_SWEEP;
 
   return (
@@ -131,11 +144,11 @@ export function VolumeKnob({
       role="slider"
       tabIndex={0}
       aria-label={label}
-      aria-valuemin={0}
+      aria-valuemin={Math.round(min * 100)}
       aria-valuemax={Math.round(max * 100)}
-      aria-valuenow={percent}
-      aria-valuetext={`${percent}%`}
-      title={`${label}: ${percent}% - drag up/down, wheel, or arrow keys. Shift for fine, double-click to reset.`}
+      aria-valuenow={Math.round(value * 100)}
+      aria-valuetext={text}
+      title={`${label}: ${text} - drag up/down, wheel, or arrow keys. Shift for fine, double-click to reset.`}
       className={`relative rounded-full bg-gray-700 border-2 select-none outline-none cursor-ns-resize ${
         isDragging ? 'border-blue-400 ring-2 ring-blue-500' : 'border-gray-600'
       } focus-visible:ring-2 focus-visible:ring-blue-400`}
@@ -153,9 +166,9 @@ export function VolumeKnob({
           strokeWidth={8}
           strokeLinecap="round"
         />
-        {fraction > 0.001 && (
+        {Math.abs(fraction - from) > 0.001 && (
           <path
-            d={arcPath(0, fraction, 42)}
+            d={arcPath(Math.min(from, fraction), Math.max(from, fraction), 42)}
             fill="none"
             stroke="#60a5fa"
             strokeWidth={8}
@@ -173,7 +186,9 @@ export function VolumeKnob({
       </div>
 
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <span className="text-[11px] font-semibold text-gray-100">{percent}</span>
+        <span className={`${size < 34 ? 'text-[9px]' : 'text-[11px]'} font-semibold text-gray-100`}>
+          {text}
+        </span>
       </div>
     </div>
   );

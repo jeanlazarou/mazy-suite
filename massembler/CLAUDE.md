@@ -132,9 +132,12 @@ When adding features that modify state:
 - `src/utils/scheduler.ts` turns the arrangement into scheduled nodes (clip
   passes, fades, effects). Playback and WAV export both use it, so change
   scheduling there, never in one of them only.
-- `src/utils/audioEngine.ts` runs realtime playback: a gain per track (muted
-  tracks too, at zero) so volume/mute/solo follow live, and `replay` to
-  reschedule mid-play with a short crossfade.
+- `src/utils/audioEngine.ts` runs realtime playback: a gain and a panner per
+  track (muted tracks too, at zero) so volume/pan/mute/solo follow live, all
+  through one master gain and the meters' analysers; `replay` reschedules
+  mid-play with a short crossfade. A loop is scheduled one pass at a time,
+  1.5 s ahead, each pass fading in and out over 5 ms at the joins; the
+  position maths is in `utils/loop.ts`. Export builds the same mix offline.
 - `src/utils/transport.ts` owns the engine and the playhead loop: `play`,
   `pause`, `stop`, `seek`, `togglePlay` for the buttons, seek bar, ruler and
   Space key, and decides when edits made while playing need a `replay`.

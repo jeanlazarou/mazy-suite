@@ -37,6 +37,19 @@ export class MockGain extends MockNode {
   gain = new MockParam(1);
 }
 
+export class MockPanner extends MockNode {
+  pan = new MockParam(0);
+}
+
+/** An analyser whose input is a steady `level` on every sample. */
+export class MockAnalyser extends MockNode {
+  fftSize = 2048;
+  level = 0;
+  getFloatTimeDomainData(data: Float32Array) {
+    data.fill(this.level);
+  }
+}
+
 export class MockBuffer {
   private channels: Float32Array[];
   constructor(
@@ -78,6 +91,8 @@ export class MockContext {
   destination = new MockNode();
   sources: MockSource[] = [];
   gains: MockGain[] = [];
+  panners: MockPanner[] = [];
+  analysers: MockAnalyser[] = [];
 
   constructor() {
     MockContext.created.push(this);
@@ -86,6 +101,19 @@ export class MockContext {
     const gain = new MockGain();
     this.gains.push(gain);
     return gain;
+  }
+  createStereoPanner() {
+    const panner = new MockPanner();
+    this.panners.push(panner);
+    return panner;
+  }
+  createChannelSplitter() {
+    return new MockNode();
+  }
+  createAnalyser() {
+    const analyser = new MockAnalyser();
+    this.analysers.push(analyser);
+    return analyser;
   }
   createBufferSource() {
     const source = new MockSource();

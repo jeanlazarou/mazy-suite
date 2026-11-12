@@ -3,6 +3,8 @@ import { Track } from './Track';
 import { getProjectDuration } from '../utils/clipTiming';
 import { seek } from '../utils/transport';
 import { isTextEntry } from '../utils/keyboard';
+import { SNAP_PX, snapPoint, snapTargets } from '../utils/snapping';
+import { MIN_LOOP_SECONDS } from '../utils/loop';
 import {
   copySelection,
   deleteSelection,
@@ -28,6 +30,10 @@ export function Timeline() {
     snapEnabled,
     setSnapEnabled,
     snapGuide,
+    loopRegion,
+    loopEnabled,
+    setLoopRegion,
+    setLoopEnabled,
   } = useStoreFields(
     'tracks',
     'clips',
@@ -36,7 +42,11 @@ export function Timeline() {
     'setPixelsPerSecond',
     'snapEnabled',
     'setSnapEnabled',
-    'snapGuide'
+    'snapGuide',
+    'loopRegion',
+    'loopEnabled',
+    'setLoopRegion',
+    'setLoopEnabled'
   );
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const tracksScrollRef = useRef<HTMLDivElement>(null);
@@ -116,20 +126,69 @@ export function Timeline() {
   }, []);
 
   // Click, or drag, along the ruler to move the playhead.
+  // Shift-drag marks the loop region instead, snapping like a clip edge; a
+  // Shift-click clears it.
   const handleRulerMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     const ruler = e.currentTarget;
-    const seekTo = (clientX: number) =>
-      seek((clientX - ruler.getBoundingClientRect().left) / pixelsPerSecond);
+    const timeAt = (clientX: number) =>
+      Math.max(0, (clientX - ruler.getBoundingClientRect().left) / pixelsPerSecond);
 
-    seekTo(e.clientX);
-    const handleMove = (move: MouseEvent) => seekTo(move.clientX);
+    let handleMove: (move: MouseEvent) => void;
+    let finish = () => {};
+
+    if (e.shiftKey) {
+      const store = useStore.getState();
+      const targets = store.snapEnabled
+        ? snapTargets(store.tracks, store.clips, store.playbackState.currentTime)
+        : [];
+      const snap = (time: number) => snapPoint(time, targets, SNAP_PX / pixelsPerSecond) ?? time;
+      const anchor = snap(timeAt(e.clientX));
+      const pressedX = e.clientX;
+      let marking = false;
+
+      handleMove = (move) => {
+        if (!marking && Math.abs(move.clientX - pressedX) < 3) return;
+        marking = true;
+        const time = snap(timeAt(move.clientX));
+        const region = { start: Math.min(anchor, time), end: Math.max(anchor, time) };
+        if (region.end - region.start < MIN_LOOP_SECONDS) return;
+        setLoopRegion(region);
+        setLoopEnabled(true);
+      };
+      finish = () => {
+        if (!marking) setLoopRegion(null);
+      };
+    } else {
+      seek(timeAt(e.clientX));
+      handleMove = (move) => seek(timeAt(move.clientX));
+    }
+
     const handleUp = () => {
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('mouseup', handleUp);
+      finish();
     };
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('mouseup', handleUp);
+  };
+
+  const loopBand = (inRuler: boolean) => {
+    if (!loopRegion || (!inRuler && !loopEnabled)) return null;
+    const look = loopEnabled
+      ? inRuler
+        ? 'bg-emerald-400/30 border-emerald-400'
+        : 'bg-emerald-300/[0.06] border-emerald-400/50'
+      : 'bg-gray-400/15 border-gray-500';
+    return (
+      <div
+        className={`absolute top-0 bottom-0 border-x pointer-events-none ${look}`}
+        style={{
+          left: `${loopRegion.start * pixelsPerSecond}px`,
+          width: `${(loopRegion.end - loopRegion.start) * pixelsPerSecond}px`,
+        }}
+      />
+    );
   };
 
   const snapGuideLine =
@@ -268,9 +327,11 @@ export function Timeline() {
             className="relative h-8 bg-gray-800 cursor-pointer"
             style={{ minWidth: `${maxDuration * pixelsPerSecond}px` }}
             onMouseDown={handleRulerMouseDown}
-            title="Click or drag to move the playhead"
+            title="Click or drag to move the playhead. Shift-drag marks a loop region; Shift-click clears it."
             data-tour="ruler"
           >
+            {loopBand(true)}
+
             {/* Minor markers (every second) */}
             {minorMarkers.map((time) => (
               <div
@@ -400,6 +461,8 @@ export function Timeline() {
                 </div>
               </div>
             )}
+
+            {loopBand(false)}
 
             <div
               ref={playheadTracksRef}

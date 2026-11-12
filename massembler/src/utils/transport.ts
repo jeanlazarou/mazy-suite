@@ -20,8 +20,30 @@ let frame: number | null = null;
 let rescheduleTimer: ReturnType<typeof setTimeout> | undefined;
 
 function getEngine(): AudioEngine {
-  engine ??= new AudioEngine(useStore.getState().ensureAudioContext());
+  const store = useStore.getState();
+  engine ??= new AudioEngine(store.ensureAudioContext(), store.masterVolume);
   return engine;
+}
+
+/** The region playback should go round, if looping is on. */
+function currentLoop() {
+  const { loopEnabled, loopRegion } = useStore.getState();
+  return loopEnabled ? loopRegion : null;
+}
+
+/** The loudest sample on each output channel just now, for the meters. */
+export function readLevels(): [number, number] {
+  return engine?.playing ? engine.readLevels() : [0, 0];
+}
+
+/** Switch looping on or off (L), or say how to mark a region first. */
+export function toggleLoop() {
+  const { loopRegion, loopEnabled, setLoopEnabled, showToast } = useStore.getState();
+  if (!loopRegion) {
+    showToast('Shift-drag on the ruler to mark the region to loop', 'info');
+    return;
+  }
+  setLoopEnabled(!loopEnabled);
 }
 
 function tick() {
@@ -36,7 +58,7 @@ function tick() {
   }
 
   const currentTime = engine.getCurrentTime();
-  if (currentTime < playbackState.duration) {
+  if (currentTime < playbackState.duration || engine.looping) {
     setPlaybackState({ currentTime });
     frame = requestAnimationFrame(tick);
   } else {
@@ -62,7 +84,7 @@ export function play() {
   // From the end there is nothing to hear: start over.
   const from = playbackState.currentTime >= duration ? 0 : playbackState.currentTime;
 
-  getEngine().play(tracks, clips, audioFiles, from);
+  getEngine().play(tracks, clips, audioFiles, from, currentLoop());
   setPlaybackState({ isPlaying: true, duration, currentTime: from });
   frame = requestAnimationFrame(tick);
 }
@@ -81,7 +103,7 @@ export function seek(time: number) {
   const to = Math.max(0, time);
   setPlaybackState({ currentTime: to });
   if (playbackState.isPlaying && engine?.playing) {
-    engine.play(tracks, clips, audioFiles, to);
+    engine.play(tracks, clips, audioFiles, to, currentLoop());
   }
 }
 
@@ -91,7 +113,7 @@ interface Arrangement {
   audioFiles: AudioFile[];
 }
 
-/** Whether only track settings (volume, mute, solo, name) differ. */
+/** Whether only track settings (volume, pan, mute, solo, name) differ. */
 function sameArrangement(a: Arrangement, b: Arrangement): boolean {
   return (
     a.clips === b.clips &&
@@ -101,26 +123,34 @@ function sameArrangement(a: Arrangement, b: Arrangement): boolean {
   );
 }
 
-// While playing, edits are heard: track settings at once, the arrangement
-// after a short pause.
+// The master volume follows at once, playing or not.
+useStore.subscribe((state, previous) => {
+  if (state.masterVolume !== previous.masterVolume) engine?.setMasterVolume(state.masterVolume);
+});
+
+// While playing, edits are heard: track settings at once; the arrangement,
+// and the loop, after a short pause.
 useStore.subscribe((state, previous) => {
   if (!engine?.playing || !state.playbackState.isPlaying) return;
+  const loopChanged =
+    state.loopEnabled !== previous.loopEnabled || state.loopRegion !== previous.loopRegion;
   if (
     state.tracks === previous.tracks &&
     state.clips === previous.clips &&
-    state.audioFiles === previous.audioFiles
+    state.audioFiles === previous.audioFiles &&
+    !loopChanged
   ) {
     return;
   }
 
   engine.setTrackLevels(state.tracks);
-  if (sameArrangement(state, previous)) return;
+  if (sameArrangement(state, previous) && !loopChanged) return;
 
   clearTimeout(rescheduleTimer);
   rescheduleTimer = setTimeout(() => {
     if (!engine?.playing) return;
     const { tracks, clips, audioFiles, setPlaybackState } = useStore.getState();
-    engine.replay(tracks, clips, audioFiles);
+    engine.replay(tracks, clips, audioFiles, currentLoop());
     setPlaybackState({ duration: getProjectDuration(tracks, clips, 1) });
   }, RESCHEDULE_DELAY_MS);
 });

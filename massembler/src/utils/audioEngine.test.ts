@@ -53,6 +53,64 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+describe('looping', () => {
+  // The clip sits at 2-5 on both tracks; the loop goes round 2-4.
+  const region = { start: 2, end: 4 };
+  const loop = (from: number) => engine.play(tracks, [clip], [audioFile], from, region);
+
+  it('plays up to the end of the region, cutting what runs past it', () => {
+    loop(1);
+    expect(engine.looping).toBe(true);
+    expect(ctx.sources).toHaveLength(2); // one pass, both tracks
+    expectStart(ctx.sources[0], [101.02, 1, 2]); // timeline 2 to 4: two seconds of it
+  });
+
+  it('schedules each time round shortly before it is due', () => {
+    loop(1); // the first pass ends at 103.02
+    vi.advanceTimersByTime(1000);
+    expect(ctx.sources).toHaveLength(2); // not yet: due 1.5 s ahead of its start
+
+    vi.advanceTimersByTime(600);
+    expect(ctx.sources).toHaveLength(4);
+    expectStart(ctx.sources[2], [103.02, 1, 2]); // the region again, from its start
+  });
+
+  it('fades each pass in and out at the joins, so the cut does not click', () => {
+    const first = ctx.gains.length;
+    loop(1);
+    const join = ctx.gains[first + 3]; // after the bus and the two track gains
+    const expected = [
+      ['set', 0, 100.02],
+      ['ramp', 1, 100.025],
+      ['set', 1, 103.015],
+      ['ramp', 0, 103.02],
+    ] as const;
+    expect(join.gain.events).toHaveLength(expected.length);
+    join.gain.events.forEach(([kind, value, time], i) => {
+      expect([kind, value]).toEqual([expected[i][0], expected[i][1]]);
+      expect(time).toBeCloseTo(expected[i][2]);
+    });
+  });
+
+  it('reads the playhead round the region', () => {
+    loop(1);
+    ctx.currentTime = 100.02 + 3.5; // three seconds to the end, then half a second round
+    expect(engine.getCurrentTime()).toBeCloseTo(2.5);
+  });
+
+  it('stops scheduling when stopped', () => {
+    loop(1);
+    engine.stop();
+    vi.advanceTimersByTime(5000);
+    expect(ctx.sources).toHaveLength(2);
+  });
+
+  it('carries straight on when started past the end of the region', () => {
+    loop(4.5);
+    expect(engine.looping).toBe(false);
+  });
+});
+
 describe('AudioEngine', () => {
   it('gives every track its gain, muted ones at zero but still scheduled', () => {
     const { track1, track2 } = play(1);
@@ -119,6 +177,34 @@ describe('AudioEngine', () => {
     expect(bus.disconnected).toBe(false);
     vi.advanceTimersByTime(200);
     expect(bus.disconnected).toBe(true);
+  });
+
+  it('pans each track, following changes while playing', () => {
+    play(1);
+    const [pan1, pan2] = ctx.panners;
+    expect(pan1.pan.value).toBe(0);
+    expect(pan2.pan.value).toBe(0);
+
+    engine.setTrackLevels([{ ...tracks[0], pan: -0.5 }, tracks[1]]);
+    expect(lastEvent(pan1.pan.events)?.[1]).toBe(-0.5);
+  });
+
+  it('plays through the master volume, which follows changes', () => {
+    const other = new MockContext();
+    const loud = new AudioEngine(asAudioContext(other), 0.7);
+    const master = other.gains[0];
+    expect(master.gain.value).toBe(0.7);
+
+    loud.setMasterVolume(0.4);
+    expect(lastEvent(master.gain.events)?.[1]).toBe(0.4);
+  });
+
+  it('reads the loudest sample on each channel', () => {
+    ctx.analysers[0].level = 0.5;
+    ctx.analysers[1].level = -0.8;
+    const [left, right] = engine.readLevels();
+    expect(left).toBeCloseTo(0.5);
+    expect(right).toBeCloseTo(0.8);
   });
 
   it('at the natural end, lets reverb tails ring out before tearing down', () => {

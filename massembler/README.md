@@ -110,6 +110,8 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - Drag up/down to turn it — grabbing it never jumps the value
   - Mouse wheel, and arrow / Page / Home / End keys when focused
   - Hold `Shift` for fine adjustment, double-click to restore the default
+- **Pan Knob**: Places the track from left (L100) through the centre (C) to
+  right (R100); double-click centres it
 - **Mute/Unmute**: Toggle with visual icons (speaker with/without X)
 - **Solo**: Hear only the tracks you are working on
   - Additive: solo as many tracks as you like and hear that group together
@@ -133,7 +135,14 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
 - **Timeline Scrubbing**: Jump to any position, from the seek bar or by
   clicking or dragging along the ruler
 - **Space** plays and pauses (except while typing in a field)
-- **Edits heard while playing**: Volume, mute and solo take effect at once;
+- **Loop**: Shift-drag on the ruler to mark a region (it snaps like a clip
+  edge); playback then goes round it without a gap until you switch looping
+  off with the **Loop** button or **L**. Shift-click the ruler to clear the
+  region. Export ignores the loop
+- **Master**: A master volume knob for the whole mix, and a level meter (left
+  and right) whose light stays red once the output has clipped - click it to
+  reset. The master volume is saved with the project and applies to the export
+- **Edits heard while playing**: Volume, pan, mute and solo take effect at once;
   moving, trimming or changing clips is picked up as soon as you pause or let
   go, without stopping playback
 - **Real-time Progress**: Visual playback position display
@@ -142,7 +151,8 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
 ### Project Management
 - **Export Mix** 🎵: Render all tracks to a single WAV file
   - Uses `OfflineAudioContext` for offline rendering
-  - Respects track volumes and mute states
+  - The same mix as playback: track volumes, pans, mute and solo, clip
+    volumes, and the master volume
   - Handles clip trimming and repeats correctly
   - A mix loud enough to clip is turned down as a whole, to just under full
     scale, and a message says by how much; one that fits is left untouched
@@ -322,6 +332,7 @@ only the name can be edited. The row tells you which case applies.
 ### 4. Control Tracks
 
 - **Volume**: Rotate the volume knob (shows value in center)
+- **Pan**: The smaller knob beside it moves the track left or right
 - **Mute**: Click the speaker icon to mute/unmute a track
 - **Solo**: Click **S** to hear only that track. Solo several tracks to hear
   just that group — the rest dim to show they are being held silent. Click **S**
@@ -339,6 +350,10 @@ only the name can be edited. The row tells you which case applies.
 - **Space**: Play or pause from anywhere but a text field
 - **Seek**: Drag the timeline scrubber, or click or drag along the ruler above
   the tracks, to jump to a specific position
+- **Loop a section**: Shift-drag on the ruler over the part to repeat; playback
+  goes round it until you press **L** or the **Loop** button again
+- **Master**: The knob at the right of the bar sets the whole mix's volume;
+  watch the meter beside it, and turn down if its light goes red
 - **Edit while listening**: No need to stop - turn a knob, mute or solo a
   track, or move a clip, and you hear the change straight away
 - **Zoom**: Adjust the timeline zoom level for better precision

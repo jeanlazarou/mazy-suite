@@ -28,6 +28,7 @@ export function ProjectActions() {
     audioFiles,
     pixelsPerSecond,
     projectName,
+    masterVolume,
     addAudioFile,
     loadProjectState,
     ensureAudioContext,
@@ -38,6 +39,7 @@ export function ProjectActions() {
     'audioFiles',
     'pixelsPerSecond',
     'projectName',
+    'masterVolume',
     'addAudioFile',
     'loadProjectState',
     'ensureAudioContext',
@@ -91,7 +93,7 @@ export function ProjectActions() {
     setProgress(0);
 
     try {
-      const { blob, gain } = await exportMix(tracks, clips, audioFiles, (p) => {
+      const { blob, gain } = await exportMix(tracks, clips, audioFiles, masterVolume, (p) => {
         setProgress(Math.round(p * 100));
       });
 
@@ -135,6 +137,7 @@ export function ProjectActions() {
         clips,
         audioFiles,
         pixelsPerSecond,
+        masterVolume,
         (p) => {
           setProgress(Math.round(p * 100));
         }
@@ -187,7 +190,8 @@ export function ProjectActions() {
         projectData.clips,
         loadedAudioFiles,
         projectData.pixelsPerSecond,
-        projectData.name
+        projectData.name,
+        projectData.masterVolume
       );
 
       setStatusMessage('Project loaded!');

@@ -33,6 +33,8 @@ export interface ProjectData {
     optimization?: AudioFileOptimization;
   }>;
   pixelsPerSecond: number;
+  /** Volume of the whole mix; absent (full) in projects saved before it existed. */
+  masterVolume?: number;
 }
 
 /** project.json as any version of the format wrote it. */
@@ -110,6 +112,7 @@ export async function exportMix(
   tracks: Track[],
   clips: AudioClip[],
   audioFiles: AudioFile[],
+  masterVolume: number,
   onProgress?: (progress: number) => void
 ): Promise<{ blob: Blob; gain: number }> {
   // Calculate the total duration of the project
@@ -138,13 +141,21 @@ export async function exportMix(
   const sampleRate = audioFiles[0]?.buffer.sampleRate || 44100;
   const offlineContext = new OfflineAudioContext(2, Math.ceil(maxDuration * sampleRate), sampleRate);
 
+  // The same mix as playback: each track's volume and pan, then the master.
   // Solo affects the export too: what you hear is what gets rendered.
+  const master = offlineContext.createGain();
+  master.gain.value = masterVolume;
+  master.connect(offlineContext.destination);
+
   const trackGains = new Map<string, GainNode>();
   for (const track of tracks) {
     if (!isTrackAudible(track, tracks)) continue;
     const gain = offlineContext.createGain();
     gain.gain.value = track.volume;
-    gain.connect(offlineContext.destination);
+    const panner = offlineContext.createStereoPanner();
+    panner.pan.value = track.pan ?? 0;
+    gain.connect(panner);
+    panner.connect(master);
     trackGains.set(track.id, gain);
   }
 
@@ -241,6 +252,7 @@ export async function saveProject(
   clips: AudioClip[],
   audioFiles: AudioFile[],
   pixelsPerSecond: number,
+  masterVolume: number,
   onProgress?: (progress: number) => void
 ): Promise<Blob> {
   const zip = new JSZip();
@@ -264,6 +276,7 @@ export async function saveProject(
       optimization: af.optimization,
     })),
     pixelsPerSecond,
+    masterVolume,
   };
 
   // Add project.json

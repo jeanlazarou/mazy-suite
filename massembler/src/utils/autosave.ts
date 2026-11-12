@@ -44,7 +44,8 @@ async function save() {
   saving = true;
 
   const upTo = changes;
-  const { projectName, tracks, clips, pixelsPerSecond, audioFiles } = useStore.getState();
+  const { projectName, tracks, clips, pixelsPerSecond, masterVolume, audioFiles } =
+    useStore.getState();
 
   try {
     await writeSession(
@@ -53,6 +54,7 @@ async function save() {
         tracks,
         clips,
         pixelsPerSecond,
+        masterVolume,
         audioFiles: audioFiles.map((f) => ({
           id: f.id,
           name: f.name,
@@ -115,7 +117,8 @@ export function startAutosave() {
       state.clips === previous.clips &&
       state.audioFiles === previous.audioFiles &&
       state.projectName === previous.projectName &&
-      state.pixelsPerSecond === previous.pixelsPerSecond
+      state.pixelsPerSecond === previous.pixelsPerSecond &&
+      state.masterVolume === previous.masterVolume
     ) {
       return;
     }
@@ -177,7 +180,8 @@ export async function restoreSession({ project, audio }: SavedSession): Promise<
     project.clips,
     audioFiles,
     project.pixelsPerSecond,
-    project.name
+    project.name,
+    project.masterVolume
   );
 
   // Already stored: the next save need not write them again.

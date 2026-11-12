@@ -92,6 +92,17 @@ describe('scheduleArrangement', () => {
     expectStart(schedule(placed({ effect: 'deep' }), 3).sources[0], [10, 1.75, 1.5]);
   });
 
+  it('cuts passes short at `until`, and leaves out those starting at or after it', () => {
+    const ctx = new MockContext();
+    const output = new MockNode() as unknown as AudioNode;
+    const repeating = placed({ repeat: true, repeatCount: 3 }); // passes at 2, 5 and 8
+    scheduleArrangement(asAudioContext(ctx), [track([repeating])], [clip], [audioFile], () => output, 3, 10, 6);
+
+    expect(ctx.sources).toHaveLength(2);
+    expectStart(ctx.sources[0], [10, 2, 2]); // the first plays out: it ends at 5
+    expectStart(ctx.sources[1], [12, 1, 1]); // the second stops at 6, a second in
+  });
+
   it('leaves out tracks the caller has no input for', () => {
     const ctx = new MockContext();
     scheduleArrangement(asAudioContext(ctx), [track([placed()])], [clip], [audioFile], () => null, 0, 0);
