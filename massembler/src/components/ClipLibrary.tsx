@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { previewClip, stopClipPreview } from '../utils/clipPreview';
 import ContentCutIcon from '@mui/icons-material/ContentCut';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useStore, useStoreFields } from '../store';
@@ -38,6 +39,22 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
     );
   const [editor, setEditor] = useState<EditorTarget | null>(null);
   const [isFilesExpanded, setIsFilesExpanded] = useState(true);
+  const [previewingId, setPreviewingId] = useState<string | null>(null);
+
+  // Hiding the library silences whatever it was previewing.
+  useEffect(() => () => stopClipPreview(), []);
+
+  const togglePreview = (clip: AudioClip) => {
+    if (previewingId === clip.id) {
+      stopClipPreview();
+      return;
+    }
+    const file = audioFiles.find((f) => f.id === clip.audioFileId);
+    if (!file) return;
+    setPreviewingId(clip.id);
+    // Only this clip's own end clears the button: another may have started.
+    previewClip(clip, file, () => setPreviewingId((id) => (id === clip.id ? null : id)));
+  };
 
   /** A clip placed on any track cannot have its region changed. */
   const clipUsageCount = (clipId: string) =>
@@ -284,7 +301,20 @@ export function ClipLibrary({ onCollapse }: ClipLibraryProps) {
                 className="p-2 bg-gray-800 rounded border border-gray-700 cursor-move hover:bg-gray-750 transition-colors"
               >
                 <div className="flex justify-between items-start">
-                  <div className="flex-1">
+                  <button
+                    onClick={() => togglePreview(clip)}
+                    disabled={!file}
+                    className={`mr-2 mt-0.5 w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[10px] transition-colors ${
+                      previewingId === clip.id
+                        ? 'bg-green-600 hover:bg-green-700'
+                        : 'bg-gray-700 hover:bg-gray-600'
+                    }`}
+                    title={previewingId === clip.id ? 'Stop' : 'Listen to this clip'}
+                    aria-label={previewingId === clip.id ? `Stop ${clip.name}` : `Play ${clip.name}`}
+                  >
+                    {previewingId === clip.id ? '■' : '▶'}
+                  </button>
+                  <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm">{clip.name}</div>
                     <div className="text-xs text-gray-400">
                       {file?.name || 'Unknown file'}

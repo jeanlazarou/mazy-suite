@@ -38,6 +38,8 @@ interface AppState {
   tracks: Track[];
   addTrack: () => void;
   removeTrack: (id: string) => void;
+  /** Move a track to another place in the list. */
+  moveTrack: (id: string, toIndex: number) => void;
   updateTrack: (id: string, updates: Partial<Track>) => void;
   addClipToTrack: (trackId: string, clipId: string, position: number) => void;
   updateTrackClip: (trackId: string, trackClipId: string, updates: Partial<TrackClip>) => void;
@@ -166,6 +168,15 @@ let nextTrackId = 1;
 let nextTrackClipId = 1;
 let nextLinkId = 0;
 
+/** The one empty track a new project starts with. */
+const firstTrack = (): Track => ({
+  id: 'track-1',
+  name: 'Track 1',
+  clips: [],
+  volume: 0.8,
+  muted: false,
+});
+
 const newTrackClipId = () => `tc-${++nextTrackClipId}`;
 const newLinkId = () => `link-${++nextLinkId}`;
 
@@ -249,15 +260,7 @@ export const useStore = create<AppState>((set, get) => ({
       ),
     })),
 
-  tracks: [
-    {
-      id: 'track-1',
-      name: 'Track 1',
-      clips: [],
-      volume: 0.8,
-      muted: false,
-    },
-  ],
+  tracks: [firstTrack()],
   addTrack: () =>
     set((state) => ({
       tracks: [
@@ -275,6 +278,17 @@ export const useStore = create<AppState>((set, get) => ({
     set((state) => ({
       tracks: state.tracks.filter((t) => t.id !== id),
     })),
+  moveTrack: (id, toIndex) => {
+    const { tracks } = get();
+    const from = tracks.findIndex((t) => t.id === id);
+    const to = Math.max(0, Math.min(tracks.length - 1, toIndex));
+    if (from < 0 || from === to) return;
+
+    const next = [...tracks];
+    const [moving] = next.splice(from, 1);
+    next.splice(to, 0, moving);
+    set({ tracks: next });
+  },
   updateTrack: (id, updates) =>
     set((state) => ({
       tracks: state.tracks.map((t) => (t.id === id ? { ...t, ...updates } : t)),
@@ -661,10 +675,17 @@ export const useStore = create<AppState>((set, get) => ({
     history.clear();
   },
   clearProject: () => {
+    // Nothing of the old project survives - history and clipboard included -
+    // so ids can start again from the top.
+    nextTrackId = 1;
+    nextTrackClipId = 1;
+    nextLinkId = 0;
+
     set({
-      tracks: [],
+      tracks: [firstTrack()],
       clips: [],
       audioFiles: [],
+      clipboard: [],
       projectName: 'Untitled Project',
       playbackState: {
         isPlaying: false,

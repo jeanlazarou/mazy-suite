@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { history, useStore } from './store';
-import { MockContext } from './test/mockAudio';
+import { MockContext, last } from './test/mockAudio';
 import { AudioClip, AudioFile, Track, TrackClip } from './types';
 
 const clip = (id: string): AudioClip => ({
@@ -243,6 +243,51 @@ describe('the audio context', () => {
     expect(second).toBe(first);
     expect(MockContext.created.length).toBe(before + 1);
     vi.unstubAllGlobals();
+  });
+});
+
+describe('tracks', () => {
+  it('move to another place in the list, as one undo step', () => {
+    s().addTrack();
+    const third = s().tracks[2].id;
+
+    s().moveTrack(third, 0);
+    expect(s().tracks.map((t) => t.id)).toEqual([third, 'track-1', 'track-2']);
+
+    s().undo();
+    expect(s().tracks.map((t) => t.id)).toEqual(['track-1', 'track-2', third]);
+  });
+
+  it('stay put when moved to where they are, or nowhere', () => {
+    const before = s().tracks;
+    s().moveTrack('track-1', 0);
+    s().moveTrack('no-such-track', 1);
+    expect(s().tracks).toBe(before);
+  });
+});
+
+describe('a new project', () => {
+  it('starts as a first visit does: one empty track, nothing else, a fresh history', () => {
+    s().setMasterVolume(0.5);
+    s().setLoopRegion({ start: 1, end: 3 });
+    useStore.setState({ selectedTrackClips: [{ trackId: 'track-1', trackClipId: 'tc-1' }] });
+    s().copySelected();
+    s().addTrack();
+
+    s().clearProject();
+
+    expect(s().tracks).toEqual([
+      { id: 'track-1', name: 'Track 1', clips: [], volume: 0.8, muted: false },
+    ]);
+    expect(s().clips).toEqual([]);
+    expect(s().audioFiles).toEqual([]);
+    expect(s().clipboard).toEqual([]);
+    expect(s().masterVolume).toBe(1);
+    expect(s().loopRegion).toBeNull();
+    expect(history.canUndo()).toBe(false);
+
+    s().addTrack();
+    expect(last(s().tracks)?.id).toBe('track-2'); // ids start again
   });
 });
 

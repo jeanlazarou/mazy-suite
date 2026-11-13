@@ -22,6 +22,8 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   - Regions already made into clips show behind the waveform
   - Stays open after **Create Clip**, ready for the next clip from the same file
 - **Clip Library**: Create and manage audio clips from uploaded files (collapsible sidebar)
+  - The ▶ button on a clip plays it on its own, to find the one you want;
+    one plays at a time
 - **Editable Clips**: Clips are not write-once
   - A clip nothing references can have its region and name changed
   - A clip already placed on a track has its region locked (changing it would
@@ -131,6 +133,7 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
     deliberately taken out
   - Applies to Export Mix too: what you hear is what gets rendered
 - **Add/Remove Tracks**: Flexible track management
+- **Reorder Tracks**: Drag the grip beside a track's name up or down
 - **Rename Tracks**: Click track name to edit
 
 ### Playback
@@ -207,7 +210,9 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
 
 ### UI/UX Features
 - **Material UI Speed Dial**: Beautiful floating action button (bottom-right) with:
-  - 📁 Upload Audio
+  - 📄 New Project (asks first when the open one has work in it)
+  - 📁 Upload Audio - or drop audio files anywhere on the window; dropping a
+    `.mass` file opens it
   - 📂 Load Project (⌘O / Ctrl+O)
   - 💾 Save Project (⌘S / Ctrl+S)
   - 🗜️ Optimize Project
@@ -268,7 +273,13 @@ the top right replays it.
 
 ### 1. Upload Audio Files
 
-Click the **Speed Dial** button (the blue **+** at the bottom-right) → **Upload Audio** → select one or more audio files.
+Drop audio files anywhere on the window, or click the **Speed Dial** button (the
+blue **+** at the bottom-right) → **Upload Audio** → select one or more audio
+files. They appear in the library's **Audio Files** list. (Dropping a `.mass`
+file opens that project instead.)
+
+**New Project** in the same Speed Dial starts over with one empty track; it
+asks first when the open project has work in it.
 
 ### 2. Create Clips
 

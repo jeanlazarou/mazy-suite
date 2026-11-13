@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { Track as TrackType } from '../types';
 import { history, useStore, useStoreFields } from '../store';
 import { TrackClipBlock } from './TrackClipBlock';
@@ -24,6 +26,7 @@ export function Track({ track, pixelsPerSecond, maxDuration, renderMode }: Track
     'addClipToTrack',
     'tracks'
   );
+  const [moving, setMoving] = useState(false);
 
   // Not muted, but inaudible because something else is soloed. Shown dimmed so
   // a silent track never looks like a broken one.
@@ -61,6 +64,33 @@ export function Track({ track, pixelsPerSecond, maxDuration, renderMode }: Track
     history.coalesced(`volume:${track.id}`, () => updateTrack(track.id, { volume: value }));
   };
 
+  // Dragging the grip moves the track up or down the list as the pointer
+  // crosses the others; the whole drag is one undo step.
+  const handleGripMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setMoving(true);
+    history.beginGesture();
+
+    const handleMove = (move: MouseEvent) => {
+      const rows = [...document.querySelectorAll<HTMLElement>('[data-track-row]')];
+      if (rows.length === 0) return;
+      const over = rows.findIndex((row) => {
+        const rect = row.getBoundingClientRect();
+        return move.clientY >= rect.top && move.clientY < rect.bottom;
+      });
+      const above = move.clientY < rows[0].getBoundingClientRect().top;
+      useStore.getState().moveTrack(track.id, over >= 0 ? over : above ? 0 : rows.length - 1);
+    };
+    const handleUp = () => {
+      setMoving(false);
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+      history.endGesture();
+    };
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+  };
+
   const handlePanChange = (value: number) => {
     // Near the middle counts as the middle, so it is easy to find again.
     const pan = Math.abs(value) < 0.02 ? undefined : value;
@@ -89,13 +119,23 @@ export function Track({ track, pixelsPerSecond, maxDuration, renderMode }: Track
         }`}
         title={silencedBySolo ? 'Silent while another track is soloed' : undefined}
         data-tour="track-controls"
+        data-track-row={track.id}
       >
-        <input
-          type="text"
-          value={track.name}
-          onChange={handleNameChange}
-          className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm"
-        />
+        <div className="flex items-center gap-1">
+          <span
+            onMouseDown={handleGripMouseDown}
+            className={`shrink-0 text-gray-500 hover:text-gray-300 ${moving ? 'cursor-grabbing text-blue-300' : 'cursor-grab'}`}
+            title="Drag to move the track up or down"
+          >
+            <DragIndicatorIcon sx={{ fontSize: 18 }} />
+          </span>
+          <input
+            type="text"
+            value={track.name}
+            onChange={handleNameChange}
+            className="min-w-0 flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm"
+          />
+        </div>
 
         <div className="flex items-center gap-1 justify-between">
           <button

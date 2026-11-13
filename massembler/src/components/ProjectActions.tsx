@@ -7,7 +7,10 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CompressIcon from '@mui/icons-material/Compress';
+import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import { OptimizeDialog } from './OptimizeDialog';
+import { ConfirmDialog } from './ConfirmDialog';
+import { sortDroppedFiles } from '../utils/droppedFiles';
 import { useStoreFields } from '../store';
 import { exportMix, saveProject, loadProject, downloadBlob } from '../utils/projectManager';
 import { AudioFile } from '../types';
@@ -19,6 +22,8 @@ export function ProjectActions() {
   const [progress, setProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState('');
   const [showOptimize, setShowOptimize] = useState(false);
+  const [confirmingNew, setConfirmingNew] = useState(false);
+  const [dropping, setDropping] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
 
@@ -31,6 +36,7 @@ export function ProjectActions() {
     masterVolume,
     addAudioFile,
     loadProjectState,
+    clearProject,
     ensureAudioContext,
     showToast,
   } = useStoreFields(
@@ -42,6 +48,7 @@ export function ProjectActions() {
     'masterVolume',
     'addAudioFile',
     'loadProjectState',
+    'clearProject',
     'ensureAudioContext',
     'showToast'
   );
@@ -51,13 +58,12 @@ export function ProjectActions() {
     setOpen(false);
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
+  /** Decode and add audio files, from the file picker or a drop. */
+  const uploadFiles = async (files: File[]) => {
     const ctx = ensureAudioContext();
+    const added: string[] = [];
 
-    for (const file of Array.from(files)) {
+    for (const file of files) {
       try {
         const arrayBuffer = await file.arrayBuffer();
         const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
@@ -74,16 +80,28 @@ export function ProjectActions() {
         };
 
         addAudioFile(audioFile);
+        added.push(file.name);
       } catch (error) {
         console.error('Error loading audio file:', error);
         showToast(`Failed to load ${file.name}`, 'error', 0);
       }
     }
 
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    if (added.length > 0) {
+      showToast(
+        `${added.length === 1 ? `Added "${added[0]}"` : `Added ${added.length} audio files`} - click ${
+          added.length === 1 ? 'it' : 'one'
+        } in Audio Files to make clips`,
+        'success'
+      );
     }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    await uploadFiles(Array.from(files));
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleExportMix = async () => {
@@ -167,10 +185,8 @@ export function ProjectActions() {
     setOpen(false);
   };
 
-  const handleProjectFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  /** Open a .mass project, from the file picker or a drop. */
+  const openProject = async (file: File) => {
     setIsProcessing(true);
     setStatusMessage('Loading project...');
     setProgress(0);
@@ -210,12 +226,84 @@ export function ProjectActions() {
       setIsProcessing(false);
       setStatusMessage('');
     }
-
-    // Reset input
-    if (projectInputRef.current) {
-      projectInputRef.current.value = '';
-    }
   };
+
+  const handleProjectFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await openProject(file);
+    if (projectInputRef.current) projectInputRef.current.value = '';
+  };
+
+  // A new project starts as a first visit does: one empty track. Asked first
+  // when there is work to lose - clearing it cannot be undone.
+  const hasWork = audioFiles.length > 0 || clips.length > 0 || tracks.some((t) => t.clips.length > 0);
+  const startNewProject = () => {
+    setConfirmingNew(false);
+    clearProject();
+    showToast('New project', 'info', 2000);
+  };
+  const handleNewProject = () => {
+    setOpen(false);
+    if (hasWork) setConfirmingNew(true);
+    else startNewProject();
+  };
+
+  // Files dropped anywhere on the window: audio is uploaded, a .mass opens.
+  // Clips dragged from the library carry no files, and pass through.
+  const dropRef = useRef({ uploadFiles, openProject, busy: isProcessing });
+  dropRef.current = { uploadFiles, openProject, busy: isProcessing };
+
+  useEffect(() => {
+    let depth = 0; // dragenter and dragleave fire for every element crossed
+    const carriesFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
+
+    const handleEnter = (e: DragEvent) => {
+      if (!carriesFiles(e)) return;
+      depth++;
+      setDropping(true);
+    };
+    const handleLeave = (e: DragEvent) => {
+      if (!carriesFiles(e)) return;
+      depth = Math.max(0, depth - 1);
+      if (depth === 0) setDropping(false);
+    };
+    const handleOver = (e: DragEvent) => {
+      if (!carriesFiles(e) || !e.dataTransfer) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    };
+    const handleDrop = (e: DragEvent) => {
+      if (!carriesFiles(e) || !e.dataTransfer) return;
+      e.preventDefault();
+      depth = 0;
+      setDropping(false);
+
+      const { uploadFiles, openProject, busy } = dropRef.current;
+      if (busy || document.querySelector('[role="dialog"]')) return;
+
+      const { project, audio, ignored } = sortDroppedFiles(Array.from(e.dataTransfer.files));
+      if (project) {
+        if (ignored > 0) {
+          showToast(`Opening ${project.name}; the other files dropped with it were left out`, 'info');
+        }
+        void openProject(project);
+      } else if (audio.length > 0) {
+        void uploadFiles(audio);
+      }
+    };
+
+    window.addEventListener('dragenter', handleEnter);
+    window.addEventListener('dragleave', handleLeave);
+    window.addEventListener('dragover', handleOver);
+    window.addEventListener('drop', handleDrop);
+    return () => {
+      window.removeEventListener('dragenter', handleEnter);
+      window.removeEventListener('dragleave', handleLeave);
+      window.removeEventListener('dragover', handleOver);
+      window.removeEventListener('drop', handleDrop);
+    };
+  }, [showToast]);
 
   // ⌘S saves and ⌘O opens, from anywhere: the browser's own Save Page and
   // Open File are no use here. The ref keeps the listener on the latest state.
@@ -240,7 +328,8 @@ export function ProjectActions() {
   }, []);
 
   const actions = [
-    { icon: <CloudUploadIcon />, name: 'Upload Audio', onClick: handleUploadAudio },
+    { icon: <NoteAddIcon />, name: 'New Project', onClick: handleNewProject },
+    { icon: <CloudUploadIcon />, name: 'Upload Audio (or drop files anywhere)', onClick: handleUploadAudio },
     { icon: <FolderOpenIcon />, name: `Load Project (${shortcutLabel('O')})`, onClick: handleLoadProject },
     { icon: <SaveIcon />, name: `Save Project (${shortcutLabel('S')})`, onClick: handleSaveProject },
     {
@@ -297,6 +386,25 @@ export function ProjectActions() {
       />
 
       {showOptimize && <OptimizeDialog onClose={() => setShowOptimize(false)} />}
+
+      {confirmingNew && (
+        <ConfirmDialog
+          title="Start a new project?"
+          message="The open project goes, with its undo history. Save it first (Save Project) if you want to keep it."
+          confirmLabel="Start new project"
+          onConfirm={startNewProject}
+          onCancel={() => setConfirmingNew(false)}
+        />
+      )}
+
+      {/* Shown while files are dragged over the window */}
+      {dropping && (
+        <div className="fixed inset-4 z-[1300] pointer-events-none rounded-xl border-4 border-dashed border-blue-400 bg-blue-500/10 flex items-center justify-center">
+          <div className="bg-gray-900/90 px-6 py-4 rounded-lg text-lg font-semibold text-white">
+            Drop audio files to upload them, or a .mass project to open it
+          </div>
+        </div>
+      )}
 
       {/* Progress overlay */}
       {isProcessing && (
