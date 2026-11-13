@@ -109,8 +109,12 @@ manages both:
 - **⬇ Section** / **⬇ Song** export one section or the whole arrangement
   (with tempo changes at section boundaries) as MIDI.
 
-**Undo** (Ctrl/Cmd-Z, up to 20 steps) reverts any edit — including a
-generator overwriting your groove.
+**Undo** (Ctrl/Cmd-Z, up to 100 steps) reverts any edit — including a
+generator overwriting your groove — and **Redo** (Shift-Ctrl/Cmd-Z)
+replays it. One gesture is one step: a whole paint drag, one pull of the
+swing slider, a BPM you type, a tab note together with its fret digits.
+In text fields (song name, AI prompt) Ctrl/Cmd-Z undoes your typing as
+usual and leaves the song alone.
 
 ## Generators
 
@@ -138,7 +142,11 @@ what's in the grid — Undo brings the old groove back if you regret it.
 The **AI** bar asks a local Ollama model to transform the current section:
 pick a model, pick a preset ("Busier hi-hats", "Make a variation…", fill,
 bass-from-kick) or type your own instruction, hit **Generate**. The result
-replaces the section's pattern — Undo brings the old one back.
+replaces the pattern of the section you asked about (even if you've moved
+to another one meanwhile) — Undo brings the old one back. If you edit that
+section while the model is thinking, the result waits for **Apply anyway**
+or **Discard** instead of overwriting your edits; if you switch songs or
+delete the section, it's dropped.
 
 - Ollama must allow the dev origin:
   `OLLAMA_ORIGINS=http://localhost:5173 ollama serve`

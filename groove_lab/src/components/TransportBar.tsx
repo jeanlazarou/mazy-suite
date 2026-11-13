@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Pattern } from "../types";
 import { resizePattern } from "../pattern";
+import type { PatternChange } from "../editor";
+import { newGesture } from "../editor";
 import type { KitName } from "../audio/sampledKit";
 import { KIT_NAMES } from "../audio/sampledKit";
 
@@ -15,10 +17,12 @@ interface TransportBarProps {
   onKitChange: (kit: KitName) => void;
   canPlaySong: boolean;
   canUndo: boolean;
+  canRedo: boolean;
   onPlaySection: () => void;
   onPlaySong: () => void;
   onUndo: () => void;
-  onChange: (pattern: Pattern) => void;
+  onRedo: () => void;
+  onChange: PatternChange;
   onExportSection: () => void;
   onExportSong: () => void;
 }
@@ -31,9 +35,11 @@ export function TransportBar({
   onKitChange,
   canPlaySong,
   canUndo,
+  canRedo,
   onPlaySection,
   onPlaySong,
   onUndo,
+  onRedo,
   onChange,
   onExportSection,
   onExportSong,
@@ -42,6 +48,9 @@ export function TransportBar({
   // commit immediately, anything else snaps back to the real BPM on blur.
   const [bpmDraft, setBpmDraft] = useState(String(pattern.bpm));
   useEffect(() => setBpmDraft(String(pattern.bpm)), [pattern.bpm]);
+  // One undo step per visit to the field / pull of the slider.
+  const bpmGroup = useRef(newGesture("bpm"));
+  const swingGroup = useRef(newGesture("swing"));
 
   const stopping = (mode: "section" | "song") =>
     isPlaying && playMode === mode;
@@ -67,14 +76,18 @@ export function TransportBar({
           min={BPM_MIN}
           max={BPM_MAX}
           value={bpmDraft}
+          onFocus={() => (bpmGroup.current = newGesture("bpm"))}
           onChange={(e) => {
             setBpmDraft(e.target.value);
             const bpm = Number(e.target.value);
             if (e.target.value !== "" && bpm >= BPM_MIN && bpm <= BPM_MAX) {
-              onChange({ ...pattern, bpm });
+              onChange((p) => ({ ...p, bpm }), bpmGroup.current);
             }
           }}
-          onBlur={() => setBpmDraft(String(pattern.bpm))}
+          onBlur={() => {
+            setBpmDraft(String(pattern.bpm));
+            bpmGroup.current = newGesture("bpm");
+          }}
         />
       </label>
 
@@ -82,7 +95,10 @@ export function TransportBar({
         Bars
         <select
           value={pattern.bars}
-          onChange={(e) => onChange(resizePattern(pattern, Number(e.target.value)))}
+          onChange={(e) => {
+            const bars = Number(e.target.value);
+            onChange((p) => resizePattern(p, bars));
+          }}
         >
           {[1, 2, 4].map((n) => (
             <option key={n} value={n}>
@@ -99,9 +115,12 @@ export function TransportBar({
           min={0}
           max={100}
           value={Math.round(pattern.swing * 100)}
-          onChange={(e) =>
-            onChange({ ...pattern, swing: Number(e.target.value) / 100 })
-          }
+          onPointerDown={() => (swingGroup.current = newGesture("swing"))}
+          onFocus={() => (swingGroup.current = newGesture("swing"))}
+          onChange={(e) => {
+            const swing = Number(e.target.value) / 100;
+            onChange((p) => ({ ...p, swing }), swingGroup.current);
+          }}
         />
         <span className="swing-value">{Math.round(pattern.swing * 100)}%</span>
       </label>
@@ -129,6 +148,14 @@ export function TransportBar({
         title="Undo the last change (Ctrl/Cmd-Z)"
       >
         ↩ Undo
+      </button>
+      <button
+        className="tool-button redo-button"
+        onClick={onRedo}
+        disabled={!canRedo}
+        title="Redo what Undo took back (Shift-Ctrl/Cmd-Z)"
+      >
+        ↪ Redo
       </button>
 
       <span className="transport-spacer" />

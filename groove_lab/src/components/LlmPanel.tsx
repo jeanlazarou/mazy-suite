@@ -11,12 +11,22 @@ const PRESETS = [
 
 const MODEL_KEY = "grooveLab.model.v1";
 
-interface LlmPanelProps {
+/** The section a request was made for, with its pattern at that moment. */
+export interface LlmTarget {
+  songId: string;
+  sectionId: string;
+  sectionName: string;
   pattern: Pattern;
-  onChange: (pattern: Pattern) => void;
 }
 
-export function LlmPanel({ pattern, onChange }: LlmPanelProps) {
+interface LlmPanelProps {
+  target: LlmTarget;
+  /** The target section's pattern now, or null if its song/section is gone. */
+  getLivePattern: (target: LlmTarget) => Pattern | null;
+  onApply: (target: LlmTarget, pattern: Pattern) => void;
+}
+
+export function LlmPanel({ target, getLivePattern, onApply }: LlmPanelProps) {
   const [models, setModels] = useState<string[] | null>(null); // null = unreachable
   const [model, setModel] = useState(
     () => localStorage.getItem(MODEL_KEY) ?? "",
@@ -24,6 +34,11 @@ export function LlmPanel({ pattern, onChange }: LlmPanelProps) {
   const [prompt, setPrompt] = useState(PRESETS[0]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
+  // A result whose section was edited while the model was thinking.
+  const [pending, setPending] = useState<{
+    request: LlmTarget;
+    result: Pattern;
+  } | null>(null);
 
   useEffect(() => {
     void fetchModels().then((names) => {
@@ -40,16 +55,40 @@ export function LlmPanel({ pattern, onChange }: LlmPanelProps) {
 
   const run = async () => {
     if (!model || busy) return;
+    const request = target;
+    const section = `section ${request.sectionName}`;
     setBusy(true);
-    setStatus("thinking…");
-    const result = await generateVariation(pattern, prompt, model);
+    setPending(null);
+    setStatus(`thinking about ${section}…`);
+    const result = await generateVariation(request.pattern, prompt, model);
     setBusy(false);
-    if (result) {
-      onChange(result);
-      setStatus("done — Undo brings the old pattern back");
-    } else {
+    if (!result) {
       setStatus("the model returned nothing usable — see console, try again");
+      return;
     }
+    const live = getLivePattern(request);
+    if (live === null) {
+      setStatus(`${section} is no longer open — result dropped`);
+    } else if (live !== request.pattern) {
+      setPending({ request, result });
+      setStatus(`${section} changed while the model was thinking.`);
+    } else {
+      onApply(request, result);
+      setStatus(`done — applied to ${section}; Undo brings the old one back`);
+    }
+  };
+
+  const applyPending = () => {
+    if (!pending) return;
+    if (getLivePattern(pending.request) === null) {
+      setStatus(`section ${pending.request.sectionName} is no longer open — result dropped`);
+    } else {
+      onApply(pending.request, pending.result);
+      setStatus(
+        `applied to section ${pending.request.sectionName}; Undo brings your edits back`,
+      );
+    }
+    setPending(null);
   };
 
   if (models === null) {
@@ -107,6 +146,26 @@ export function LlmPanel({ pattern, onChange }: LlmPanelProps) {
         {busy ? "…" : "Generate"}
       </button>
       <span className="llm-status">{status}</span>
+      {pending && (
+        <>
+          <button
+            className="tool-button llm-apply"
+            onClick={applyPending}
+            title="Replace the section with the model's result, discarding your edits since the request (Undo brings them back)"
+          >
+            Apply anyway
+          </button>
+          <button
+            className="tool-button llm-discard"
+            onClick={() => {
+              setPending(null);
+              setStatus("result discarded");
+            }}
+          >
+            Discard
+          </button>
+        </>
+      )}
     </div>
   );
 }

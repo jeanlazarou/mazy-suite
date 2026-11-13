@@ -7,11 +7,13 @@ import {
   getDrumStep,
   setDrumStep,
 } from "../pattern";
+import type { PatternChange } from "../editor";
+import { newGesture } from "../editor";
 
 interface DrumGridProps {
   pattern: Pattern;
   currentStep: number;
-  onChange: (pattern: Pattern) => void;
+  onChange: PatternChange;
   onPreview: (lane: DrumLane, velocity: number) => void;
 }
 
@@ -28,8 +30,8 @@ export function DrumGrid({
   const steps = totalSteps(pattern);
   // While painting: the on/off value the drag applies (from the first cell).
   const paintValueRef = useRef<boolean | null>(null);
-  const patternRef = useRef(pattern);
-  patternRef.current = pattern;
+  // The whole drag is one undo step.
+  const paintGroupRef = useRef("");
 
   useEffect(() => {
     const end = () => {
@@ -41,7 +43,13 @@ export function DrumGrid({
 
   const applyCell = useCallback(
     (lane: DrumLane, step: number, on: boolean) => {
-      onChange(setDrumStep(patternRef.current, lane, step, on));
+      onChange(
+        (p) =>
+          Boolean(getDrumStep(p, lane, step)) === on
+            ? p
+            : setDrumStep(p, lane, step, on),
+        paintGroupRef.current,
+      );
       if (on) onPreview(lane, DEFAULT_VELOCITY);
     },
     [onChange, onPreview],
@@ -75,7 +83,10 @@ export function DrumGrid({
           paintValueRef={paintValueRef}
           applyCell={applyCell}
           onCycle={(step) => {
-            onChange(cycleDrumStepVelocity(patternRef.current, lane.id, step));
+            onChange((p) => cycleDrumStepVelocity(p, lane.id, step));
+          }}
+          onPaintStart={() => {
+            paintGroupRef.current = newGesture("paint");
           }}
           onPreview={onPreview}
         />
@@ -93,6 +104,7 @@ interface LaneRowProps {
   paintValueRef: React.RefObject<boolean | null>;
   applyCell: (lane: DrumLane, step: number, on: boolean) => void;
   onCycle: (step: number) => void;
+  onPaintStart: () => void;
   onPreview: (lane: DrumLane, velocity: number) => void;
 }
 
@@ -105,6 +117,7 @@ function LaneRow({
   paintValueRef,
   applyCell,
   onCycle,
+  onPaintStart,
   onPreview,
 }: LaneRowProps) {
   const [hover, setHover] = useState(false);
@@ -135,6 +148,7 @@ function LaneRow({
               }
               const on = !hit;
               paintValueRef.current = on;
+              onPaintStart();
               applyCell(lane, step, on);
             }}
             onMouseEnter={() => {

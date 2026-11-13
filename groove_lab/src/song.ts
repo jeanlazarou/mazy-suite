@@ -1,7 +1,7 @@
 import type { Pattern, Section, Song } from "./types";
 import { createDefaultPattern } from "./pattern";
 
-function newId(): string {
+export function newId(): string {
   return (
     globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)
   );
@@ -29,8 +29,9 @@ export function nextSectionName(song: Song): string {
 export function addSection(
   song: Song,
   pattern: Pattern,
+  id: string = newId(),
 ): { song: Song; id: string } {
-  const section: Section = { id: newId(), name: nextSectionName(song), pattern };
+  const section: Section = { id, name: nextSectionName(song), pattern };
   return { song: { ...song, sections: [...song.sections, section] }, id: section.id };
 }
 

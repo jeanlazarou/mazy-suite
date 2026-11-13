@@ -18,11 +18,13 @@ function displayPosition(note: BassNote): { string: number; fret: number } {
   return tabPosition(note.midiPitch);
 }
 import { addBassNote, removeBassNote } from "../pattern";
+import type { PatternChange } from "../editor";
+import { newGesture } from "../editor";
 
 interface BassTabProps {
   pattern: Pattern;
   currentStep: number;
-  onChange: (pattern: Pattern) => void;
+  onChange: PatternChange;
   onPreview: (midiPitch: number, velocity: number) => void;
 }
 
@@ -48,6 +50,8 @@ export function BassTab({
   const [cursor, setCursor] = useState<Cursor | null>(null);
   const [duration, setDuration] = useState(2);
   const digitRef = useRef({ fret: 0, at: 0 });
+  // Placing a note and then typing/nudging its fret is one undo step.
+  const editGroupRef = useRef("");
 
   // Where each note renders: fret number at its start, sustain dashes after.
   const startAt = new Map(pattern.bass.map((n) => [n.step, n]));
@@ -60,17 +64,17 @@ export function BassTab({
   }
 
   const place = (string: number, step: number, fret: number) => {
-    const existing = startAt.get(step);
     const midiPitch = BASS_STRINGS[string].open + fret;
-    onChange(
-      addBassNote(pattern, {
+    onChange((p) => {
+      const existing = p.bass.find((n) => n.step === step);
+      return addBassNote(p, {
         step,
         durationSteps: existing?.durationSteps ?? duration,
         midiPitch,
         velocity: existing?.velocity,
         string, // keep the fingering the user chose
-      }),
-    );
+      });
+    }, editGroupRef.current);
     onPreview(midiPitch, 0.75);
   };
 
@@ -80,12 +84,13 @@ export function BassTab({
     e: React.MouseEvent,
   ) => {
     if (e.button === 2) {
-      if (startAt.has(step)) onChange(removeBassNote(pattern, step));
+      if (startAt.has(step)) onChange((p) => removeBassNote(p, step));
       return;
     }
     if (e.button !== 0) return;
     setCursor({ string, step });
     digitRef.current = { fret: 0, at: 0 };
+    editGroupRef.current = newGesture("tab");
     const existing = startAt.get(step);
     const samePlace = existing && displayPosition(existing).string === string;
     // Clicking a note's own cell just selects it; anywhere else places an
@@ -127,8 +132,9 @@ export function BassTab({
       );
       setCursor({ ...cursor, step });
       digitRef.current = { fret: 0, at: 0 };
+      editGroupRef.current = newGesture("tab");
     } else if (e.key === "Backspace" || e.key === "Delete") {
-      if (note) onChange(removeBassNote(pattern, cursor.step));
+      if (note) onChange((p) => removeBassNote(p, cursor.step));
     } else {
       return;
     }

@@ -1,15 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { Pattern, Song } from "./types";
 import { clearBass, clearDrums } from "./pattern";
-import {
-  addSection,
-  appendToArrangement,
-  arrangementPatterns,
-  createDefaultSong,
-  removeArrangementAt,
-  removeSection,
-  updateSectionPattern,
-} from "./song";
+import { arrangementPatterns, createDefaultSong, newId } from "./song";
 import {
   createSongId,
   deleteSongById,
@@ -18,6 +10,13 @@ import {
   loadCurrentSong,
   saveCurrentSong,
 } from "./storage";
+import type { EditorState, PatternUpdate } from "./editor";
+import {
+  currentSection,
+  editorReducer,
+  livePattern,
+  openState,
+} from "./editor";
 import { LibraryBar } from "./components/LibraryBar";
 import { patternToMidi, songToMidi } from "./midi";
 import { downloadBytes } from "./download";
@@ -34,21 +33,35 @@ import { LlmPanel } from "./components/LlmPanel";
 import { BassGenControls, DrumGenControls } from "./components/Generators";
 
 type PlayMode = "section" | "song";
-const HISTORY_LIMIT = 20;
 const KIT_KEY = "grooveLab.kit.v1";
 
-export default function App() {
-  // Lazy initializers may both read storage; the result is identical.
-  const [meta, setMeta] = useState(() => {
-    const saved = loadCurrentSong();
-    return saved
-      ? { id: saved.id, name: saved.name }
-      : { id: createSongId(), name: "Untitled" };
-  });
-  const [song, setSongState] = useState<Song>(
-    () => loadCurrentSong()?.song ?? createDefaultSong(),
+function initialState(): EditorState {
+  const saved = loadCurrentSong();
+  return saved
+    ? openState(saved.id, saved.name, saved.song)
+    : openState(createSongId(), "Untitled", createDefaultSong());
+}
+
+/** Text fields keep their own Ctrl/Cmd-Z; everywhere else it's the song's. */
+function isTextEntry(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable || target instanceof HTMLTextAreaElement) {
+    return true;
+  }
+  return (
+    target instanceof HTMLInputElement &&
+    !["range", "checkbox", "radio", "button"].includes(target.type)
   );
-  const [currentId, setCurrentId] = useState(() => song.sections[0].id);
+}
+
+export default function App() {
+  const [state, dispatch] = useReducer(editorReducer, undefined, initialState);
+  const { songId, name, song } = state;
+  const current = currentSection(state);
+  // Latest state for playback and async results, which outlive a render.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
   const [playMode, setPlayMode] = useState<PlayMode>("section");
   const [bassView, setBassView] = useState<"roll" | "tab">("roll");
   const [kit, setKit] = useState<KitName>(() => {
@@ -57,39 +70,14 @@ export default function App() {
   });
   useEffect(() => localStorage.setItem(KIT_KEY, kit), [kit]);
 
-  const current =
-    song.sections.find((s) => s.id === currentId) ?? song.sections[0];
-
-  // Undo history (also the safety net for generators overwriting a groove).
-  // The push happens outside the state updater: StrictMode runs updaters
-  // twice in dev, which would double-push.
-  const historyRef = useRef<Song[]>([]);
-  const songForHistoryRef = useRef(song);
-  songForHistoryRef.current = song;
-  const setSong = useCallback((next: Song) => {
-    historyRef.current = [
-      ...historyRef.current.slice(-(HISTORY_LIMIT - 1)),
-      songForHistoryRef.current,
-    ];
-    setSongState(next);
-  }, []);
-  const undo = useCallback(() => {
-    const prev = historyRef.current.pop();
-    if (!prev) return;
-    setSongState(prev);
-    setCurrentId((id) =>
-      prev.sections.some((s) => s.id === id) ? id : prev.sections[0].id,
-    );
-  }, []);
-
-  const undoRef = useRef(undo);
-  undoRef.current = undo;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
-        e.preventDefault();
-        undoRef.current();
-      }
+      if (!(e.metaKey || e.ctrlKey) || isTextEntry(e.target)) return;
+      const key = e.key.toLowerCase();
+      const redo = (key === "z" && e.shiftKey) || (key === "y" && e.ctrlKey);
+      if (key !== "z" && !redo) return;
+      e.preventDefault();
+      dispatch({ type: redo ? "redo" : "undo" });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -97,31 +85,33 @@ export default function App() {
 
   // Autosave the song JSON (the inputs, per MIDI_EXPORT_NOTES.md §3).
   useEffect(() => {
-    const t = setTimeout(() => saveCurrentSong(meta.id, meta.name, song), 400);
+    const t = setTimeout(() => saveCurrentSong(songId, name, song), 400);
     return () => clearTimeout(t);
-  }, [song, meta]);
+  }, [song, songId, name]);
 
   // ---- song library ----
   const openSong = (entry: { id: string; name: string; song: Song }) => {
-    historyRef.current = []; // undo must not cross songs
-    setMeta({ id: entry.id, name: entry.name });
-    setSongState(entry.song);
-    setCurrentId(entry.song.sections[0].id);
     saveCurrentSong(entry.id, entry.name, entry.song); // move the pointer now
+    dispatch({
+      type: "open",
+      songId: entry.id,
+      name: entry.name,
+      song: entry.song,
+    });
   };
   const switchSong = (id: string) => {
-    if (id === meta.id) return;
-    saveCurrentSong(meta.id, meta.name, song); // flush pending edits
+    if (id === songId) return;
+    saveCurrentSong(songId, name, song); // flush pending edits
     const next = getSongById(id);
     if (next) openSong(next);
   };
   const newSong = () => {
-    saveCurrentSong(meta.id, meta.name, song);
+    saveCurrentSong(songId, name, song);
     openSong({ id: createSongId(), name: "Untitled", song: createDefaultSong() });
   };
   const deleteSong = () => {
-    if (!window.confirm(`Delete "${meta.name}" from the library?`)) return;
-    deleteSongById(meta.id);
+    if (!window.confirm(`Delete "${name}" from the library?`)) return;
+    deleteSongById(songId);
     const next = loadCurrentSong();
     openSong(
       next ?? { id: createSongId(), name: "Untitled", song: createDefaultSong() },
@@ -129,21 +119,14 @@ export default function App() {
   };
 
   // Playback reads through refs so edits and mode are live mid-play.
-  const songRef = useRef(song);
-  songRef.current = song;
-  const currentIdRef = useRef(currentId);
-  currentIdRef.current = current.id;
   const playModeRef = useRef<PlayMode>(playMode);
-
   const getPatterns = useCallback((): Pattern[] => {
-    const s = songRef.current;
+    const s = stateRef.current;
     if (playModeRef.current === "song") {
-      const patterns = arrangementPatterns(s);
+      const patterns = arrangementPatterns(s.song);
       if (patterns.length > 0) return patterns;
     }
-    const cur =
-      s.sections.find((x) => x.id === currentIdRef.current) ?? s.sections[0];
-    return [cur.pattern];
+    return [currentSection(s).pattern];
   }, []);
 
   const { isPlaying, position, start, stop, preview, previewBass } =
@@ -159,8 +142,14 @@ export default function App() {
     void start();
   };
 
-  const setPattern = (p: Pattern) =>
-    setSong(updateSectionPattern(song, current.id, p));
+  const setPattern = (update: PatternUpdate, group?: string) =>
+    dispatch({
+      type: "editPattern",
+      songId,
+      sectionId: current.id,
+      update,
+      group,
+    });
 
   const viewStep =
     position === null
@@ -182,9 +171,10 @@ export default function App() {
       <header>
         <h1>Groove Lab</h1>
         <p className="hint">
-          Drums: click to add a hit, drag to paint. Bass: press and drag right
-          to place a note, click a note to delete it. Right-click anything to
-          cycle ghost / normal / accent. Ctrl/Cmd-Z undoes.
+          Drums: click to add a hit, drag to paint, right-click to cycle ghost /
+          normal / accent. Bass roll: press and drag right to place a note,
+          click a note to delete it, right-click to cycle. Ctrl/Cmd-Z undoes,
+          Shift-Ctrl/Cmd-Z redoes.
         </p>
       </header>
       <TransportBar
@@ -194,10 +184,12 @@ export default function App() {
         kit={kit}
         onKitChange={setKit}
         canPlaySong={song.arrangement.length > 0}
-        canUndo={historyRef.current.length > 0}
+        canUndo={state.past.length > 0}
+        canRedo={state.future.length > 0}
         onPlaySection={() => play("section")}
         onPlaySong={() => play("song")}
-        onUndo={undo}
+        onUndo={() => dispatch({ type: "undo" })}
+        onRedo={() => dispatch({ type: "redo" })}
         onChange={setPattern}
         onExportSection={() => {
           const bytes = patternToMidi(current.pattern);
@@ -215,10 +207,10 @@ export default function App() {
       />
 
       <LibraryBar
-        name={meta.name}
-        currentId={meta.id}
+        name={name}
+        currentId={songId}
         songs={listSongs()}
-        onRename={(name) => setMeta({ ...meta, name })}
+        onRename={(next) => dispatch({ type: "rename", name: next })}
         onSwitch={switchSong}
         onNew={newSong}
         onDelete={deleteSong}
@@ -232,30 +224,37 @@ export default function App() {
             ? position.index
             : null
         }
-        onSelect={setCurrentId}
-        onAdd={() => {
-          const added = addSection(song, structuredClone(current.pattern));
-          setSong(added.song);
-          setCurrentId(added.id);
-        }}
-        onRemove={(id) => {
-          const next = removeSection(song, id);
-          setSong(next);
-          if (id === currentId) setCurrentId(next.sections[0].id);
-        }}
-        onAppend={() => setSong(appendToArrangement(song, current.id))}
-        onRemoveAt={(i) => setSong(removeArrangementAt(song, i))}
+        onSelect={(sectionId) => dispatch({ type: "select", sectionId })}
+        onAdd={() => dispatch({ type: "addSection", sectionId: newId() })}
+        onRemove={(sectionId) => dispatch({ type: "removeSection", sectionId })}
+        onAppend={() => dispatch({ type: "appendToArrangement" })}
+        onRemoveAt={(index) => dispatch({ type: "removeArrangementAt", index })}
       />
 
-      <LlmPanel pattern={current.pattern} onChange={setPattern} />
+      <LlmPanel
+        target={{
+          songId,
+          sectionId: current.id,
+          sectionName: current.name,
+          pattern: current.pattern,
+        }}
+        getLivePattern={(t) =>
+          livePattern(stateRef.current, t.songId, t.sectionId)
+        }
+        onApply={(t, pattern) =>
+          dispatch({
+            type: "editPattern",
+            songId: t.songId,
+            sectionId: t.sectionId,
+            update: pattern,
+          })
+        }
+      />
 
       <div className="section-header">
         <h2>Drums</h2>
         <DrumGenControls pattern={current.pattern} onChange={setPattern} />
-        <button
-          className="clear-button"
-          onClick={() => setPattern(clearDrums(current.pattern))}
-        >
+        <button className="clear-button" onClick={() => setPattern(clearDrums)}>
           Clear drums
         </button>
       </div>
@@ -280,10 +279,7 @@ export default function App() {
           ))}
         </span>
         <BassGenControls pattern={current.pattern} onChange={setPattern} />
-        <button
-          className="clear-button"
-          onClick={() => setPattern(clearBass(current.pattern))}
-        >
+        <button className="clear-button" onClick={() => setPattern(clearBass)}>
           Clear bass
         </button>
       </div>

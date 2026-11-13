@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Pattern } from "../types";
 import {
   BASS_PITCH_MAX,
@@ -13,11 +13,12 @@ import {
   cycleBassNoteVelocity,
   removeBassNote,
 } from "../pattern";
+import type { PatternChange } from "../editor";
 
 interface BassRollProps {
   pattern: Pattern;
   currentStep: number;
-  onChange: (pattern: Pattern) => void;
+  onChange: PatternChange;
   onPreview: (midiPitch: number, velocity: number) => void;
 }
 
@@ -46,14 +47,12 @@ export function BassRoll({
 }: BassRollProps) {
   const steps = totalSteps(pattern);
   const [placing, setPlacing] = useState<Placing | null>(null);
-  const patternRef = useRef(pattern);
-  patternRef.current = pattern;
 
   useEffect(() => {
     if (!placing) return;
     const commit = () => {
-      onChange(
-        addBassNote(patternRef.current, {
+      onChange((p) =>
+        addBassNote(p, {
           step: placing.start,
           durationSteps: placing.end - placing.start + 1,
           midiPitch: placing.pitch,
@@ -121,9 +120,9 @@ export function BassRoll({
           )} — click to delete, right-click to cycle`}
           onMouseDown={(e) => {
             if (e.button === 2) {
-              onChange(cycleBassNoteVelocity(patternRef.current, note.step));
+              onChange((p) => cycleBassNoteVelocity(p, note.step));
             } else {
-              onChange(removeBassNote(patternRef.current, note.step));
+              onChange((p) => removeBassNote(p, note.step));
             }
           }}
         />
