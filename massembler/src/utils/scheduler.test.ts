@@ -110,6 +110,63 @@ describe('scheduleArrangement', () => {
   });
 });
 
+describe('crossfades at joins', () => {
+  // The file is 10 s long. The earlier clip plays 1-4 at timeline 2-5; the
+  // later plays 5-8 at 5-8 and asks for a 1 s crossfade: half a second each side.
+  const later: AudioClip = { id: 'later', name: 'later', audioFileId: 'f', startTime: 5, endTime: 8, duration: 3 };
+  const earlierClip = placed({ id: 'e' });
+  const laterClip: TrackClip = { id: 'l', clipId: 'later', position: 5, repeat: false, crossfade: 1 };
+
+  function crossfade(from: number) {
+    const ctx = new MockContext();
+    const output = new MockNode() as unknown as AudioNode;
+    scheduleArrangement(
+      asAudioContext(ctx), [track([earlierClip, laterClip])], [clip, later], [audioFile], () => output, from, 10
+    );
+    return ctx;
+  }
+
+  it('plays the earlier clip on past its end, and starts the later before its start', () => {
+    const { sources } = crossfade(0);
+    expectStart(sources[0], [12, 1, 3.5]); // 2 to 5.5, reading 1 to 4.5
+    expectStart(sources[1], [14.5, 4.5, 3.5]); // 4.5 to 8, reading 4.5 to 8
+  });
+
+  it('fades them across each other with equal power, the level steady at the join', () => {
+    const [outgoing, incoming] = crossfade(0).gains;
+    const at = (events: unknown[][], time: number) =>
+      events.find(([, , t]) => Math.abs((t as number) - time) < 1e-9)?.[1] as number;
+
+    expect(at(outgoing.gain.events, 15.5)).toBe(0); // gone half a second after the join
+    expect(at(incoming.gain.events, 14.5)).toBe(0); // silent half a second before it
+    const out = at(outgoing.gain.events, 15);
+    const into = at(incoming.gain.events, 15);
+    expect(out).toBeCloseTo(Math.SQRT1_2);
+    expect(out ** 2 + into ** 2).toBeCloseTo(1);
+  });
+
+  it('picks the crossfade up part-way when playback starts inside it', () => {
+    const [outgoing, incoming] = crossfade(4.8).gains;
+    const out = outgoing.gain.events[0][1] as number;
+    const into = incoming.gain.events[0][1] as number;
+    expect(outgoing.gain.events[0][2]).toBe(10);
+    expect(out ** 2 + into ** 2).toBeCloseTo(1);
+    expect(into).toBeGreaterThan(0);
+    expect(into).toBeLessThan(out);
+  });
+
+  it('leaves clips that only nearly touch alone', () => {
+    const apart = { ...laterClip, position: 5.5 };
+    const ctx = new MockContext();
+    const output = new MockNode() as unknown as AudioNode;
+    scheduleArrangement(
+      asAudioContext(ctx), [track([earlierClip, apart])], [clip, later], [audioFile], () => output, 0, 10
+    );
+    expectStart(ctx.sources[0], [12, 1, 3]);
+    expectStart(ctx.sources[1], [15.5, 5, 3]);
+  });
+});
+
 describe('scheduled fades', () => {
   const fades = { fadeIn: 1, fadeOut: 1 };
   const automation = (from: number) => schedule(placed(fades), from).gains[0].gain.events;

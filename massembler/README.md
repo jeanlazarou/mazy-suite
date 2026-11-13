@@ -60,6 +60,16 @@ A web-based multi-track audio sequencer that allows you to upload audio files, c
   selection
 - **Clip volume**: A knob in the clip panel, from silent up to 200%; the clip's
   waveform on the timeline grows and shrinks with it
+- **Crossfades at joins**: Put a clip right where another ends (Snap makes them
+  touch) and give it a crossfade length in its panel. Centred on the join, the
+  earlier clip plays on past its end while fading out and the later one starts
+  early while fading in, each borrowing audio from beyond its own cut - the
+  clips themselves never overlap. Equal-power curves keep the level steady
+  across the join; an X on the timeline marks it
+  - Where there is less audio beyond a cut than asked for, the crossfade is
+    shortened to fit, and the panel says how long it really is
+  - The setting stays with the clip when the two part, and works again when
+    they touch
 - **Clip Resizing**: Adjust clip length by dragging left or right edges
   - Each clip instance can be trimmed independently
   - Left edge resize moves the clip position for intuitive editing
@@ -305,6 +315,7 @@ only the name can be edited. The row tells you which case applies.
    - Pick a one-click **effect** (reverse, underwater, cathedral, …)
    - Set fade in/out, either numerically or by dragging the green/red handles
      on the clip's waveform
+   - Crossfade with the clip just before it, when the two touch
    - Toggle repeat on/off and adjust the repeat count (set to 1 to disable)
    - **Split** it at the playhead (**S**), **Duplicate** it (**⌘D**), or
      delete it from the track (**Delete**)

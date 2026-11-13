@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { history, useStoreFields } from '../store';
 import { ClipEffectId } from '../types';
+import { clipBefore, heardCrossfade } from '../utils/crossfades';
 import { CLIP_EFFECTS } from '../utils/clipEffects';
 import Button from '@mui/material/Button';
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -326,6 +327,18 @@ export function ClipPropertiesPanel() {
     );
   };
 
+  // A crossfade needs a clip ending right where this one starts. What is heard
+  // can be shorter than asked: each side borrows audio from beyond its cut.
+  const touching = track ? clipBefore(track, trackClip, clips) : null;
+  const askedCrossfade = trackClip.crossfade ?? 0;
+  const heard = track ? heardCrossfade(track, trackClip, clips, audioFiles) : 0;
+
+  const handleCrossfadeChange = (value: number) => {
+    history.coalesced(`crossfade:${trackClipId}`, () =>
+      updateTrackClip(trackId, trackClipId, { crossfade: value > 0 ? value : undefined })
+    );
+  };
+
   const currentEffect: ClipEffectId = trackClip.effect ?? 'none';
 
   const handleEffectChange = (effect: ClipEffectId) => {
@@ -509,6 +522,34 @@ export function ClipPropertiesPanel() {
               step={0.1}
               decimals={2}
             />
+          </div>
+
+          {/* Crossfade with the clip before */}
+          <div>
+            {touching ? (
+              <>
+                <NumberField
+                  label="Crossfade with the clip before (seconds)"
+                  value={askedCrossfade}
+                  onChange={handleCrossfadeChange}
+                  min={0}
+                  max={10}
+                  step={0.05}
+                  decimals={2}
+                />
+                {askedCrossfade > 0 && heard < askedCrossfade - 0.005 && (
+                  <p className="text-xs text-yellow-300 mt-1">
+                    {heard.toFixed(2)} s heard: limited by the audio beyond the cut,
+                    or by the length of a clip.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-gray-500">
+                To crossfade with another clip, place this one right where that one ends -
+                Snap makes them touch.
+              </p>
+            )}
           </div>
 
           {/* Repeat */}

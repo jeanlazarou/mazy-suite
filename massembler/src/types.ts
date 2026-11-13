@@ -75,6 +75,12 @@ export interface TrackClip {
   fadeOut?: number;   // Fade-out duration in seconds
   /** Clip volume, linear: 1 (or unset) plays it as recorded, up to 2. */
   gain?: number;
+  /**
+   * Seconds to crossfade with the clip that ends exactly where this one
+   * starts on its track. Kept when they part, heard only while they touch;
+   * see utils/crossfades.ts.
+   */
+  crossfade?: number;
 }
 
 export interface Track {

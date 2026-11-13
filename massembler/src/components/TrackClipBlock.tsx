@@ -17,6 +17,7 @@ import {
 } from '../utils/clipLinks';
 import { SNAP_PX, snapPoint, snapSpan, snapTargets } from '../utils/snapping';
 import { contiguousRange } from '../utils/projectOptimizer';
+import { heardCrossfade } from '../utils/crossfades';
 import { history, useStore, useStoreFields } from '../store';
 import { ClipWaveform } from './ClipWaveform';
 
@@ -102,6 +103,11 @@ export function TrackClipBlock({
       gain={trackClip.gain ?? 1}
     />
   );
+
+  // A crossfade with the clip before, drawn as an X across the join.
+  const ownTrack = tracks.find((t) => t.id === trackId);
+  const crossfade = ownTrack ? heardCrossfade(ownTrack, trackClip, clips, audioFiles) : 0;
+  const crossfadeWidth = Math.max(10, crossfade * pixelsPerSecond);
 
   /**
    * Snap targets for a gesture, frozen when it starts, and how far an edge
@@ -510,6 +516,25 @@ export function TrackClipBlock({
         />
 
         {waveform}
+
+        {crossfade > 0 && (
+          <svg
+            className="absolute top-0 z-20 pointer-events-none"
+            style={{ left: -crossfadeWidth / 2, width: crossfadeWidth, height: 14 }}
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-label={`Crossfade ${crossfade.toFixed(2)} s`}
+          >
+            <rect width="100" height="100" fill="rgba(17, 24, 39, 0.6)" />
+            <path
+              d="M0 100 C 40 100, 60 0, 100 0 M0 0 C 40 0, 60 100, 100 100"
+              fill="none"
+              stroke="#fde68a"
+              strokeWidth="2"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+        )}
 
         {/* Fade In Gradient Overlay */}
         {(trackClip.fadeIn ?? 0) > 0 && (

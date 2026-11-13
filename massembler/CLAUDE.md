@@ -131,7 +131,9 @@ When adding features that modify state:
 ### Modifying audio playback
 - `src/utils/scheduler.ts` turns the arrangement into scheduled nodes (clip
   passes, fades, effects). Playback and WAV export both use it, so change
-  scheduling there, never in one of them only.
+  scheduling there, never in one of them only. A pass may reach before its
+  clip's start or past its end for a crossfade at a join
+  (`utils/crossfades.ts`); clips themselves never overlap on a track.
 - `src/utils/audioEngine.ts` runs realtime playback: a gain and a panner per
   track (muted tracks too, at zero) so volume/pan/mute/solo follow live, all
   through one master gain and the meters' analysers; `replay` reschedules

@@ -7,6 +7,7 @@ import {
   resolveClipPlaybackRate,
 } from './clipEffects';
 import { getEffectiveRange, getRepeatCount } from './clipTiming';
+import { crossfadeReach } from './crossfades';
 
 /**
  * Turns the arrangement into scheduled Web Audio nodes. Realtime playback and
@@ -20,30 +21,83 @@ export interface Scheduled {
   chains: EffectChain[];
 }
 
-/** A clip pass's fade gain at `time` seconds into it. */
-export function fadeGainAt(length: number, fadeIn: number, fadeOut: number, time: number): number {
-  return Math.max(
-    0,
-    Math.min(1, fadeIn > 0 ? time / fadeIn : 1, fadeOut > 0 ? (length - time) / fadeOut : 1)
-  );
+/**
+ * How one pass rises and falls, in seconds of pass time: 0 is where the clip
+ * starts, `length` where it ends. A crossfade reaches `crossIn` before the
+ * start and `crossOut` past the end, curving with equal power - and takes the
+ * place of the plain linear fade on its side.
+ */
+export interface PassShape {
+  length: number;
+  fadeIn: number;
+  fadeOut: number;
+  crossIn: number;
+  crossOut: number;
+}
+
+/** Points a crossfade's curve is drawn through; linear in between. */
+const CURVE_STEPS = 8;
+
+/** Equal power: two such curves crossing keep the level steady. */
+const equalPower = (x: number) => Math.sin((Math.max(0, Math.min(1, x)) * Math.PI) / 2);
+
+/** A pass's gain at pass time `time`. */
+export function passGainAt(shape: PassShape, time: number): number {
+  const { length, fadeIn, fadeOut, crossIn, crossOut } = shape;
+  const rising =
+    crossIn > 0
+      ? equalPower((time + crossIn) / (2 * crossIn))
+      : fadeIn > 0
+        ? time / fadeIn
+        : 1;
+  const falling =
+    crossOut > 0
+      ? equalPower((length + crossOut - time) / (2 * crossOut))
+      : fadeOut > 0
+        ? (length - time) / fadeOut
+        : 1;
+  return Math.max(0, Math.min(1, rising, falling));
 }
 
 /**
- * The fade envelope of one pass, as breakpoints over [0, length] that are
- * linear in between. When the fades overlap they meet in a peak below 1
- * instead of the fade-out jumping in mid-ramp.
+ * A pass's envelope as breakpoints over [-crossIn, length + crossOut], linear
+ * in between. Overlapping linear fades meet in a peak below 1 instead of the
+ * fade-out jumping in mid-ramp.
  */
+export function passEnvelope(shape: PassShape): Array<{ time: number; gain: number }> {
+  const { length, fadeIn, fadeOut, crossIn, crossOut } = shape;
+  const first = -crossIn;
+  const last = length + crossOut;
+  const times = [first, last];
+
+  const curve = (from: number, span: number) => {
+    for (let step = 0; step <= CURVE_STEPS; step++) times.push(from + (span * step) / CURVE_STEPS);
+  };
+  if (crossIn > 0) curve(-crossIn, 2 * crossIn);
+  else times.push(fadeIn);
+  if (crossOut > 0) curve(length - crossOut, 2 * crossOut);
+  else times.push(length - fadeOut);
+  if (!crossIn && !crossOut && fadeIn > 0 && fadeOut > 0) {
+    times.push((length * fadeIn) / (fadeIn + fadeOut));
+  }
+
+  return [...new Set(times.filter((t) => t >= first && t <= last))]
+    .sort((a, b) => a - b)
+    .map((time) => ({ time, gain: passGainAt(shape, time) }));
+}
+
+/** A pass's linear fade gain at `time` seconds into it. */
+export function fadeGainAt(length: number, fadeIn: number, fadeOut: number, time: number): number {
+  return passGainAt({ length, fadeIn, fadeOut, crossIn: 0, crossOut: 0 }, time);
+}
+
+/** The linear fade envelope of a pass, as breakpoints over [0, length]. */
 export function fadeEnvelope(
   length: number,
   fadeIn: number,
   fadeOut: number
 ): Array<{ time: number; gain: number }> {
-  const times = [0, length, fadeIn, length - fadeOut];
-  if (fadeIn > 0 && fadeOut > 0) times.push((length * fadeIn) / (fadeIn + fadeOut));
-
-  return [...new Set(times.filter((t) => t >= 0 && t <= length))]
-    .sort((a, b) => a - b)
-    .map((time) => ({ time, gain: fadeGainAt(length, fadeIn, fadeOut, time) }));
+  return passEnvelope({ length, fadeIn, fadeOut, crossIn: 0, crossOut: 0 });
 }
 
 function schedulePass(
@@ -52,6 +106,7 @@ function schedulePass(
   trackClip: TrackClip,
   range: { start: number; end: number; duration: number },
   passStart: number,
+  reach: { before: number; after: number },
   destination: AudioNode,
   from: number,
   at: number,
@@ -59,13 +114,18 @@ function schedulePass(
   scheduled: Scheduled
 ) {
   const length = range.duration;
-  if (passStart + length <= from || passStart >= until) return;
+  // A crossfade lets a pass sound a little before its start, or past its end.
+  const begins = passStart - reach.before;
+  const ends = passStart + length + reach.after;
+  if (ends <= from || begins >= until) return;
 
-  // Seconds of this pass already behind the playhead, when it sounds, and
-  // how much of it sounds before `until` cuts it.
-  const skip = Math.max(0, from - passStart);
-  const when = at + Math.max(0, passStart - from);
-  const playing = Math.min(length - skip, until - Math.max(passStart, from));
+  // Where in the pass playback picks it up (pass time, so negative while a
+  // crossfade reaches back), when that sounds, and how long it then sounds
+  // before the pass - or `until` - ends it.
+  const startsAt = Math.max(begins, from);
+  const skip = startsAt - passStart;
+  const when = at + (startsAt - from);
+  const playing = Math.min(ends, until) - startsAt;
 
   const source = ctx.createBufferSource();
   source.buffer = resolveClipBuffer(ctx, buffer, trackClip.effect);
@@ -85,13 +145,18 @@ function schedulePass(
   }
   fade.connect(destination);
 
-  // The clip's own volume scales its fade envelope.
+  // The clip's own volume scales its envelope.
   const level = trackClip.gain ?? 1;
-  const fadeIn = trackClip.fadeIn ?? 0;
-  const fadeOut = trackClip.fadeOut ?? 0;
-  if (fadeIn > 0 || fadeOut > 0) {
-    fade.gain.setValueAtTime(level * fadeGainAt(length, fadeIn, fadeOut, skip), when);
-    for (const point of fadeEnvelope(length, fadeIn, fadeOut)) {
+  const shape: PassShape = {
+    length,
+    fadeIn: trackClip.fadeIn ?? 0,
+    fadeOut: trackClip.fadeOut ?? 0,
+    crossIn: reach.before,
+    crossOut: reach.after,
+  };
+  if (shape.fadeIn > 0 || shape.fadeOut > 0 || shape.crossIn > 0 || shape.crossOut > 0) {
+    fade.gain.setValueAtTime(level * passGainAt(shape, skip), when);
+    for (const point of passEnvelope(shape)) {
       if (point.time > skip) {
         fade.gain.linearRampToValueAtTime(level * point.gain, when + point.time - skip);
       }
@@ -126,6 +191,7 @@ export function scheduleArrangement(
   for (const track of tracks) {
     const destination = inputFor(track);
     if (!destination) continue;
+    const reach = crossfadeReach(track, clips, audioFiles);
 
     for (const trackClip of track.clips) {
       const clip = clips.find((c) => c.id === trackClip.clipId);
@@ -133,13 +199,21 @@ export function scheduleArrangement(
       if (!clip || !audioFile) continue;
 
       const range = getEffectiveRange(trackClip, clip);
-      for (let i = 0; i < getRepeatCount(trackClip); i++) {
+      const repeats = getRepeatCount(trackClip);
+      const crossfading = reach.get(trackClip.id);
+      for (let i = 0; i < repeats; i++) {
+        // A crossfade belongs to the first pass at the start, the last at the end.
+        const passReach = {
+          before: i === 0 ? (crossfading?.before ?? 0) : 0,
+          after: i === repeats - 1 ? (crossfading?.after ?? 0) : 0,
+        };
         schedulePass(
           ctx,
           audioFile.buffer,
           trackClip,
           range,
           trackClip.position + i * range.duration,
+          passReach,
           destination,
           from,
           at,

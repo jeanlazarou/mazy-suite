@@ -51,6 +51,12 @@ describe('splitTrackClip', () => {
     }
   });
 
+  it('leaves a crossfade with the clip before on the first part only', () => {
+    const [first, second] = splitTrackClip(placed({ crossfade: 0.4 }), clip, 11, 'x')!;
+    expect(first.crossfade).toBe(0.4);
+    expect(second.crossfade).toBeUndefined();
+  });
+
   it('does nothing outside the clip or at its very edges', () => {
     expect(splitTrackClip(placed(), clip, 9, 'x')).toBeNull();
     expect(splitTrackClip(placed(), clip, 10, 'x')).toBeNull();

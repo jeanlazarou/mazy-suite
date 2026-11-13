@@ -60,6 +60,8 @@ export function splitTrackClip(
       : { trimStart: range.start + offset * rate, trimEnd: range.start + offset * rate + rest }),
     fadeIn: undefined,
     fadeOut: fadeOut === undefined ? undefined : Math.min(fadeOut, rest),
+    // It now touches the first part: the crossfade stays with the clip before.
+    crossfade: undefined,
   };
 
   return [first, second];
