@@ -183,7 +183,7 @@ export function ClipPropertiesPanel() {
     // Initial sizing
     const rect = containerRef.current.getBoundingClientRect();
     const width = rect.width;
-    const height = 120;
+    const height = 100;
 
     canvasRef.current.width = width;
     canvasRef.current.height = height;
@@ -193,7 +193,7 @@ export function ClipPropertiesPanel() {
       if (canvasRef.current && containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
         const width = rect.width;
-        const height = 120;
+        const height = 100;
 
         canvasRef.current.width = width;
         canvasRef.current.height = height;
@@ -364,7 +364,7 @@ export function ClipPropertiesPanel() {
 
   return (
     <div className="bg-gray-800 border-t border-gray-700 p-4">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-semibold text-white">Clip Properties: {clip.name}</h3>
           {groupSize > 0 && (
@@ -436,11 +436,12 @@ export function ClipPropertiesPanel() {
         </div>
       </div>
 
-      <div className="grid grid-cols-[1fr,300px] gap-4">
+      {/* Short and wide: the timeline above must keep its room. */}
+      <div className="flex gap-4 items-start max-h-[40vh] overflow-y-auto pt-2">
         {/* Waveform display */}
-        <div className="bg-gray-900 rounded-lg p-3">
-          <div className="mb-2 text-sm text-gray-400">
-            Waveform - Drag green/red handles to adjust fade in/out
+        <div className="flex-1 min-w-[16rem] bg-gray-900 rounded-lg p-3">
+          <div className="mb-1.5 text-xs text-gray-400">
+            Drag the green / red handles to fade in / out
           </div>
           <div ref={containerRef} className="w-full">
             <canvas
@@ -449,7 +450,7 @@ export function ClipPropertiesPanel() {
               onMouseDown={handleCanvasMouseDown}
             />
           </div>
-          <div className="mt-2 flex justify-between text-xs text-gray-500">
+          <div className="mt-1 flex justify-between text-xs text-gray-500">
             <span>{effectiveStartTime.toFixed(2)}s</span>
             <span>Duration: {effectiveDuration.toFixed(2)}s</span>
             <span>{effectiveEndTime.toFixed(2)}s</span>
@@ -457,49 +458,50 @@ export function ClipPropertiesPanel() {
         </div>
 
         {/* Controls */}
-        <div className="space-y-4">
-          {/* Volume */}
-          <div className="flex items-center gap-3">
-            <VolumeKnob
-              value={trackClip.gain ?? 1}
-              onChange={handleGainChange}
-              max={2}
-              defaultValue={1}
-              label="Clip volume"
-              size={40}
-            />
-            <div className="text-sm text-gray-300">
-              Volume
-              <div className="text-xs text-gray-500">100 plays it as recorded; up to 200</div>
+        <div className="grid grid-cols-3 gap-4 w-[46rem] shrink-0">
+          {/* The sound: volume and effect */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <VolumeKnob
+                value={trackClip.gain ?? 1}
+                onChange={handleGainChange}
+                max={2}
+                defaultValue={1}
+                label="Clip volume"
+                size={36}
+              />
+              <div className="text-sm text-gray-300">
+                Volume
+                <div className="text-xs text-gray-500">100 as recorded, up to 200</div>
+              </div>
+            </div>
+
+            <div>
+              <div className="text-xs mb-1.5 text-gray-400">Effect</div>
+              <div className="flex flex-wrap gap-1.5">
+                {CLIP_EFFECTS.map((option) => {
+                  const isActive = currentEffect === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => handleEffectChange(option.id)}
+                      title={option.description}
+                      className={`px-2.5 py-0.5 rounded-full text-xs border transition-colors ${
+                        isActive
+                          ? 'bg-blue-600 border-blue-400 text-white'
+                          : 'bg-gray-900 border-gray-700 text-gray-300 hover:border-gray-500'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
-          {/* Effect */}
-          <div>
-            <div className="text-sm mb-2 text-gray-300">Effect</div>
-            <div className="flex flex-wrap gap-2">
-              {CLIP_EFFECTS.map((option) => {
-                const isActive = currentEffect === option.id;
-                return (
-                  <button
-                    key={option.id}
-                    onClick={() => handleEffectChange(option.id)}
-                    title={option.description}
-                    className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                      isActive
-                        ? 'bg-blue-600 border-blue-400 text-white'
-                        : 'bg-gray-900 border-gray-700 text-gray-300 hover:border-gray-500'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Fade In */}
-          <div>
+          {/* How it starts and ends */}
+          <div className="space-y-3">
             <NumberField
               label="Fade In (seconds)"
               value={fadeIn}
@@ -509,10 +511,6 @@ export function ClipPropertiesPanel() {
               step={0.1}
               decimals={2}
             />
-          </div>
-
-          {/* Fade Out */}
-          <div>
             <NumberField
               label="Fade Out (seconds)"
               value={fadeOut}
@@ -522,14 +520,12 @@ export function ClipPropertiesPanel() {
               step={0.1}
               decimals={2}
             />
-          </div>
 
-          {/* Crossfade with the clip before */}
-          <div>
+            {/* Crossfade with the clip before */}
             {touching ? (
-              <>
+              <div>
                 <NumberField
-                  label="Crossfade with the clip before (seconds)"
+                  label="Crossfade with clip before (s)"
                   value={askedCrossfade}
                   onChange={handleCrossfadeChange}
                   min={0}
@@ -543,7 +539,7 @@ export function ClipPropertiesPanel() {
                     or by the length of a clip.
                   </p>
                 )}
-              </>
+              </div>
             ) : (
               <p className="text-xs text-gray-500">
                 To crossfade with another clip, place this one right where that one ends -
@@ -552,13 +548,14 @@ export function ClipPropertiesPanel() {
             )}
           </div>
 
-          {/* Repeat */}
-          <div>
+          {/* Repeating, and where it sits */}
+          <div className="space-y-2">
             <FormControlLabel
               control={
                 <Checkbox
                   checked={repeat}
                   onChange={(e) => handleRepeatChange(e.target.checked)}
+                  size="small"
                   sx={{ color: 'rgba(255, 255, 255, 0.7)' }}
                 />
               }
@@ -566,21 +563,15 @@ export function ClipPropertiesPanel() {
               sx={{ color: 'white' }}
             />
             {repeat && (
-              <div className="mt-2">
-                <NumberField
-                  label="Repeat Count"
-                  value={repeatCount}
-                  onChange={handleRepeatCountChange}
-                  min={1}
-                  max={100}
-                />
-              </div>
+              <NumberField
+                label="Repeat Count"
+                value={repeatCount}
+                onChange={handleRepeatCountChange}
+                min={1}
+                max={100}
+              />
             )}
-          </div>
-
-          {/* Position info */}
-          <div className="pt-4 border-t border-gray-700">
-            <div className="text-sm text-gray-400 space-y-1">
+            <div className="pt-2 border-t border-gray-700 text-xs text-gray-400 space-y-0.5">
               <div>Position: {trackClip.position.toFixed(2)}s</div>
               <div>Track: {track?.name}</div>
             </div>
