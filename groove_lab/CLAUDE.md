@@ -13,7 +13,9 @@ user's request; tab reads better against the step grid), synth + sampled
 kits, MIDI export
 (section & song), generators, sections/arrangement, autosave + undo, Ollama
 JSON generation, humanize. `README.md` is the user guide;
-`.claude/skills/verify/SKILL.md` documents how to drive the UI headlessly.
+`.claude/skills/verify/SKILL.md` documents how to drive the UI headlessly
+(local only — `.claude/` is gitignored repo-wide; its `checks/` are the UI
+regression scripts).
 LLM quality note: qwen2.5 7b+ works well; llama3.2 3b echoes patterns back
 unchanged. Sampled kits stream from tonejs.github.io (synth fallback keeps
 playback working offline).

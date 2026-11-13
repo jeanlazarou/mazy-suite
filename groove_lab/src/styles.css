@@ -543,10 +543,11 @@ header h1 {
 }
 
 .note {
+  position: relative;
   border-radius: 4px;
   background: var(--bass, #6fb3c8);
   opacity: calc(0.5 + var(--vel, 0.75) * 0.5);
-  cursor: pointer;
+  cursor: grab;
   z-index: 1;
   margin: 1px 0;
 }
@@ -555,9 +556,44 @@ header h1 {
   filter: brightness(1.15);
 }
 
+/* Right edge: drag to change the note's length. */
+.note-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  border-radius: 0 4px 4px 0;
+  cursor: ew-resize;
+}
+
+.note:hover .note-handle {
+  background: rgba(255, 255, 255, 0.35);
+}
+
 .note.ghost {
   opacity: 0.4;
   pointer-events: none;
+}
+
+/* The note being moved/resized stays faintly in place; the ghost shows where it lands. */
+.note.lifted {
+  opacity: 0.2;
+}
+
+/* While drawing or dragging, notes let the cells under them see the mouse. */
+.roll-grid.editing .note {
+  pointer-events: none;
+}
+
+.roll-grid.move-drag,
+.roll-grid.move-drag .roll-cell {
+  cursor: grabbing;
+}
+
+.roll-grid.resize-drag,
+.roll-grid.resize-drag .roll-cell {
+  cursor: ew-resize;
 }
 
 /* ---- bass tab view ---- */

@@ -172,9 +172,10 @@ export default function App() {
         <h1>Groove Lab</h1>
         <p className="hint">
           Drums: click to add a hit, drag to paint, right-click to cycle ghost /
-          normal / accent. Bass roll: press and drag right to place a note,
-          click a note to delete it, right-click to cycle. Ctrl/Cmd-Z undoes,
-          Shift-Ctrl/Cmd-Z redoes.
+          normal / accent. Bass roll: press and drag right to place a note;
+          drag a note to move it, its right edge to change its length; click
+          to delete, right-click to cycle. Ctrl/Cmd-Z undoes, Shift-Ctrl/Cmd-Z
+          redoes.
         </p>
       </header>
       <TransportBar

@@ -42,13 +42,17 @@ sharps), columns are the same sixteenth notes as the drum grid.
 | Action | How |
 |--------|-----|
 | Add a note | Press on an empty cell and drag right to set its length |
-| Delete a note | Click it |
+| Move a note | Drag it — sideways in time, up/down in pitch (you hear each new pitch) |
+| Change its length | Drag its right edge (it lights up on hover) |
+| Delete a note | Click it without dragging |
+| Cancel a drag | Escape before releasing the mouse |
 | Accent a note | Right-click it — cycles normal → accent → ghost |
 | Hear a pitch | Click its row label |
 
-The bass line is monophonic (like the synth that plays it): placing a note over
-an existing one replaces it, and a long note that rings into a new one gets cut
-short at the new note's start.
+The bass line is monophonic (like the synth that plays it): placing, moving or
+stretching a note over an existing one replaces it, and a long note that rings
+into a new one gets cut short at the new note's start. Each move or resize is
+one Undo step.
 
 The **roll / tab** toggle in the Bass header switches to bass tablature —
 four string lines (G, D, A, E) with the same step columns as the drum grid:

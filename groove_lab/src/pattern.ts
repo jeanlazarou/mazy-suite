@@ -1,5 +1,10 @@
 import type { BassNote, DrumLane, Pattern, Step } from "./types";
-import { DRUM_LANES, totalSteps } from "./types";
+import {
+  BASS_PITCH_MAX,
+  BASS_PITCH_MIN,
+  DRUM_LANES,
+  totalSteps,
+} from "./types";
 
 export const VELOCITY_LEVELS = [0.4, 0.75, 1.0]; // ghost, normal, accent
 export const DEFAULT_VELOCITY = 0.75;
@@ -156,6 +161,50 @@ export function addBassNote(
 
 export function removeBassNote(pattern: Pattern, step: number): Pattern {
   return { ...pattern, bass: pattern.bass.filter((n) => n.step !== step) };
+}
+
+/**
+ * Move the note starting at `fromStep` to a new start and pitch, keeping its
+ * length (clipped at the pattern end) and velocity. Where it lands, the
+ * monophony rules of addBassNote apply.
+ */
+export function moveBassNote(
+  pattern: Pattern,
+  fromStep: number,
+  to: { step: number; midiPitch: number },
+): Pattern {
+  const note = pattern.bass.find((n) => n.step === fromStep);
+  if (!note) return pattern;
+  const step = Math.max(0, Math.min(totalSteps(pattern) - 1, to.step));
+  const midiPitch = Math.max(
+    BASS_PITCH_MIN,
+    Math.min(BASS_PITCH_MAX, to.midiPitch),
+  );
+  if (step === note.step && midiPitch === note.midiPitch) return pattern;
+  return addBassNote(removeBassNote(pattern, fromStep), {
+    ...note,
+    step,
+    midiPitch,
+  });
+}
+
+/** Set the length of the note starting at `step`; a longer note replaces the notes it now covers. */
+export function resizeBassNote(
+  pattern: Pattern,
+  step: number,
+  durationSteps: number,
+): Pattern {
+  const note = pattern.bass.find((n) => n.step === step);
+  if (!note) return pattern;
+  const length = Math.max(
+    1,
+    Math.min(Math.round(durationSteps), totalSteps(pattern) - step),
+  );
+  if (length === note.durationSteps) return pattern;
+  return addBassNote(removeBassNote(pattern, step), {
+    ...note,
+    durationSteps: length,
+  });
 }
 
 /** Accent cycle for an existing bass note: normal → accent → ghost → normal. */

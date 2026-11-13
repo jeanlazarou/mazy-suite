@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Pattern } from "../types";
+import type { BassNote, Pattern } from "../types";
 import {
   BASS_PITCH_MAX,
   BASS_PITCH_MIN,
@@ -11,7 +11,9 @@ import {
   DEFAULT_VELOCITY,
   addBassNote,
   cycleBassNoteVelocity,
+  moveBassNote,
   removeBassNote,
+  resizeBassNote,
 } from "../pattern";
 import type { PatternChange } from "../editor";
 
@@ -34,10 +36,25 @@ interface Placing {
   end: number; // inclusive
 }
 
+/** A note being moved or resized; `step/pitch/duration` = where it would land. */
+interface Dragging {
+  kind: "move" | "resize";
+  from: BassNote;
+  grab: number; // move: steps from the note's start to the cell grabbed
+  step: number;
+  pitch: number;
+  duration: number;
+  moved: boolean; // left its starting place at some point
+}
+
+const clamp = (v: number, lo: number, hi: number) =>
+  Math.max(lo, Math.min(hi, v));
+
 /**
  * Piano-roll grid for the bass line. Press on an empty cell and drag right to
- * set the note length; click a note to delete it; right-click a note to cycle
- * ghost/normal/accent. The line is monophonic — overlaps replace/truncate.
+ * set the note length; drag a note to move it, its right edge to resize it;
+ * click a note to delete it; right-click a note to cycle ghost/normal/accent.
+ * The line is monophonic — overlaps replace/truncate.
  */
 export function BassRoll({
   pattern,
@@ -47,6 +64,7 @@ export function BassRoll({
 }: BassRollProps) {
   const steps = totalSteps(pattern);
   const [placing, setPlacing] = useState<Placing | null>(null);
+  const [dragging, setDragging] = useState<Dragging | null>(null);
 
   useEffect(() => {
     if (!placing) return;
@@ -61,16 +79,113 @@ export function BassRoll({
       onPreview(placing.pitch, DEFAULT_VELOCITY);
       setPlacing(null);
     };
+    const cancel = (e: KeyboardEvent) => e.key === "Escape" && setPlacing(null);
     window.addEventListener("mouseup", commit);
-    return () => window.removeEventListener("mouseup", commit);
+    window.addEventListener("keydown", cancel);
+    return () => {
+      window.removeEventListener("mouseup", commit);
+      window.removeEventListener("keydown", cancel);
+    };
   }, [placing, onChange, onPreview]);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const d = dragging;
+    const commit = () => {
+      if (d.kind === "move" && !d.moved) {
+        onChange((p) => removeBassNote(p, d.from.step)); // a plain click
+      } else if (d.kind === "move") {
+        onChange((p) =>
+          moveBassNote(p, d.from.step, { step: d.step, midiPitch: d.pitch }),
+        );
+      } else if (d.moved) {
+        onChange((p) => resizeBassNote(p, d.from.step, d.duration));
+      }
+      setDragging(null);
+    };
+    const cancel = (e: KeyboardEvent) => e.key === "Escape" && setDragging(null);
+    window.addEventListener("mouseup", commit);
+    window.addEventListener("keydown", cancel);
+    return () => {
+      window.removeEventListener("mouseup", commit);
+      window.removeEventListener("keydown", cancel);
+    };
+  }, [dragging, onChange]);
+
+  const onCellEnter = (step: number, pitch: number) => {
+    if (placing) {
+      if (step >= placing.start) setPlacing({ ...placing, end: step });
+      return;
+    }
+    if (!dragging) return;
+    const d = dragging;
+    if (d.kind === "move") {
+      // The whole note stays inside the bar while it's dragged.
+      const start = clamp(step - d.grab, 0, steps - d.from.durationSteps);
+      // Leaving the grabbed cell makes it a drag, even if the note is
+      // clamped where it was — releasing must not count as a click.
+      const moved =
+        d.moved || step !== d.from.step + d.grab || pitch !== d.from.midiPitch;
+      if (start === d.step && pitch === d.pitch && moved === d.moved) return;
+      if (pitch !== d.pitch) onPreview(pitch, d.from.velocity);
+      setDragging({ ...d, step: start, pitch, moved });
+    } else {
+      const duration = clamp(step - d.from.step + 1, 1, steps - d.from.step);
+      if (duration !== d.duration) setDragging({ ...d, duration, moved: true });
+    }
+  };
+
+  const startDrag = (
+    kind: Dragging["kind"],
+    note: BassNote,
+    e: React.MouseEvent<HTMLElement>,
+  ) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const grab =
+      kind === "move"
+        ? clamp(
+            Math.floor(((e.clientX - rect.left) / rect.width) * note.durationSteps),
+            0,
+            note.durationSteps - 1,
+          )
+        : 0;
+    setDragging({
+      kind,
+      from: note,
+      grab,
+      step: note.step,
+      pitch: note.midiPitch,
+      duration: note.durationSteps,
+      moved: false,
+    });
+  };
 
   const rowOf = (pitch: number) => 2 + (BASS_PITCH_MAX - pitch); // row 1 = header
   const colOf = (step: number) => 2 + step; // col 1 = labels
 
+  const ghost = placing
+    ? {
+        pitch: placing.pitch,
+        step: placing.start,
+        length: placing.end - placing.start + 1,
+      }
+    : dragging
+      ? {
+          pitch: dragging.pitch,
+          step: dragging.step,
+          length: Math.min(dragging.duration, steps - dragging.step),
+        }
+      : null;
+
+  const gridClass = [
+    "roll-grid",
+    placing || dragging ? "editing" : "",
+    dragging ? `${dragging.kind}-drag` : "",
+  ].join(" ");
+
   return (
     <div
-      className="roll-grid"
+      className={gridClass}
       style={{ ["--steps" as string]: steps }}
       onContextMenu={(e) => e.preventDefault()}
     >
@@ -93,15 +208,10 @@ export function BassRoll({
           pitch={pitch}
           steps={steps}
           currentStep={currentStep}
-          placing={placing}
           onStartPlacing={(step) =>
             setPlacing({ pitch, start: step, end: step })
           }
-          onExtendPlacing={(step) =>
-            setPlacing((p) =>
-              p && p.pitch === pitch && step >= p.start ? { ...p, end: step } : p,
-            )
-          }
+          onCellEnter={(step) => onCellEnter(step, pitch)}
           onPreview={() => onPreview(pitch, DEFAULT_VELOCITY)}
         />
       ))}
@@ -109,7 +219,7 @@ export function BassRoll({
       {pattern.bass.map((note) => (
         <div
           key={note.step}
-          className="note"
+          className={`note ${dragging?.from.step === note.step ? "lifted" : ""}`}
           style={{
             gridRow: rowOf(note.midiPitch),
             gridColumn: `${colOf(note.step)} / span ${note.durationSteps}`,
@@ -117,25 +227,32 @@ export function BassRoll({
           }}
           title={`${midiToNoteName(note.midiPitch)} · velocity ${note.velocity.toFixed(
             2,
-          )} — click to delete, right-click to cycle`}
+          )} — drag to move, drag the right edge to change length, click to delete, right-click to cycle`}
           onMouseDown={(e) => {
             if (e.button === 2) {
               onChange((p) => cycleBassNoteVelocity(p, note.step));
-            } else {
-              onChange((p) => removeBassNote(p, note.step));
+            } else if (e.button === 0) {
+              startDrag("move", note, e);
             }
           }}
-        />
+        >
+          <div
+            className="note-handle"
+            onMouseDown={(e) => {
+              if (e.button !== 0) return;
+              e.stopPropagation();
+              startDrag("resize", note, e);
+            }}
+          />
+        </div>
       ))}
 
-      {placing && (
+      {ghost && (
         <div
           className="note ghost"
           style={{
-            gridRow: rowOf(placing.pitch),
-            gridColumn: `${colOf(placing.start)} / span ${
-              placing.end - placing.start + 1
-            }`,
+            gridRow: rowOf(ghost.pitch),
+            gridColumn: `${colOf(ghost.step)} / span ${ghost.length}`,
           }}
         />
       )}
@@ -148,9 +265,8 @@ interface RollRowProps {
   pitch: number;
   steps: number;
   currentStep: number;
-  placing: Placing | null;
   onStartPlacing: (step: number) => void;
-  onExtendPlacing: (step: number) => void;
+  onCellEnter: (step: number) => void;
   onPreview: () => void;
 }
 
@@ -159,9 +275,8 @@ function RollRow({
   pitch,
   steps,
   currentStep,
-  placing,
   onStartPlacing,
-  onExtendPlacing,
+  onCellEnter,
   onPreview,
 }: RollRowProps) {
   const name = midiToNoteName(pitch);
@@ -189,9 +304,7 @@ function RollRow({
           onMouseDown={(e) => {
             if (e.button === 0) onStartPlacing(step);
           }}
-          onMouseEnter={() => {
-            if (placing) onExtendPlacing(step);
-          }}
+          onMouseEnter={() => onCellEnter(step)}
         />
       ))}
     </>

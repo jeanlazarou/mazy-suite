@@ -9,7 +9,9 @@ import {
   cycleDrumStepVelocity,
   clearDrums,
   getDrumStep,
+  moveBassNote,
   removeBassNote,
+  resizeBassNote,
   resizePattern,
   setDrumStep,
   toggleDrumStep,
@@ -132,6 +134,75 @@ describe("addBassNote (monophonic)", () => {
     expect(p.bass[0].durationSteps).toBe(2);
     expect(addBassNote(p, { step: 16, durationSteps: 1, midiPitch: 33 }).bass)
       .toHaveLength(1);
+  });
+});
+
+describe("moveBassNote", () => {
+  const twoNotes = () => {
+    let p = createEmptyPattern(); // 16 steps
+    p = addBassNote(p, { step: 0, durationSteps: 4, midiPitch: 33, velocity: 1, string: 2 });
+    p = addBassNote(p, { step: 8, durationSteps: 2, midiPitch: 36 });
+    return p;
+  };
+
+  it("moves start and pitch, keeping length, velocity and fingering", () => {
+    const p = moveBassNote(twoNotes(), 0, { step: 2, midiPitch: 35 });
+    expect(p.bass[0]).toEqual({
+      step: 2, durationSteps: 4, midiPitch: 35, velocity: 1, string: 2,
+    });
+    expect(p.bass).toHaveLength(2);
+  });
+
+  it("landing on another note replaces it (monophony)", () => {
+    const p = moveBassNote(twoNotes(), 0, { step: 6, midiPitch: 33 });
+    expect(p.bass).toEqual([
+      expect.objectContaining({ step: 6, durationSteps: 4, midiPitch: 33 }),
+    ]);
+  });
+
+  it("moving into an earlier note's tail cuts that note short", () => {
+    const p = moveBassNote(twoNotes(), 8, { step: 2, midiPitch: 36 });
+    expect(p.bass.map((n) => [n.step, n.durationSteps])).toEqual([[0, 2], [2, 2]]);
+  });
+
+  it("clips the length at the pattern end and clamps step and pitch", () => {
+    const p = moveBassNote(twoNotes(), 0, { step: 40, midiPitch: 99 });
+    expect(p.bass.at(-1)).toMatchObject({ step: 15, durationSteps: 1, midiPitch: 55 });
+  });
+
+  it("returns the same pattern when nothing moves or there's no note", () => {
+    const p = twoNotes();
+    expect(moveBassNote(p, 0, { step: 0, midiPitch: 33 })).toBe(p);
+    expect(moveBassNote(p, 3, { step: 5, midiPitch: 40 })).toBe(p);
+  });
+});
+
+describe("resizeBassNote", () => {
+  it("shortens and lengthens a note, keeping the rest of it", () => {
+    let p = addBassNote(createEmptyPattern(), {
+      step: 4, durationSteps: 4, midiPitch: 40, velocity: 0.4,
+    });
+    p = resizeBassNote(p, 4, 1);
+    expect(p.bass[0]).toMatchObject({ step: 4, durationSteps: 1, midiPitch: 40, velocity: 0.4 });
+    p = resizeBassNote(p, 4, 6);
+    expect(p.bass[0].durationSteps).toBe(6);
+  });
+
+  it("a longer note replaces the notes it now covers", () => {
+    let p = createEmptyPattern();
+    p = addBassNote(p, { step: 0, durationSteps: 2, midiPitch: 33 });
+    p = addBassNote(p, { step: 4, durationSteps: 2, midiPitch: 36 });
+    p = addBassNote(p, { step: 12, durationSteps: 2, midiPitch: 38 });
+    p = resizeBassNote(p, 0, 8);
+    expect(p.bass.map((n) => n.step)).toEqual([0, 12]);
+  });
+
+  it("keeps at least one step and stops at the pattern end", () => {
+    const p = addBassNote(createEmptyPattern(), { step: 12, durationSteps: 2, midiPitch: 33 });
+    expect(resizeBassNote(p, 12, 0).bass[0].durationSteps).toBe(1);
+    expect(resizeBassNote(p, 12, 30).bass[0].durationSteps).toBe(4);
+    expect(resizeBassNote(p, 12, 2)).toBe(p);
+    expect(resizeBassNote(p, 5, 3)).toBe(p);
   });
 });
 
