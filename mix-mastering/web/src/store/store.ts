@@ -161,6 +161,9 @@ export interface AppState {
   isPlaying: boolean;
   playbackPosition: number;
   listenMode: 'original' | 'processed'; // A/B toggle
+  // Part of the track that playback repeats (seconds), to compare the
+  // same passage; null = play through.
+  loopRegion: { start: number; end: number } | null;
 
   // Engine
   wasmReady: boolean;
@@ -269,6 +272,7 @@ export interface AppState {
   setIsPlaying: (v: boolean) => void;
   setPlaybackPosition: (v: number) => void;
   setListenMode: (mode: 'original' | 'processed') => void;
+  setLoopRegion: (r: { start: number; end: number } | null) => void;
   setWasmReady: (v: boolean) => void;
   setParams: (params: ProcessorParams) => void;
   // Manual edits of the active track's settings: one param, or a stage
@@ -326,6 +330,7 @@ const freshTrackView = {
   paramsDirty: true,
   isPlaying: false,
   playbackPosition: 0,
+  loopRegion: null,
   xrayStages: null,
   xrayStagesKey: null,
 } as const;
@@ -414,6 +419,7 @@ export const useStore = create<AppState>((set) => ({
   isPlaying: false,
   playbackPosition: 0,
   listenMode: 'original',
+  loopRegion: null,
   wasmReady: false,
   params: {},
   meters: {},
@@ -546,6 +552,7 @@ export const useStore = create<AppState>((set) => ({
   setIsPlaying: (v) => set({ isPlaying: v }),
   setPlaybackPosition: (v) => set({ playbackPosition: v }),
   setListenMode: (mode) => set({ listenMode: mode }),
+  setLoopRegion: (r) => set({ loopRegion: r }),
   setWasmReady: (v) => set({ wasmReady: v }),
   // The settings live here; the engine is only ever loaded from them
   // (every run starts from initEngine + applySettings) and never read

@@ -11,7 +11,18 @@ const playback = {
   source: null as AudioBufferSourceNode | null,
   startTime: 0,
   offset: 0,
+  // The loop the playing source was started with.
+  loop: null as { start: number; end: number } | null,
 };
+
+// Where the playing source is in the track: time since it started,
+// folded back into the loop once it has passed the loop's end.
+function currentPosition(): number {
+  const raw = getAudioContext().currentTime - playback.startTime;
+  const loop = playback.loop;
+  if (loop && raw >= loop.end) return loop.start + ((raw - loop.start) % (loop.end - loop.start));
+  return raw;
+}
 
 /** Stop any playing source. Safe to call from outside the hook (e.g.
  *  when a view without a transport takes over the screen). */
@@ -45,6 +56,7 @@ export function usePlayback() {
   const clearSeekRequest = useStore((s) => s.clearSeekRequest);
   const loudnessMatch = useStore((s) => s.loudnessMatch);
   const matchGainDB = useStore((s) => s.matchGainDB);
+  const loopRegion = useStore((s) => s.loopRegion);
 
   // Select the active buffer: processed if available and selected, otherwise original
   const getBuffer = useCallback((): AudioBuffer | null => {
@@ -66,41 +78,54 @@ export function usePlayback() {
     }
   }, []);
 
-  const play = useCallback(async () => {
-    const buffer = getBuffer();
-    if (!buffer) return;
-
-    await resumeAudioContext();
+  // Start a source at a position; with a loop region set it repeats that
+  // part (the source loops natively, so the repeat is seamless), starting
+  // from the region's beginning when the position is outside it.
+  const startSource = useCallback((buffer: AudioBuffer, at: number) => {
     const ctx = getAudioContext();
-
-    stopSource();
-    // An album transition preview and the transport never play together.
-    stopTransition();
-    useStore.getState().setTransitionPlaying(null);
+    const region = useStore.getState().loopRegion;
+    const loop = region && region.start < buffer.duration
+      ? { start: region.start, end: Math.min(region.end, buffer.duration) } : null;
+    let offset = Math.min(at, buffer.duration);
+    if (loop && (offset < loop.start || offset >= loop.end)) offset = loop.start;
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
+    if (loop) {
+      source.loop = true;
+      source.loopStart = loop.start;
+      source.loopEnd = loop.end;
+    }
     source.connect(getPlaybackInputNode());
-
     source.onended = () => {
       playback.source = null;
       setIsPlaying(false);
       setPlaybackPosition(0);
       playback.offset = 0;
     };
-
-    const offset = Math.min(playback.offset, buffer.duration);
     source.start(0, offset);
     playback.startTime = ctx.currentTime - offset;
+    playback.loop = loop;
     playback.source = source;
+  }, []);
+
+  const play = useCallback(async () => {
+    const buffer = getBuffer();
+    if (!buffer) return;
+
+    await resumeAudioContext();
+
+    stopSource();
+    // An album transition preview and the transport never play together.
+    stopTransition();
+    useStore.getState().setTransitionPlaying(null);
+
+    startSource(buffer, playback.offset);
     setIsPlaying(true);
   }, [getBuffer, stopSource]);
 
   const pause = useCallback(() => {
-    if (playback.source) {
-      const ctx = getAudioContext();
-      playback.offset = ctx.currentTime - playback.startTime;
-    }
+    if (playback.source) playback.offset = currentPosition();
     stopSource();
     setIsPlaying(false);
   }, [stopSource]);
@@ -130,8 +155,7 @@ export function usePlayback() {
     let raf: number;
     let lastPos = -1;
     const update = () => {
-      const ctx = getAudioContext();
-      const pos = ctx.currentTime - playback.startTime;
+      const pos = currentPosition();
       if (Math.abs(pos - lastPos) > 0.1) {
         lastPos = pos;
         setPlaybackPosition(pos);
@@ -148,26 +172,24 @@ export function usePlayback() {
     if (!isPlaying || !playback.source) return;
     const buffer = listenMode === 'processed' && processedBuffer ? processedBuffer : originalBuffer;
     if (!buffer || playback.source.buffer === buffer) return;
-    const ctx = getAudioContext();
-    playback.offset = ctx.currentTime - playback.startTime;
+    playback.offset = currentPosition();
     stopSource();
-
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(getPlaybackInputNode());
-
-    source.onended = () => {
-      playback.source = null;
-      setIsPlaying(false);
-      setPlaybackPosition(0);
-      playback.offset = 0;
-    };
-
-    const offset = Math.min(playback.offset, buffer.duration);
-    source.start(0, offset);
-    playback.startTime = ctx.currentTime - offset;
-    playback.source = source;
+    startSource(buffer, playback.offset);
   }, [listenMode, processedBuffer]);
+
+  // A loop region set, moved or removed: playback goes on from where it
+  // is when that is inside the region, else from the region's start.
+  useEffect(() => {
+    if (playback.source && playback.source.buffer) {
+      const buffer = playback.source.buffer;
+      playback.offset = currentPosition();
+      stopSource();
+      startSource(buffer, playback.offset);
+    } else if (loopRegion && (playback.offset < loopRegion.start || playback.offset >= loopRegion.end)) {
+      playback.offset = loopRegion.start;
+      setPlaybackPosition(loopRegion.start);
+    }
+  }, [loopRegion]);
 
   // Loudness-matched A/B: trim processed playback to the original's
   // integrated loudness so comparisons aren't biased by level.

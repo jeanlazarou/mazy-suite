@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Box, IconButton, Typography, ToggleButton, LinearProgress, Tooltip, CircularProgress } from '@mui/material';
+import { Box, IconButton, Typography, ToggleButton, LinearProgress, Tooltip, CircularProgress, Chip } from '@mui/material';
 import CheckIcon from '@mui/icons-material/Check';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
@@ -23,6 +23,8 @@ export const TransportBar: React.FC = () => {
     return i < 0 ? null : `Track ${i + 1} of ${s.tracks.length}`;
   });
   const xrayOpen = useStore((s) => s.xrayOpen);
+  const loopRegion = useStore((s) => s.loopRegion);
+  const setLoopRegion = useStore((s) => s.setLoopRegion);
   const isPlaying = useStore((s) => s.isPlaying);
   const playbackPosition = useStore((s) => s.playbackPosition);
   const fileInfo = useStore((s) => s.fileInfo);
@@ -49,7 +51,8 @@ export const TransportBar: React.FC = () => {
     pickAudioFiles(true, addAlbumFiles);
   };
 
-  // Keyboard: Space play/pause, A / B listen, M match, ← → 5 s, Home.
+  // Keyboard: Space play/pause, A / B listen, M match, ← → 5 s, Home,
+  // L removes the loop.
   useEffect(() => {
     // Whether focus was last moved with Tab (rather than left by a click).
     let tabbed = false;
@@ -76,6 +79,7 @@ export const TransportBar: React.FC = () => {
         case 'a': s.setListenMode('original'); break;
         case 'b': if (s.processedBuffer) s.setListenMode('processed'); break;
         case 'm': if (s.matchGainDB !== null) s.setLoudnessMatch(!s.loudnessMatch); break;
+        case 'l': if (s.loopRegion) s.setLoopRegion(null); else return; break;
         case 'ArrowLeft': seek(Math.max(0, s.playbackPosition - 5)); break;
         case 'ArrowRight': seek(Math.min(Math.max(0, duration - 0.1), s.playbackPosition + 5)); break;
         case 'Home': seek(0); break;
@@ -164,6 +168,20 @@ export const TransportBar: React.FC = () => {
             <Typography variant="body2" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
               {formatTime(playbackPosition)}
             </Typography>
+            {loopRegion ? (
+              <Tooltip title="This part repeats. Drag on the waveform for another part; remove the loop here, with L, or by clicking outside it on the waveform.">
+                <Chip
+                  size="small" color="success" variant="outlined"
+                  label={`Loop ${formatTime(loopRegion.start)} – ${formatTime(loopRegion.end)}`}
+                  onDelete={() => setLoopRegion(null)}
+                  sx={{ height: 16, fontSize: '0.62rem', '& .MuiChip-deleteIcon': { fontSize: 13 } }}
+                />
+              </Tooltip>
+            ) : (
+              <Typography variant="body2" sx={{ fontSize: '0.62rem', color: 'text.disabled' }}>
+                drag on the waveform to loop a part
+              </Typography>
+            )}
             <Typography variant="body2" sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>
               {formatTime(fileInfo.duration)}
             </Typography>

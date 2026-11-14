@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { Box } from '@mui/material';
 import { useStore } from '../../store/store';
 
@@ -35,6 +35,13 @@ export const Waveform: React.FC = () => {
   const playbackPosition = useStore((s) => s.playbackPosition);
   const fileInfo = useStore((s) => s.fileInfo);
   const requestSeek = useStore((s) => s.requestSeek);
+  const loopRegion = useStore((s) => s.loopRegion);
+  const setLoopRegion = useStore((s) => s.setLoopRegion);
+  // A click jumps there; a drag marks the part to loop. While dragging,
+  // the selection so far (seconds).
+  const press = useRef<{ x: number; time: number } | null>(null);
+  const [selecting, setSelecting] = useState<{ start: number; end: number } | null>(null);
+  const region = selecting ?? loopRegion;
 
   const buffer = listenMode === 'original' ? originalBuffer : (processedBuffer || originalBuffer);
   const peaks = useMemo(() => (buffer ? computePeaks(buffer) : null), [buffer]);
@@ -67,6 +74,19 @@ export const Waveform: React.FC = () => {
     }
     ctx.stroke();
 
+    // Loop region: the rest of the track dimmed, the region's edges marked
+    if (region && fileInfo && fileInfo.duration > 0) {
+      const x0 = (region.start / fileInfo.duration) * w, x1 = (region.end / fileInfo.duration) * w;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(0, 0, x0, h);
+      ctx.fillRect(x1, 0, w - x1, h);
+      ctx.fillStyle = 'rgba(52,211,153,0.12)';
+      ctx.fillRect(x0, 0, x1 - x0, h);
+      ctx.fillStyle = '#34D399';
+      ctx.fillRect(x0, 0, 2, h);
+      ctx.fillRect(x1 - 2, 0, 2, h);
+    }
+
     // Playback position
     if (fileInfo && fileInfo.duration > 0) {
       const posX = (playbackPosition / fileInfo.duration) * w;
@@ -77,7 +97,12 @@ export const Waveform: React.FC = () => {
       ctx.lineTo(posX, h);
       ctx.stroke();
     }
-  }, [peaks, playbackPosition, fileInfo]);
+  }, [peaks, playbackPosition, fileInfo, region]);
+
+  const timeAt = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * (fileInfo?.duration ?? 0);
+  };
 
   return (
     <Box sx={{ borderRadius: 1, overflow: 'hidden' }}>
@@ -85,13 +110,32 @@ export const Waveform: React.FC = () => {
         ref={canvasRef}
         width={WIDTH}
         height={HEIGHT}
-        style={{ width: '100%', height: HEIGHT, display: 'block', cursor: fileInfo ? 'pointer' : 'default' }}
-        onClick={(e) => {
+        title="Click to jump there · drag to loop a part · click outside the loop to remove it"
+        style={{ width: '100%', height: HEIGHT, display: 'block', touchAction: 'none', cursor: fileInfo ? 'pointer' : 'default' }}
+        onPointerDown={(e) => {
           if (!fileInfo) return;
-          const rect = e.currentTarget.getBoundingClientRect();
-          const pos = ((e.clientX - rect.left) / rect.width) * fileInfo.duration;
-          requestSeek(pos);
+          e.currentTarget.setPointerCapture(e.pointerId);
+          press.current = { x: e.clientX, time: timeAt(e) };
         }}
+        onPointerMove={(e) => {
+          if (!press.current || (!selecting && Math.abs(e.clientX - press.current.x) < 5)) return;
+          const t = timeAt(e);
+          setSelecting({ start: Math.min(press.current.time, t), end: Math.max(press.current.time, t) });
+        }}
+        onPointerUp={(e) => {
+          if (!press.current) return;
+          const at = press.current.time;
+          press.current = null;
+          if (selecting) {
+            setSelecting(null);
+            // Too short to be meant as a loop: leave things as they were.
+            if (selecting.end - selecting.start >= 0.25) setLoopRegion(selecting);
+            return;
+          }
+          if (loopRegion && (at < loopRegion.start || at >= loopRegion.end)) setLoopRegion(null);
+          requestSeek(timeAt(e));
+        }}
+        onPointerCancel={() => { press.current = null; setSelecting(null); }}
       />
     </Box>
   );
