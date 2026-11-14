@@ -4,6 +4,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { EQPanel } from './EQPanel';
 import { BassExciterPanel, TrebleExciterPanel } from './ExciterPanel';
 import { SaturationPanel } from './SaturationPanel';
+import { TonePanel } from './TonePanel';
 import { CompressorPanel } from './CompressorPanel';
 import { LimiterPanel } from './LimiterPanel';
 import { StereoPanel } from './StereoPanel';
@@ -29,6 +30,7 @@ interface StageMeta {
 // never drift from the real chain the way the old hardcoded STAGES list
 // did (wrong order, missing the Normalizer and Gain stages entirely).
 const STAGE_META: Record<string, StageMeta> = {
+  'Tone Match': { label: 'Tone match', color: '#2DD4BF', panel: TonePanel, enhance: true },
   'Parametric EQ': { label: 'EQ', color: '#6C63FF', panel: EQPanel },
   'Saturation': { label: 'Saturation', color: '#F97316', panel: SaturationPanel, enhance: true },
   'Bass Exciter': { label: 'Bass Exciter', color: '#F59E0B', panel: BassExciterPanel, enhance: true },
@@ -87,7 +89,8 @@ export const ProcessorPipeline: React.FC = () => {
     const meta = STAGE_META[name];
     if (!meta?.enhance) return true;
     // Hidden until enabled — via the Enhance switch above (exciters), a
-    // destination (e.g. phone) or the Warm version (saturation).
+    // destination (e.g. phone), the Warm version (saturation) or the
+    // fixes (tone match).
     return processorEnabled[name] ?? false;
   });
 

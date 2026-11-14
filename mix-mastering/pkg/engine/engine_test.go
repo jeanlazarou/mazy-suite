@@ -180,7 +180,7 @@ func TestFullChainOrder(t *testing.T) {
 	eng := NewFullChain(44100, 2)
 
 	want := []string{
-		"Parametric EQ", "Saturation", "Bass Exciter", "Stereo Widener", "Compressor",
+		"Tone Match", "Parametric EQ", "Saturation", "Bass Exciter", "Stereo Widener", "Compressor",
 		"Treble Exciter", "Loudness Normalizer", "Gain", "Limiter",
 	}
 	got := make([]string, len(eng.Processors()))

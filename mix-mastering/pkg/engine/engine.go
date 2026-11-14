@@ -52,6 +52,7 @@ func NewWithDefaults(sampleRate, channels int) *MasteringEngine {
 // the saturated sound.
 func NewFullChain(sampleRate, channels int) *MasteringEngine {
 	e := New(sampleRate, channels)
+	e.AddProcessor(dsp.NewToneMatch(float64(sampleRate)))
 	e.AddProcessor(dsp.NewParametricEQ(float64(sampleRate), channels))
 	e.AddProcessor(dsp.NewSaturation(float64(sampleRate)))
 	bassExciter := dsp.NewBassExciter(float64(sampleRate))

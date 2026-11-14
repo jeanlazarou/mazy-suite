@@ -54,6 +54,7 @@ type Style struct {
 	Knee        float64 `json:"-"` // dB
 	RatioAdd    float64 `json:"-"` // added to the destination's ratio
 	SqueezeAdd  float64 `json:"-"` // dB of gain reduction added to the destination's
+	Match       float64 `json:"-"` // share of the tone's broad deviation corrected (see toneMatch)
 }
 
 // Destination is where the master will be heard.
@@ -74,28 +75,28 @@ type Destination struct {
 
 // neutralStyle is used when no style is chosen: no tonal shaping, a
 // middle-of-the-road compressor motion.
-var neutralStyle = Style{ID: "", Name: "No style", Attack: 15, Release: 150, Knee: 6}
+var neutralStyle = Style{ID: "", Name: "No style", Attack: 15, Release: 150, Knee: 6, Match: 0.6}
 
 // Compressor timings are mastering ones (whole mix, a few dB of gain
 // reduction): attack 10 ms or more, release 100 ms or more. Faster
 // settings make the whole mix pump on every beat.
 var styles = []Style{
 	{ID: "rock", Name: "Rock", Description: "Solid lows, cleaner low-mids, a bit of bite and air; punchy compression.",
-		Tone: Tone{Low: 1.5, Mud: -1, Presence: 1, Air: 1.5}, Attack: 20, Release: 150, Knee: 6, RatioAdd: 0.5, SqueezeAdd: 0.5},
+		Tone: Tone{Low: 1.5, Mud: -1, Presence: 1, Air: 1.5}, Attack: 20, Release: 150, Knee: 6, RatioAdd: 0.5, SqueezeAdd: 0.5, Match: 0.6},
 	{ID: "pop", Name: "Pop", Description: "Bright and polished: forward vocals, extra air, smooth compression.",
-		Tone: Tone{Low: 1, Presence: 1.5, Air: 2}, Attack: 15, Release: 120, Knee: 8, RatioAdd: 0.25, SqueezeAdd: 0.25},
+		Tone: Tone{Low: 1, Presence: 1.5, Air: 2}, Attack: 15, Release: 120, Knee: 8, RatioAdd: 0.25, SqueezeAdd: 0.25, Match: 0.6},
 	{ID: "electronic", Name: "Electronic", Description: "Big low end, scooped low-mids, crisp top; tight, dense compression.",
-		Tone: Tone{Low: 2, Mud: -1.5, Air: 2}, Attack: 10, Release: 100, Knee: 4, RatioAdd: 0.5, SqueezeAdd: 0.75},
+		Tone: Tone{Low: 2, Mud: -1.5, Air: 2}, Attack: 10, Release: 100, Knee: 4, RatioAdd: 0.5, SqueezeAdd: 0.75, Match: 0.6},
 	{ID: "hiphop", Name: "Hip-hop", Description: "Heavy lows, clear vocals; firm compression that keeps the kick punching.",
-		Tone: Tone{Low: 2.5, Mud: -1, Presence: 1, Air: 1}, Attack: 20, Release: 120, Knee: 6, RatioAdd: 0.5, SqueezeAdd: 0.5},
+		Tone: Tone{Low: 2.5, Mud: -1, Presence: 1, Air: 1}, Attack: 20, Release: 120, Knee: 6, RatioAdd: 0.5, SqueezeAdd: 0.5, Match: 0.6},
 	{ID: "jazz", Name: "Jazz", Description: "Warm and natural; gentle, slow compression that keeps the dynamics.",
-		Tone: Tone{Low: 0.5, Presence: -0.5, Air: 1}, Attack: 30, Release: 250, Knee: 10, RatioAdd: -0.25, SqueezeAdd: -0.5},
+		Tone: Tone{Low: 0.5, Presence: -0.5, Air: 1}, Attack: 30, Release: 250, Knee: 10, RatioAdd: -0.25, SqueezeAdd: -0.5, Match: 0.4},
 	{ID: "acoustic", Name: "Acoustic / folk", Description: "Open and natural, slightly less boxy; light compression.",
-		Tone: Tone{Mud: -0.5, Presence: 0.5, Air: 1}, Attack: 25, Release: 200, Knee: 10, RatioAdd: -0.25, SqueezeAdd: -0.5},
+		Tone: Tone{Mud: -0.5, Presence: 0.5, Air: 1}, Attack: 25, Release: 200, Knee: 10, RatioAdd: -0.25, SqueezeAdd: -0.5, Match: 0.4},
 	{ID: "classical", Name: "Classical", Description: "Almost untouched: a touch of air, very light compression to keep the full dynamic range.",
-		Tone: Tone{Presence: 0.5, Air: 1}, Attack: 30, Release: 300, Knee: 12, RatioAdd: -0.5, SqueezeAdd: -1},
+		Tone: Tone{Presence: 0.5, Air: 1}, Attack: 30, Release: 300, Knee: 12, RatioAdd: -0.5, SqueezeAdd: -1, Match: 0.25},
 	{ID: "voice", Name: "Voice / speech", Description: "Spoken word: rumble cut, less boom, more intelligibility, softer sibilance; even levels.",
-		Tone: Tone{Low: -2, Mud: -1.5, Presence: 2, Air: -1}, HighPassHz: 80, Attack: 10, Release: 120, Knee: 6, RatioAdd: 0.5, SqueezeAdd: 0.5},
+		Tone: Tone{Low: -2, Mud: -1.5, Presence: 2, Air: -1}, HighPassHz: 80, Attack: 10, Release: 120, Knee: 6, RatioAdd: 0.5, SqueezeAdd: 0.5, Match: 0.25},
 }
 
 var destinations = []Destination{
@@ -354,8 +355,14 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 	var fixTone Tone
 	ratioFix, squeezeFix, attackCap := 0.0, 0.0, 0.0
 	squashed := false
+	var match []float64
 	if c.Fix && a != nil {
-		if a.Spectrum != nil {
+		// The tone is corrected with a curve fitted to the song's spectrum;
+		// without a spectrum (an album's aggregate), from its verdict.
+		if curve, ok := toneMatch(a, style); ok {
+			match = curve
+			note("fix", "Tone balanced to the song: %s", describeMatch(curve))
+		} else if _, measured := bandLevels(a.Spectrum); !measured && a.Spectrum != nil {
 			switch a.Spectrum.SpectralBalance {
 			case "dark":
 				fixTone.Air = 2
@@ -449,6 +456,15 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 	setExciter(r, "Bass Exciter", math.Max(dest.BassExcite, variant.BassExcite))
 	setExciter(r, "Treble Exciter", dest.TrebleExcite)
 	setSaturation(r, variant.Saturation)
+	tm := r.Processors["Tone Match"]
+	tm["amount"], tm["enabled"] = 1, 0
+	r.Enabled["Tone Match"] = match != nil
+	if match != nil {
+		tm["enabled"] = 1
+		for i, g := range match {
+			tm[fmt.Sprintf("g.%d", i)] = g
+		}
+	}
 
 	r.Summary = summary(style, dest, variant, r.Fixes, c.Fix)
 	return r, nil

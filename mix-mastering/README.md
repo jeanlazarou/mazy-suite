@@ -110,15 +110,16 @@ Save the current settings as a named setup, tweak further, save another — clic
 
 The full chain used by the web UI and CLI (`engine.NewFullChain`) runs in this order — the limiter stays last so its ceiling holds on the actual output:
 
-1. **Parametric EQ** — 6-band (HPF, low shelf, 2× peak, high shelf, LPF)
-2. **Saturation** — Gentle analog-style waveshaping, mostly 2nd harmonic, 2× oversampled so high notes don't alias; the Warm version's color (disabled by default)
-3. **Bass Exciter** — Harmonic exciter isolating lows, generating harmonics audible on speakers that can't reproduce true sub-bass (disabled by default)
-4. **Stereo Widener** — Mid/side width control
-5. **Compressor** — Soft-knee with attack/release envelope
-6. **Treble Exciter** — Harmonic exciter isolating highs, restoring presence gain reduction tends to dull (disabled by default)
-7. **Loudness Normalizer** — LUFS-based normalization (disabled by default; the web UI enables it, the CLI enables it when a preset configures it)
-8. **Gain** — Unity by default; carries the shared album loudness offset in album mastering
-9. **Limiter** — Lookahead brickwall limiter, zero added latency
+1. **Tone Match** — A correction curve fitted to the song's long-term spectrum (third-octave points, applied as a linear-phase filter): levels what sticks out and fills what is hidden; set by *Fix problems* (disabled by default)
+2. **Parametric EQ** — 6-band (HPF, low shelf, 2× peak, high shelf, LPF)
+3. **Saturation** — Gentle analog-style waveshaping, mostly 2nd harmonic, 2× oversampled so high notes don't alias; the Warm version's color (disabled by default)
+4. **Bass Exciter** — Harmonic exciter isolating lows, generating harmonics audible on speakers that can't reproduce true sub-bass (disabled by default)
+5. **Stereo Widener** — Mid/side width control
+6. **Compressor** — Soft-knee with attack/release envelope
+7. **Treble Exciter** — Harmonic exciter isolating highs, restoring presence gain reduction tends to dull (disabled by default)
+8. **Loudness Normalizer** — LUFS-based normalization (disabled by default; the web UI enables it, the CLI enables it when a preset configures it)
+9. **Gain** — Unity by default; carries the shared album loudness offset in album mastering
+10. **Limiter** — Lookahead brickwall limiter, zero added latency
 
 Saturation and both exciters start disabled — they add harmonic content that isn't in the source (a creative choice, not a corrective one) — and are switched on by the Warm version, the target-device recommendations (phone, bluetooth, car) or explicitly via their `enabled` param.
 
