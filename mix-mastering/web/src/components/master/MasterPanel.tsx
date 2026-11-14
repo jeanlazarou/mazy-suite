@@ -125,6 +125,8 @@ const VariantStep: React.FC<{ n: number }> = ({ n }) => {
   const variants = useStore((s) => s.variants);
   const renders = useStore((s) => s.renders);
   const suggestion = useStore((s) => s.variantSuggestion);
+  const variantEdits = useStore((s) => s.variantEdits);
+  const editedNow = useStore((s) => s.paramsEdited);
   const setChoice = useStore((s) => s.setChoice);
   const setListenMode = useStore((s) => s.setListenMode);
   const list = options?.variants ?? [];
@@ -161,6 +163,12 @@ const VariantStep: React.FC<{ n: number }> = ({ n }) => {
                 {suggestion?.variant === v.id && (
                   <Chip label="Suggested" size="small" color="secondary" variant="outlined"
                     sx={{ height: 16, fontSize: '0.58rem', '& .MuiChip-label': { px: 0.6 } }} />
+                )}
+                {(v.id in variantEdits || (on && editedNow)) && (
+                  <Tooltip title="You changed settings on this version; they are kept while you compare versions. Reset drops them.">
+                    <Chip label="edited" size="small" variant="outlined"
+                      sx={{ height: 16, fontSize: '0.58rem', '& .MuiChip-label': { px: 0.6 } }} />
+                  </Tooltip>
                 )}
                 <Box sx={{ ml: 'auto', display: 'flex' }}>
                   {st?.rendering && (

@@ -440,9 +440,13 @@ export function useAudioEngine() {
         setError(`Settings: ${r.error}`);
         return;
       }
-      useStore.getState().setTrackSettings(t.id, {
-        params: r.processors, enabled: r.enabled, recipe: r, recipeKey: key, paramsEdited: false,
-      });
+      // A version picked again brings back the edits made on it.
+      const live = useStore.getState();
+      const kept = live.workspace === 'track' && t.id === live.activeTrackId ? live.variantEdits[r.variant] : undefined;
+      if (kept) live.forgetVariantEdits(r.variant);
+      useStore.getState().setTrackSettings(t.id, kept
+        ? { params: kept.params, enabled: kept.enabled, recipe: r, recipeKey: key, paramsEdited: true }
+        : { params: r.processors, enabled: r.enabled, recipe: r, recipeKey: key, paramsEdited: false });
     }
   }, []);
 
@@ -613,7 +617,9 @@ export function useAudioEngine() {
 
   // Drop manual edits: rebuild the recipe for the current choice.
   const resetToRecipe = useCallback(() => {
-    useStore.getState().setAppliedRecipe(useStore.getState().recipe, null);
+    const s = useStore.getState();
+    s.forgetVariantEdits(s.choice.variant);
+    s.setAppliedRecipe(s.recipe, null);
   }, []);
 
   return {

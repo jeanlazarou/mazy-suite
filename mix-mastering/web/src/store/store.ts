@@ -67,6 +67,15 @@ export interface VariantState {
   failed: boolean;
 }
 
+// A version's manual edits, kept while another version is compared (track
+// workspace): its settings, and the key of its finished render when it
+// was cached on leaving (null: re-rendered on return).
+export interface VariantEdit {
+  params: ProcessorParams;
+  enabled: Record<string, boolean>;
+  renderKey: string | null;
+}
+
 /** The render made with exactly these settings, if any. */
 export function findRender(s: Pick<AppState, 'renders'>, key: string): CachedRender | undefined {
   return s.renders.find((r) => r.key === key);
@@ -217,6 +226,10 @@ export interface AppState {
   // picking a version while listening swaps buffers instead of
   // re-rendering. Plus the version the analysis suggests.
   variants: Record<string, VariantState>;
+  // Edits made on versions other than the one shown, by version id: picking
+  // that version again brings them back (syncRecipe). Forgotten when what
+  // the versions are built from changes (style, destination, fix, track).
+  variantEdits: Record<string, VariantEdit>;
   renders: CachedRender[];
   variantSuggestion: VariantSuggestion | null;
 
@@ -305,6 +318,8 @@ export interface AppState {
   completeRender: (key: string, analysis: AnalysisResult, matchGainDB: number | null) => void;
   setVariantSuggestion: (v: VariantSuggestion | null) => void;
   clearVariants: () => void;
+  // The version's kept edits are being applied (or dropped): forget them.
+  forgetVariantEdits: (id: string) => void;
   setLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
   requestSeek: (position: number) => void;
@@ -438,6 +453,7 @@ export const useStore = create<AppState>((set) => ({
   paramsEdited: false,
   customPresets: loadCustomPresets(),
   variants: {},
+  variantEdits: {},
   renders: [],
   variantSuggestion: null,
   loading: true,
@@ -458,13 +474,13 @@ export const useStore = create<AppState>((set) => ({
       ? { ...emptyTrackSettings(), params: s.params, enabled: s.processorEnabled, customPreset: s.customPreset }
       : { ...emptyTrackSettings(), params: s.params, enabled: s.processorEnabled };
     const t = { ...track, settings };
-    return { workspace: 'track', tracks: [t], ...activate(t), ...freshAlbum, albumCal: {} };
+    return { workspace: 'track', tracks: [t], ...activate(t), ...freshAlbum, albumCal: {}, variantEdits: {} };
   }),
   startAlbum: (newTracks) => set(() => {
     if (newTracks.length === 0) return {};
     const tracks = newTracks.map((t) => ({ ...t, settings: emptyTrackSettings() }));
     return {
-      workspace: 'album', albumStep: 'release', albumMode: true, tracks,
+      workspace: 'album', albumStep: 'release', albumMode: true, tracks, variantEdits: {},
       ...activate(tracks[0]), ...freshAlbum, albumCal: {},
     };
   }),
@@ -480,7 +496,7 @@ export const useStore = create<AppState>((set) => ({
       // From a single track the release is already chosen: go on with
       // the tracks.
       ...(s.workspace === 'track' ? { albumStep: 'tracks' as const, albumMode: true } : {}),
-      tracks, ...freshAlbum, albumRev: s.albumRev + 1, paramsDirty: true,
+      tracks, ...freshAlbum, albumRev: s.albumRev + 1, paramsDirty: true, variantEdits: {},
     };
   }),
   removeTrack: (id) => set((s) => {
@@ -501,6 +517,7 @@ export const useStore = create<AppState>((set) => ({
     return { tracks };
   }),
   closeSession: () => set({
+    variantEdits: {},
     workspace: null, tracks: [], activeTrackId: null, originalBuffer: null, fileInfo: null,
     ...freshTrackView, ...freshAlbum, albumCal: {}, recipe: null, recipeKey: null,
     customPreset: null, paramsEdited: false, xrayOpen: false, xraySetups: [], xrayActiveSetupId: null,
@@ -585,14 +602,44 @@ export const useStore = create<AppState>((set) => ({
   setAnalysis: (a) => set({ analysis: a }),
   setProcessedAnalysis: (a) => set({ processedAnalysis: a }),
   setRecipeOptions: (o) => set({ recipeOptions: o }),
-  setChoice: (patch) => set((s) => ({
-    choice: { ...s.choice, ...patch },
-    customPreset: null,
-    tracks: s.workspace === 'album'
+  setChoice: (patch) => set((s) => {
+    const choice = { ...s.choice, ...patch };
+    const tracks = s.workspace === 'album'
       ? s.tracks.map((t) => (t.settings.customPreset !== null
         ? { ...t, settings: { ...t.settings, customPreset: null } } : t))
-      : s.tracks,
-  })),
+      : s.tracks;
+    if (choice.style !== s.choice.style || choice.destination !== s.choice.destination || choice.fix !== s.choice.fix) {
+      return { choice, customPreset: null, tracks, variantEdits: {} };
+    }
+    if (s.workspace !== 'track' || choice.variant === s.choice.variant) {
+      return { choice, customPreset: null, tracks };
+    }
+    // Leaving a version: keep its edits (only when the live settings are
+    // that version's — its recipe applied, no saved preset), and its
+    // render when it is finished, so coming back is instant.
+    const leaving = s.choice.variant;
+    const { [leaving]: _, ...variantEdits } = s.variantEdits;
+    let renders = s.renders;
+    if (s.paramsEdited && s.customPreset === null && s.recipeKey !== null && s.recipe?.variant === leaving) {
+      const key = renderKey({ params: s.params, enabled: s.processorEnabled }, s.activeTrackId);
+      const finished = !s.paramsDirty && s.processedBuffer && s.processedSettings
+        && renderKey(s.processedSettings, s.activeTrackId) === key;
+      variantEdits[leaving] = { params: s.params, enabled: s.processorEnabled, renderKey: finished ? key : null };
+      if (finished && !findRender(s, key)) {
+        renders = [...renders, {
+          key, buffer: s.processedBuffer!, rendered: s.processedSettings!, meters: s.meters,
+          analysis: s.processedAnalysis, matchGainDB: s.matchGainDB,
+        }];
+      }
+    }
+    // Keep only the versions' renders and those of kept edits.
+    const keep = new Set([
+      ...Object.values(s.variants).map((v) => v.key),
+      ...Object.values(variantEdits).map((e) => e.renderKey),
+    ]);
+    renders = renders.filter((r) => keep.has(r.key));
+    return { choice, customPreset: null, tracks, variantEdits, renders };
+  }),
   setAppliedRecipe: (r, key) => set({ recipe: r, recipeKey: key }),
   setCustomPreset: (name) => set({ customPreset: name }),
   applySettings: (params, enabled) => set({
@@ -616,6 +663,11 @@ export const useStore = create<AppState>((set) => ({
     };
   }),
   setVariantSuggestion: (v) => set({ variantSuggestion: v }),
+  forgetVariantEdits: (id) => set((s) => {
+    if (!(id in s.variantEdits)) return {};
+    const { [id]: _, ...variantEdits } = s.variantEdits;
+    return { variantEdits };
+  }),
   clearVariants: () => set((s) => (Object.keys(s.variants).length === 0 && s.renders.length === 0
     ? {} : { variants: {}, renders: [], variantSuggestion: null })),
   setLoading: (v) => set({ loading: v }),
