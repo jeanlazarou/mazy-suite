@@ -135,17 +135,18 @@ const DefaultDestination = "streaming"
 // Variant is one of the four versions of a choice: a finish that changes
 // the sound's color and movement, never its delivery (loudness, peaks).
 type Variant struct {
-	ID          string  `json:"id"`
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Note        string  `json:"-"` // what it does, for the recipe notes
-	Tone        Tone    `json:"-"`
-	AttackMul   float64 `json:"-"` // compressor attack ×
-	ReleaseMul  float64 `json:"-"` // compressor release ×
-	RatioAdd    float64 `json:"-"`
-	KneeAdd     float64 `json:"-"` // dB
-	Saturation  float64 `json:"-"` // drive 0-1, 0 = off
-	BassExcite  float64 `json:"-"` // at least this much (the destination may ask for more)
+	ID          string     `json:"id"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Note        string     `json:"-"` // what it does, for the recipe notes
+	Tone        Tone       `json:"-"`
+	AttackMul   float64    `json:"-"` // compressor attack ×
+	ReleaseMul  float64    `json:"-"` // compressor release ×
+	RatioAdd    float64    `json:"-"`
+	KneeAdd     float64    `json:"-"` // dB
+	Saturation  float64    `json:"-"` // drive 0-1, 0 = off
+	Bands       [3]float64 `json:"-"` // dB added to the multiband squeeze (low, mid, high)
+	BassExcite  float64    `json:"-"` // at least this much (the destination may ask for more)
 }
 
 var variants = []Variant{
@@ -153,14 +154,17 @@ var variants = []Variant{
 		AttackMul: 1, ReleaseMul: 1},
 	{ID: "punch", Name: "Punch", Description: "More impact: the compressor lets each hit through, mids forward.",
 		Note: "slower attack lets each hit through, more presence, tighter low-mids",
-		Tone: Tone{Low: 0.5, Mud: -0.5, Presence: 1.5}, AttackMul: 2, ReleaseMul: 0.7, RatioAdd: 0.5},
+		Tone: Tone{Low: 0.5, Mud: -0.5, Presence: 1.5}, AttackMul: 2, ReleaseMul: 0.7, RatioAdd: 0.5,
+		Bands: [3]float64{-0.5, 0.5, 0}},
 	{ID: "smooth", Name: "Smooth", Description: "Easier on the ear: harsh highs tamed, edges rounded.",
 		Note: "softer presence and highs; faster attack and a softer knee round the edges",
-		Tone: Tone{Mud: 0.5, Presence: -1.5, Air: -1.5}, AttackMul: 0.5, ReleaseMul: 1.5, KneeAdd: 4},
+		Tone: Tone{Mud: 0.5, Presence: -1.5, Air: -1.5}, AttackMul: 0.5, ReleaseMul: 1.5, KneeAdd: 4,
+		Bands: [3]float64{0, 0, 1}},
 	{ID: "warm", Name: "Warm", Description: "Weight and glue: richer lows, gentle analog-style saturation.",
 		Note: "richer lows, analog-style saturation, slower and softer compression",
 		Tone: Tone{Low: 1.5, Mud: 0.5, Presence: -0.5, Air: -1}, AttackMul: 1, ReleaseMul: 1.5,
-		RatioAdd: -0.5, KneeAdd: 4, Saturation: 0.25, BassExcite: 0.15},
+		RatioAdd: -0.5, KneeAdd: 4, Saturation: 0.25, BassExcite: 0.15,
+		Bands: [3]float64{0.5, 0, 0}},
 }
 
 // DefaultVariant is used when none is given.
@@ -403,6 +407,54 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 		}
 	}
 	squeeze := squeezeDB(dest, style, squeezeFix, squashed)
+
+	// --- Multiband: each band compressed against its own level, so the
+	// bass no longer decides for the whole mix and quiet detail in the mids
+	// comes up (each band's makeup equals its squeeze: the loud parts
+	// stay, the rest rises). Low ratios with the threshold well below the
+	// loud level work on most of the song instead of only its peaks. The
+	// full-band compressor then only glues. ---
+	var bandLevel []float64
+	if a != nil && a.Dynamics != nil && len(a.Dynamics.BandLoudLevelsDB) == dsp.MultibandBands {
+		bandLevel = a.Dynamics.BandLoudLevelsDB
+	}
+	mb := r.Processors["Multiband Compressor"]
+	mb["enabled"] = 0
+	r.Enabled["Multiband Compressor"] = bandLevel != nil
+	if bandLevel != nil {
+		mb["enabled"] = 1
+		base := 1 + 2*dest.Density + style.SqueezeAdd/2 + squeezeFix/2
+		var amounts [3]float64
+		for i, b := range []struct{ add, ratio, attack, release float64 }{
+			{0, 2.5, 30, 200}, // lows: steady
+			{0.5, 1.5, style.Attack * variant.AttackMul, style.Release * variant.ReleaseMul}, // mids: the detail
+			{-0.5, 1.5, minAttackMS, minReleaseMS},                                           // highs: quick
+		} {
+			s := clamp(base+b.add+variant.Bands[i], 0.5, 4)
+			if squashed {
+				s = math.Min(s/2, 1.5)
+			}
+			attack := b.attack
+			if i == 1 && attackCap > 0 {
+				attack = math.Min(attack, attackCap)
+			}
+			ratio := b.ratio
+			if bandLevel[i] < -70 { // nothing in this band
+				s, ratio = 0, 1
+			}
+			amounts[i] = s
+			set := func(param string, v float64) { mb[fmt.Sprintf("band.%d.%s", i, param)] = v }
+			set("ratio", ratio)
+			set("knee", 6)
+			set("threshold", round1(thresholdFor(bandLevel[i], s, ratio, 6, -70)))
+			set("attack", round1(clamp(attack, minAttackMS, 100)))
+			set("release", math.Round(clamp(b.release, minReleaseMS, 1000)))
+			set("makeup", round1(s))
+		}
+		note("destination", "Multiband: about %.1f / %.1f / %.1f dB on lows / mids / highs — steadier bass, quiet detail comes forward",
+			amounts[0], amounts[1], amounts[2])
+		squeeze = math.Max(0.5, round1(squeeze*0.6))
+	}
 	note("destination", "Compression: about %.1f dB on the loudest parts", squeeze)
 
 	// --- Variant: the finish ---
@@ -440,7 +492,7 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 		attack = math.Min(attack, attackCap)
 	}
 	comp["ratio"] = ratio
-	comp["threshold"] = round1(thresholdFor(loudLevelDB(a), squeeze, ratio, knee))
+	comp["threshold"] = round1(thresholdFor(loudLevelDB(a), squeeze, ratio, knee, -40))
 	comp["attack"] = round1(clamp(attack*variant.AttackMul, minAttackMS, 100))
 	comp["release"] = math.Round(clamp(style.Release*variant.ReleaseMul, minReleaseMS, 1000))
 	comp["knee"] = knee
@@ -503,9 +555,9 @@ func loudLevelDB(a *analysis.AnalysisResult) float64 {
 }
 
 // thresholdFor returns the threshold at which a detector level gets
-// squeeze dB of gain reduction. The static curve grows with level −
-// threshold, so bisection on that difference finds it.
-func thresholdFor(level, squeeze, ratio, knee float64) float64 {
+// squeeze dB of gain reduction, at least floor. The static curve grows
+// with level − threshold, so bisection on that difference finds it.
+func thresholdFor(level, squeeze, ratio, knee, floor float64) float64 {
 	lo, hi := -knee/2, 80.0
 	for i := 0; i < 60; i++ {
 		mid := (lo + hi) / 2
@@ -515,7 +567,7 @@ func thresholdFor(level, squeeze, ratio, knee float64) float64 {
 			hi = mid
 		}
 	}
-	return clamp(level-(lo+hi)/2, -40, 0)
+	return clamp(level-(lo+hi)/2, floor, 0)
 }
 
 // defaults returns every parameter of a fresh full chain.

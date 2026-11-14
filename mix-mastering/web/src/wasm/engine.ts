@@ -10,6 +10,8 @@ export interface MeterData {
     // highest detected level (dBFS) and most gain reduction (dB) per slice.
     in_db?: number[];
     gr_db?: number[];
+    // Multiband compressor: the same two figures per band (low, mid, high).
+    bands?: { max_gr_db: number; avg_gr_db: number; in_db?: number[] }[];
   };
 }
 
@@ -30,6 +32,8 @@ export interface AnalysisResult {
     // Compressor detector level on the loud parts; recipes set the
     // threshold from it.
     loud_level_db?: number;
+    // The same in each multiband band (low, mid, high).
+    band_loud_levels_db?: number[];
   };
   stereo_field: {
     correlation: number;

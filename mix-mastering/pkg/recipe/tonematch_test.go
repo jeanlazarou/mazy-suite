@@ -135,3 +135,54 @@ func TestRecipeUsesToneMatchAsAFix(t *testing.T) {
 		t.Errorf("verdict fallback: tone match %v, air %+.1f", v.Enabled["Tone Match"], v.Processors["Parametric EQ"]["band.4.gain"])
 	}
 }
+
+func TestRecipeMultibandFollowsTheBandLevels(t *testing.T) {
+	a := &analysis.AnalysisResult{
+		Dynamics: &analysis.DynamicsAnalysis{LoudLevelDB: -8, BandLoudLevelsDB: []float64{-10, -14, -28}},
+		Loudness: &analysis.LoudnessAnalysis{IntegratedLUFS: -16, LoudnessRange: 8},
+	}
+	r, err := Build(Choice{Destination: "streaming", Fix: true}, a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mb := r.Processors["Multiband Compressor"]
+	if !r.Enabled["Multiband Compressor"] || mb["enabled"] != 1 {
+		t.Fatalf("multiband off: %v", mb)
+	}
+	for i, level := range a.Dynamics.BandLoudLevelsDB {
+		p := func(name string) float64 { return mb["band."+string(rune('0'+i))+"."+name] }
+		// The band's loud level gets the gain reduction its makeup gives back.
+		gr := dsp.GainReductionDB(level, p("threshold"), p("ratio"), p("knee"))
+		if p("makeup") < 0.5 || math.Abs(gr-p("makeup")) > 0.15 {
+			t.Errorf("band %d: %.2f dB at its loud level, makeup %.1f", i, gr, p("makeup"))
+		}
+		if p("attack") < minAttackMS || p("release") < minReleaseMS {
+			t.Errorf("band %d: timings %v / %v ms", i, p("attack"), p("release"))
+		}
+	}
+	if mb["band.1.makeup"] <= mb["band.2.makeup"] {
+		t.Errorf("mids %.1f dB should get more than highs %.1f", mb["band.1.makeup"], mb["band.2.makeup"])
+	}
+
+	// The full-band compressor does less when the bands do the work.
+	plain := *a
+	plain.Dynamics = &analysis.DynamicsAnalysis{LoudLevelDB: -8}
+	single, _ := Build(Choice{Destination: "streaming", Fix: true}, &plain)
+	if single.Enabled["Multiband Compressor"] || single.Processors["Multiband Compressor"]["enabled"] != 0 {
+		t.Errorf("no band levels: multiband should be off")
+	}
+	if r.Processors["Compressor"]["makeup"] >= single.Processors["Compressor"]["makeup"] {
+		t.Errorf("glue %.1f dB should be less than the single compressor's %.1f",
+			r.Processors["Compressor"]["makeup"], single.Processors["Compressor"]["makeup"])
+	}
+
+	// An already dense mix gets little; an empty band none.
+	dense := *a
+	dense.Loudness = &analysis.LoudnessAnalysis{IntegratedLUFS: -10, LoudnessRange: 3}
+	dense.Dynamics = &analysis.DynamicsAnalysis{LoudLevelDB: -8, BandLoudLevelsDB: []float64{-10, -14, -200}}
+	d, _ := Build(Choice{Destination: "loud", Fix: true}, &dense)
+	dm := d.Processors["Multiband Compressor"]
+	if dm["band.1.makeup"] > 1.5 || dm["band.2.makeup"] != 0 || dm["band.2.ratio"] != 1 {
+		t.Errorf("dense mix: mids %.1f dB, empty highs %.1f dB ratio %.1f", dm["band.1.makeup"], dm["band.2.makeup"], dm["band.2.ratio"])
+	}
+}

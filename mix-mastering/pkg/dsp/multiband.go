@@ -3,176 +3,214 @@ package dsp
 import (
 	"fmt"
 	"math"
+	"strconv"
+	"strings"
 )
 
-// MultibandCompressor splits audio into frequency bands and compresses each independently.
-// The crossovers are 4th-order Linkwitz-Riley (two cascaded Butterworth
-// biquads per edge), so the recombined bands sum to a flat magnitude response.
+// Default crossover frequencies of the multiband compressor: lows below
+// 200 Hz, highs above 4 kHz.
+const (
+	MultibandLowHz  = 200.0
+	MultibandHighHz = 4000.0
+)
+
+// MultibandBands is the number of bands (low, mid, high).
+const MultibandBands = 3
+
+// MultibandBandSignal returns one band of buf (0 low, 1 mid, 2 high) as a
+// new buffer. The crossovers are 4th-order Linkwitz-Riley (two cascaded
+// Butterworth biquads per edge) and the low band also passes the upper
+// crossover's allpass (its low-pass plus its high-pass), so the three
+// bands add up to the input with a flat magnitude response.
+func MultibandBandSignal(buf *AudioBuffer, band int, lowHz, highHz float64) *AudioBuffer {
+	const q = 0.7071 // Butterworth; two cascaded stages form LR4
+	channels, length := buf.Channels(), buf.Length()
+	sr := float64(buf.SampleRate)
+	pair := func(kind BiquadType, freq float64) []*BiquadFilter {
+		return []*BiquadFilter{
+			NewBiquadFilter(kind, freq, q, 0, sr, channels),
+			NewBiquadFilter(kind, freq, q, 0, sr, channels),
+		}
+	}
+	var chain []*BiquadFilter
+	var apLow, apHigh []*BiquadFilter // the low band's allpass, as two paths
+	switch band {
+	case 0:
+		chain = pair(BiquadLowPass, lowHz)
+		apLow, apHigh = pair(BiquadLowPass, highHz), pair(BiquadHighPass, highHz)
+	case 1:
+		chain = append(pair(BiquadHighPass, lowHz), pair(BiquadLowPass, highHz)...)
+	default:
+		chain = append(pair(BiquadHighPass, lowHz), pair(BiquadHighPass, highHz)...)
+	}
+	out := NewAudioBuffer(channels, length, buf.SampleRate)
+	for ch := 0; ch < channels; ch++ {
+		in, dst := buf.Samples[ch], out.Samples[ch]
+		for i, v := range in {
+			for _, f := range chain {
+				v = f.ProcessSample(v, ch)
+			}
+			if apLow != nil {
+				lo, hi := v, v
+				for k := range apLow {
+					lo = apLow[k].ProcessSample(lo, ch)
+					hi = apHigh[k].ProcessSample(hi, ch)
+				}
+				v = lo + hi
+			}
+			dst[i] = v
+		}
+	}
+	return out
+}
+
+// MultibandCompressor compresses lows, mids and highs independently, so a
+// loud bass doesn't turn the whole mix down and quiet detail in the mids
+// can come up. Each band is a Compressor (params band.{0-2}.threshold,
+// ratio, attack, release, knee, makeup). With no gain reduction it is
+// transparent up to the crossovers' phase shift.
 type MultibandCompressor struct {
 	BaseProcessor
 	Bands      []*MultibandBand
 	sampleRate float64
-	channels   int
 }
 
-// MultibandBand represents a single band in the multiband compressor.
+// MultibandBand is one band's compressor.
 type MultibandBand struct {
-	LowFreq    float64
-	HighFreq   float64
 	Compressor *Compressor
-	filters    []*BiquadFilter // cascaded crossover filters, multi-channel state
 }
 
-// multibandCrossovers are the default band edges and compressor settings:
-// low (<200Hz), mid (200-4000Hz), high (>4000Hz).
-var multibandCrossovers = []struct {
-	low, high float64
-	thresh    float64
-	ratio     float64
-}{
-	{0, 200, -20, 3},
-	{200, 4000, -18, 3},
-	{4000, 0, -16, 2.5}, // high band: no upper edge
-}
-
-// NewMultibandCompressor creates a 3-band compressor with default crossovers.
+// NewMultibandCompressor creates a 3-band compressor.
 func NewMultibandCompressor(sampleRate float64, channels int) *MultibandCompressor {
 	mb := &MultibandCompressor{
 		BaseProcessor: BaseProcessor{ProcessorName: "Multiband Compressor", IsEnabled: true},
 		sampleRate:    sampleRate,
-		channels:      channels,
 	}
-
-	for _, x := range multibandCrossovers {
-		band := &MultibandBand{
-			LowFreq:    x.low,
-			HighFreq:   x.high,
-			Compressor: NewCompressor(sampleRate),
-		}
-		band.Compressor.Threshold = x.thresh
-		band.Compressor.Ratio = x.ratio
-		band.buildFilters(sampleRate, channels)
-		mb.Bands = append(mb.Bands, band)
+	for _, x := range []struct{ thresh, ratio float64 }{{-20, 3}, {-18, 3}, {-16, 2.5}} {
+		c := NewCompressor(sampleRate)
+		c.Threshold, c.Ratio = x.thresh, x.ratio
+		mb.Bands = append(mb.Bands, &MultibandBand{Compressor: c})
 	}
-
 	return mb
-}
-
-// buildFilters creates the LR4 crossover cascade for the band's edges.
-func (b *MultibandBand) buildFilters(sampleRate float64, channels int) {
-	const lr4Q = 0.7071 // Butterworth Q; two cascaded stages form LR4
-	b.filters = nil
-	if b.LowFreq > 0 {
-		b.filters = append(b.filters,
-			NewBiquadFilter(BiquadHighPass, b.LowFreq, lr4Q, 0, sampleRate, channels),
-			NewBiquadFilter(BiquadHighPass, b.LowFreq, lr4Q, 0, sampleRate, channels))
-	}
-	if b.HighFreq > 0 {
-		b.filters = append(b.filters,
-			NewBiquadFilter(BiquadLowPass, b.HighFreq, lr4Q, 0, sampleRate, channels),
-			NewBiquadFilter(BiquadLowPass, b.HighFreq, lr4Q, 0, sampleRate, channels))
-	}
 }
 
 func (mb *MultibandCompressor) Process(buf *AudioBuffer) error {
 	if !mb.IsEnabled {
 		return nil
 	}
-
 	channels := buf.Channels()
-	length := buf.Length()
-
-	// Split into bands, compress each, and sum
-	output := NewAudioBuffer(channels, length, buf.SampleRate)
-
-	for _, band := range mb.Bands {
-		// Create a copy for this band
-		bandBuf := NewAudioBuffer(channels, length, buf.SampleRate)
-		for ch := 0; ch < channels; ch++ {
-			copy(bandBuf.Samples[ch], buf.Samples[ch])
+	output := NewAudioBuffer(channels, buf.Length(), buf.SampleRate)
+	for i, band := range mb.Bands {
+		bandBuf := MultibandBandSignal(buf, i, MultibandLowHz, MultibandHighHz)
+		band.Compressor.Reset()
+		if err := band.Compressor.Process(bandBuf); err != nil {
+			return err
 		}
-
-		// Apply the LR4 crossover cascade
-		for _, f := range band.filters {
-			f.EnsureChannels(channels)
-			for ch := 0; ch < channels; ch++ {
-				for i := 0; i < length; i++ {
-					bandBuf.Samples[ch][i] = f.ProcessSample(bandBuf.Samples[ch][i], ch)
-				}
-			}
-		}
-
-		// Compress this band
-		band.Compressor.Process(bandBuf)
-
-		// Sum into output
 		for ch := 0; ch < channels; ch++ {
-			for i := 0; i < length; i++ {
-				output.Samples[ch][i] += bandBuf.Samples[ch][i]
+			dst := output.Samples[ch]
+			for k, v := range bandBuf.Samples[ch] {
+				dst[k] += v
 			}
 		}
 	}
-
-	// Copy output back
 	for ch := 0; ch < channels; ch++ {
 		copy(buf.Samples[ch], output.Samples[ch])
 	}
-
 	return nil
 }
 
+// GainReduction reports the most gain reduction any band applied in the
+// last Process call and the average over the bands (dB, positive).
+func (mb *MultibandCompressor) GainReduction() (maxDB, avgDB float64) {
+	for _, b := range mb.BandGainReduction() {
+		maxDB = math.Max(maxDB, b[0])
+		avgDB += b[1] / float64(len(mb.Bands))
+	}
+	return maxDB, avgDB
+}
+
+// BandGainReduction reports each band's max and average gain reduction in
+// the last Process call (dB, positive).
+func (mb *MultibandCompressor) BandGainReduction() [][2]float64 {
+	out := make([][2]float64, len(mb.Bands))
+	for i, b := range mb.Bands {
+		out[i][0], out[i][1] = b.Compressor.GainReduction()
+	}
+	return out
+}
+
+// BandTimelines reports each band's DynamicsTimeline of the last Process
+// call.
+func (mb *MultibandCompressor) BandTimelines() []DynamicsTimeline {
+	out := make([]DynamicsTimeline, len(mb.Bands))
+	for i, b := range mb.Bands {
+		out[i] = b.Compressor.Timeline()
+	}
+	return out
+}
+
+// bandParam splits "band.1.threshold" into 1 and "threshold".
+func (mb *MultibandCompressor) bandParam(name string) (*Compressor, string, error) {
+	parts := strings.SplitN(name, ".", 3)
+	if len(parts) != 3 || parts[0] != "band" {
+		return nil, "", fmt.Errorf("invalid multiband param: %s", name)
+	}
+	i, err := strconv.Atoi(parts[1])
+	if err != nil || i < 0 || i >= len(mb.Bands) {
+		return nil, "", fmt.Errorf("invalid multiband param: %s", name)
+	}
+	return mb.Bands[i].Compressor, parts[2], nil
+}
+
 func (mb *MultibandCompressor) SetParam(name string, value float64) error {
-	var bandIdx int
-	var param string
-	if _, err := fmt.Sscanf(name, "band.%d.%s", &bandIdx, &param); err != nil {
-		return fmt.Errorf("invalid multiband param: %s", name)
+	if name == "enabled" {
+		mb.IsEnabled = value > 0.5
+		return nil
 	}
-	if bandIdx < 0 || bandIdx >= len(mb.Bands) {
-		return fmt.Errorf("band index out of range: %d", bandIdx)
+	c, param, err := mb.bandParam(name)
+	if err != nil {
+		return err
 	}
-	return mb.Bands[bandIdx].Compressor.SetParam(param, value)
+	return c.SetParam(param, value)
 }
 
 func (mb *MultibandCompressor) GetParam(name string) (float64, error) {
-	var bandIdx int
-	var param string
-	if _, err := fmt.Sscanf(name, "band.%d.%s", &bandIdx, &param); err != nil {
-		return 0, fmt.Errorf("invalid multiband param: %s", name)
+	if name == "enabled" {
+		return mb.GetParams()["enabled"], nil
 	}
-	if bandIdx < 0 || bandIdx >= len(mb.Bands) {
-		return 0, fmt.Errorf("band index out of range: %d", bandIdx)
+	c, param, err := mb.bandParam(name)
+	if err != nil {
+		return 0, err
 	}
-	return mb.Bands[bandIdx].Compressor.GetParam(param)
+	return c.GetParam(param)
 }
 
 func (mb *MultibandCompressor) GetParams() map[string]float64 {
-	params := make(map[string]float64)
+	params := map[string]float64{"enabled": 0}
+	if mb.IsEnabled {
+		params["enabled"] = 1
+	}
 	for i, band := range mb.Bands {
 		for k, v := range band.Compressor.GetParams() {
-			params[fmt.Sprintf("band.%d.%s", i, k)] = v
+			if k != "auto_makeup" {
+				params[fmt.Sprintf("band.%d.%s", i, k)] = v
+			}
 		}
 	}
 	return params
 }
 
-// SetSampleRate updates the sample rate and rebuilds the crossover filters.
+// SetSampleRate updates the bands' time constants.
 func (mb *MultibandCompressor) SetSampleRate(sampleRate float64) {
-	if sampleRate == mb.sampleRate {
-		return
-	}
 	mb.sampleRate = sampleRate
 	for _, band := range mb.Bands {
 		band.Compressor.SetSampleRate(sampleRate)
-		band.buildFilters(sampleRate, mb.channels)
 	}
 }
 
 func (mb *MultibandCompressor) Reset() {
 	for _, band := range mb.Bands {
 		band.Compressor.Reset()
-		for _, f := range band.filters {
-			f.Reset()
-		}
 	}
 }
 

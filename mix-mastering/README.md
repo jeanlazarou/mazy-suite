@@ -115,11 +115,12 @@ The full chain used by the web UI and CLI (`engine.NewFullChain`) runs in this o
 3. **Saturation** — Gentle analog-style waveshaping, mostly 2nd harmonic, 2× oversampled so high notes don't alias; the Warm version's color (disabled by default)
 4. **Bass Exciter** — Harmonic exciter isolating lows, generating harmonics audible on speakers that can't reproduce true sub-bass (disabled by default)
 5. **Stereo Widener** — Mid/side width control
-6. **Compressor** — Soft-knee with attack/release envelope
-7. **Treble Exciter** — Harmonic exciter isolating highs, restoring presence gain reduction tends to dull (disabled by default)
-8. **Loudness Normalizer** — LUFS-based normalization (disabled by default; the web UI enables it, the CLI enables it when a preset configures it)
-9. **Gain** — Unity by default; carries the shared album loudness offset in album mastering
-10. **Limiter** — Lookahead brickwall limiter, zero added latency
+6. **Multiband Compressor** — Lows, mids and highs (crossovers at 200 Hz and 4 kHz) compressed separately, each against its own level: steadier bass, quiet detail in the mids comes forward (disabled by default; recipes switch it on)
+7. **Compressor** — Soft-knee with attack/release envelope
+8. **Treble Exciter** — Harmonic exciter isolating highs, restoring presence gain reduction tends to dull (disabled by default)
+9. **Loudness Normalizer** — LUFS-based normalization (disabled by default; the web UI enables it, the CLI enables it when a preset configures it)
+10. **Gain** — Unity by default; carries the shared album loudness offset in album mastering
+11. **Limiter** — Lookahead brickwall limiter, zero added latency
 
 Saturation and both exciters start disabled — they add harmonic content that isn't in the source (a creative choice, not a corrective one) — and are switched on by the Warm version, the target-device recommendations (phone, bluetooth, car) or explicitly via their `enabled` param.
 

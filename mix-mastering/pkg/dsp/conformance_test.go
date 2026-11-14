@@ -212,12 +212,12 @@ func TestDefaultEQTransparent(t *testing.T) {
 	}
 }
 
-// TestMultibandFlatSum verifies the LR4 crossovers recombine to a roughly
-// flat response: with compression disabled, output level stays within 1 dB
-// of input across the spectrum.
+// TestMultibandFlatSum verifies the LR4 crossovers recombine to a flat
+// response: with compression disabled, output level stays within 0.1 dB
+// of input across the spectrum, the crossover frequencies included.
 func TestMultibandFlatSum(t *testing.T) {
 	sr := 44100.0
-	for _, freq := range []float64{50, 200, 1000, 4000, 10000} {
+	for _, freq := range []float64{50, 140, 200, 280, 1000, 2800, 4000, 5600, 10000} {
 		buf := generateSine(freq, sr, 1, 44100)
 		for i := range buf.Samples[0] {
 			buf.Samples[0][i] *= 0.1 // below all thresholds
@@ -234,7 +234,7 @@ func TestMultibandFlatSum(t *testing.T) {
 		rmsAfter := rms(buf.Samples[0][22050:])
 
 		diffDB := 20 * math.Log10(rmsAfter/rmsBefore)
-		if math.Abs(diffDB) > 1.0 {
+		if math.Abs(diffDB) > 0.1 {
 			t.Errorf("multiband sum not flat at %.0fHz: %.2f dB deviation", freq, diffDB)
 		}
 	}

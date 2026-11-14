@@ -24,6 +24,7 @@ import { StereoPanel } from '../processors/StereoPanel';
 import { BassExciterPanel, TrebleExciterPanel } from '../processors/ExciterPanel';
 import { SaturationPanel } from '../processors/SaturationPanel';
 import { TonePanel } from '../processors/TonePanel';
+import { MultibandPanel } from '../processors/MultibandPanel';
 
 const LANE_HEIGHT = 96;
 const BASE_WIDTH = 1000; // canvas logical width at zoom x1
@@ -38,6 +39,7 @@ const SETTINGS_PANELS: Record<string, React.FC<{ expanded: boolean; onExpandTogg
   'Parametric EQ': EQPanel,
   Saturation: SaturationPanel,
   'Bass Exciter': BassExciterPanel,
+  'Multiband Compressor': MultibandPanel,
   Compressor: CompressorPanel,
   'Treble Exciter': TrebleExciterPanel,
   Limiter: LimiterPanel,

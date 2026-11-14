@@ -5,6 +5,7 @@ import { EQPanel } from './EQPanel';
 import { BassExciterPanel, TrebleExciterPanel } from './ExciterPanel';
 import { SaturationPanel } from './SaturationPanel';
 import { TonePanel } from './TonePanel';
+import { MultibandPanel } from './MultibandPanel';
 import { CompressorPanel } from './CompressorPanel';
 import { LimiterPanel } from './LimiterPanel';
 import { StereoPanel } from './StereoPanel';
@@ -35,6 +36,7 @@ const STAGE_META: Record<string, StageMeta> = {
   'Saturation': { label: 'Saturation', color: '#F97316', panel: SaturationPanel, enhance: true },
   'Bass Exciter': { label: 'Bass Exciter', color: '#F59E0B', panel: BassExciterPanel, enhance: true },
   'Stereo Widener': { label: 'Stereo', color: '#A78BFA', panel: StereoPanel },
+  'Multiband Compressor': { label: 'Multiband', color: '#FB7185', panel: MultibandPanel, enhance: true },
   'Compressor': { label: 'Compressor', color: '#FF6584', panel: CompressorPanel },
   'Treble Exciter': { label: 'Treble Exciter', color: '#FBBF24', panel: TrebleExciterPanel, enhance: true },
   'Loudness Normalizer': { label: 'Normalizer', color: '#34D399', tooltip: 'Configured automatically from the loudness target' },
@@ -89,8 +91,8 @@ export const ProcessorPipeline: React.FC = () => {
     const meta = STAGE_META[name];
     if (!meta?.enhance) return true;
     // Hidden until enabled — via the Enhance switch above (exciters), a
-    // destination (e.g. phone), the Warm version (saturation) or the
-    // fixes (tone match).
+    // destination (e.g. phone), the Warm version (saturation), the
+    // fixes (tone match) or any recipe (multiband).
     return processorEnabled[name] ?? false;
   });
 

@@ -259,7 +259,8 @@ func (b *Bridge) GetProcessorNames() string {
 // call as JSON: processor name -> {"max_gr_db": x, "avg_gr_db": y}, plus,
 // for enabled processors that record one, the timeline across the buffer
 // ("in_db" detected level, "gr_db" gain reduction; dsp.TimelineBuckets
-// slices, rounded to 0.01 dB).
+// slices, rounded to 0.01 dB). The multiband compressor adds "bands":
+// the two figures and "in_db" per band.
 func (b *Bridge) GetMeters() string {
 	if b.Engine == nil {
 		return "{}"
@@ -278,6 +279,20 @@ func (b *Bridge) GetMeters() string {
 			entry := map[string]interface{}{
 				"max_gr_db": maxDB,
 				"avg_gr_db": avgDB,
+			}
+			if mb, ok := p.(*dsp.MultibandCompressor); ok {
+				bands := []map[string]interface{}{}
+				timelines := mb.BandTimelines()
+				for i, gr := range mb.BandGainReduction() {
+					band := map[string]interface{}{
+						"max_gr_db": math.Round(gr[0]*100) / 100, "avg_gr_db": math.Round(gr[1]*100) / 100,
+					}
+					if p.Enabled() {
+						band["in_db"] = round(timelines[i].InputDB)
+					}
+					bands = append(bands, band)
+				}
+				entry["bands"] = bands
 			}
 			if t, ok := p.(dsp.DynamicsTimelineMeter); ok && p.Enabled() {
 				tl := t.Timeline()

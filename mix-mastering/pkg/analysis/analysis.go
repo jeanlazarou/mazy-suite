@@ -40,6 +40,9 @@ type DynamicsAnalysis struct {
 	// the compression depends on the track, not on a fixed dB value. 0 =
 	// unknown (an analysis from before it existed).
 	LoudLevelDB float64 `json:"loud_level_db"`
+	// The same level in each band of the multiband compressor (low, mid,
+	// high); recipes set the bands' thresholds from it.
+	BandLoudLevelsDB []float64 `json:"band_loud_levels_db,omitempty"`
 }
 
 // StereoAnalysis contains stereo field information.
@@ -248,12 +251,13 @@ func analyzeDynamics(buf *dsp.AudioBuffer) *DynamicsAnalysis {
 	}
 
 	return &DynamicsAnalysis{
-		PeakDB:       peakDB,
-		RMSDB:        rmsDB,
-		DynamicRange: maxWindowDB - minWindowDB,
-		CrestFactor:  crestFactor,
-		Histogram:    histogram,
-		LoudLevelDB:  loudLevel(buf),
+		PeakDB:           peakDB,
+		RMSDB:            rmsDB,
+		DynamicRange:     maxWindowDB - minWindowDB,
+		CrestFactor:      crestFactor,
+		Histogram:        histogram,
+		LoudLevelDB:      loudLevel(buf),
+		BandLoudLevelsDB: bandLoudLevels(buf),
 	}
 }
 
@@ -261,6 +265,15 @@ func analyzeDynamics(buf *dsp.AudioBuffer) *DynamicsAnalysis {
 // pole attack/release) with typical mastering timings over the track and
 // returns the 95th percentile of its level, in dB, over the parts above
 // -60 dBFS (silence and fades don't count). -200 for silence.
+// bandLoudLevels is loudLevel of each multiband band.
+func bandLoudLevels(buf *dsp.AudioBuffer) []float64 {
+	levels := make([]float64, dsp.MultibandBands)
+	for i := range levels {
+		levels[i] = loudLevel(dsp.MultibandBandSignal(buf, i, dsp.MultibandLowHz, dsp.MultibandHighHz))
+	}
+	return levels
+}
+
 func loudLevel(buf *dsp.AudioBuffer) float64 {
 	const attackMS, releaseMS, everyMS = 10.0, 150.0, 5.0
 	sr := float64(buf.SampleRate)
