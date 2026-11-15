@@ -97,7 +97,7 @@ export function LlmPanel({ target, getLivePattern, onApply }: LlmPanelProps) {
         <span className="song-label">AI</span>
         <span className="llm-status">
           Ollama not reachable at {OLLAMA_URL}. Start it with{" "}
-          <code>OLLAMA_ORIGINS=http://localhost:5173 ollama serve</code> and
+          <code>OLLAMA_ORIGINS={window.location.origin} ollama serve</code> and
           reload.
         </span>
       </div>

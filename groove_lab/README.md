@@ -192,10 +192,19 @@ section while the model is thinking, the result waits for **Apply anyway**
 or **Discard** instead of overwriting your edits; if you switch songs or
 delete the section, it's dropped.
 
-- Ollama must allow the dev origin:
-  `OLLAMA_ORIGINS=http://localhost:5173 ollama serve`
-  (the AI bar tells you when it can't reach it). A different Ollama URL can
-  be set with `VITE_OLLAMA_URL`.
+- Ollama runs on your own machine and must allow the address the page is
+  served from: `OLLAMA_ORIGINS=http://localhost:5173 ollama serve` in
+  development, the site's address once deployed (e.g. `http://alef1.org`;
+  several can be listed, comma-separated). The AI bar shows the exact
+  command when it can't reach Ollama. A different Ollama URL can be set
+  with `VITE_OLLAMA_URL`.
+
+## Deploying
+
+`pnpm build` writes a static site to `dist/` with relative asset paths:
+copy its contents into any folder of a plain file server (e.g.
+`alef1.org/groove_lab/`). No server-side code. Songs live in each
+visitor's browser (localStorage), per site address.
 - The model output is JSON constrained by a schema, then sanitized — steps
   clamped to the grid, velocities normalized (even 0–127 confusion), bass
   pitches folded into range, monophony enforced. Tempo, bars and swing are

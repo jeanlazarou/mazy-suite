@@ -31,7 +31,8 @@ playback working offline).
 | MIDI export | `@tonejs/midi` (it *writes* MIDI, not just parses), in-browser Blob download | Avoids Python/music21 entirely — see MIDI_EXPORT_NOTES.md §1 for what that avoids |
 | Playback | Tone.js; **synthesized kit first** (MembraneSynth kick, NoiseSynth snare/hats, MonoSynth bass), samples later | Zero assets to load on day one |
 | Package manager | pnpm | User preference |
-| LLM backend | Ollama, local (user runs llama3.2, mistral, qwen2.5, phi4); model selectable at runtime | Privacy, no API keys — same as user's previous projects. Browser calls Ollama's HTTP API directly; Ollama must be started with `OLLAMA_ORIGINS` allowing the dev origin (e.g. `OLLAMA_ORIGINS=http://localhost:5173 ollama serve`) |
+| LLM backend | Ollama, local (user runs llama3.2, mistral, qwen2.5, phi4); model selectable at runtime | Privacy, no API keys — same as user's previous projects. Browser calls Ollama's HTTP API directly; Ollama must be started with `OLLAMA_ORIGINS` allowing the page's origin (dev `http://localhost:5173`, deployed e.g. `http://alef1.org`) |
+| Deployment | Static files from `dist/`, any subfolder of a plain file server — hence `base: "./"` in vite.config.ts (asset URLs relative) | Same as every mazy_suite app; an absolute base broke the first deploy (assets requested from the site root) |
 
 ## Core design: the pattern JSON is the single source of truth
 
