@@ -47,8 +47,14 @@ interface Pattern {
   swing: number;                   // 0–1
   drums: Record<DrumLane, Step[]>; // lanes: kick, snare, hhClosed, hhOpen, tom1…; Step = {step, velocity}
   bass: BassNote[];                // {step, durationSteps, midiPitch, velocity}
+  chords?: string[];               // per bar, as typed ("Am", "C G"); parsed by chords.ts
 }
 ```
+
+Chords are stored as the text the user typed (the input), never as parsed
+data; `chordChanges(pattern)` derives the changes for the generator, the
+roll shading and the LLM prompt. The LLM schema leaves chords out on purpose:
+the model reads them, never writes them.
 
 A **song** is an ordered list of sections (A A B A…), each owning one Pattern.
 Generate/edit per section; playback chains them; export the whole song or one section.

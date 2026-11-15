@@ -33,6 +33,9 @@ export interface Pattern {
   swing: number; // 0–1
   drums: Record<DrumLane, Step[]>;
   bass: BassNote[];
+  /** Chord symbols per bar, as typed ("Am", "C G" = half a bar each);
+   *  empty = the previous chord continues. Parsed by chords.ts. */
+  chords?: string[];
 }
 
 export interface DrumLaneInfo {

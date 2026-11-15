@@ -60,6 +60,13 @@ function validateSong(raw: unknown): Song | null {
     for (const lane of DRUM_LANES) {
       section.pattern.drums[lane.id as DrumLane] ??= [];
     }
+    const chords: unknown = section.pattern.chords;
+    if (
+      chords !== undefined &&
+      !(Array.isArray(chords) && chords.every((c) => typeof c === "string"))
+    ) {
+      delete section.pattern.chords; // unreadable chords mustn't sink the song
+    }
   }
   const ids = new Set(song.sections.map((s) => s.id));
   song.arrangement = Array.isArray(song.arrangement)

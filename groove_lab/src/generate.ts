@@ -1,6 +1,8 @@
 import type { DrumLane, Pattern, Step } from "./types";
-import { totalSteps } from "./types";
+import { BASS_PITCH_MIN, totalSteps } from "./types";
 import { addBassNote, clearBass } from "./pattern";
+import type { Chord } from "./chords";
+import { chordAt, chordChanges } from "./chords";
 
 export type Rng = () => number; // 0 ≤ rng() < 1, injectable for seeded tests
 
@@ -349,6 +351,10 @@ const WALK_INTERVALS = [0, 0, 3, 5, 7, 10, 12];
  * Generate a bass line locked to the kick rhythm (or to the quarter-note
  * beats when there is no kick). Notes sustain to the next anchor, capped at
  * a quarter note.
+ *
+ * With chords, `root` is unused: every chord change gets a note (kick or
+ * not), each chord starts on its root (or slash note), and pitches are
+ * voice-led to the nearest octave so the line moves by small steps.
  */
 export function generateBass(
   pattern: Pattern,
@@ -357,27 +363,91 @@ export function generateBass(
   rng: Rng = Math.random,
 ): Pattern {
   const total = totalSteps(pattern);
-  let anchors = pattern.drums.kick.map((s) => s.step).sort((a, b) => a - b);
-  if (anchors.length === 0) {
-    anchors = [];
-    for (let s = 0; s < total; s += 4) anchors.push(s);
+  const changes = chordChanges(pattern);
+  const anchorSet = new Set(pattern.drums.kick.map((s) => s.step));
+  if (anchorSet.size === 0) {
+    for (let s = 0; s < total; s += 4) anchorSet.add(s);
   }
+  for (const change of changes) anchorSet.add(change.step);
+  const anchors = [...anchorSet]
+    .filter((s) => s >= 0 && s < total)
+    .sort((a, b) => a - b);
+
   let result = clearBass(pattern);
+  let prevPitch = CHORD_REF_PITCH;
+  let prevChord: Chord | null = null;
+  let nth = 0; // notes so far on the current chord
   for (let i = 0; i < anchors.length; i++) {
     const step = anchors[i];
     const next = anchors[i + 1] ?? total;
     const durationSteps = Math.max(1, Math.min(4, next - step));
-    let interval = 0;
-    if (mode === "rootFifth") interval = i % 2 === 1 ? 7 : 0;
-    if (mode === "walking") {
-      interval = WALK_INTERVALS[Math.floor(rng() * WALK_INTERVALS.length)];
+    let midiPitch: number;
+    if (changes.length === 0) {
+      let interval = 0;
+      if (mode === "rootFifth") interval = i % 2 === 1 ? 7 : 0;
+      if (mode === "walking") {
+        interval = WALK_INTERVALS[Math.floor(rng() * WALK_INTERVALS.length)];
+      }
+      midiPitch = root + interval;
+    } else {
+      const chord = chordAt(changes, step)!;
+      nth = chord === prevChord ? nth + 1 : 0;
+      prevChord = chord;
+      // The section loops: after its last note comes bar 1's chord.
+      const upcoming = chordAt(changes, anchors[i + 1] ?? 0);
+      midiPitch = chordBassPitch(chord, upcoming, mode, nth, prevPitch, rng);
     }
     result = addBassNote(result, {
       step,
       durationSteps,
-      midiPitch: root + interval,
+      midiPitch,
       velocity: step % pattern.stepsPerBar === 0 ? 0.9 : 0.75,
     });
+    prevPitch = midiPitch;
   }
   return result;
+}
+
+// Chord-following lines stay in E1–A2: every pitch class fits at least once,
+// low enough to sound like a bass.
+const CHORD_LOW = BASS_PITCH_MIN;
+const CHORD_HIGH = 45;
+const CHORD_REF_PITCH = 33; // A1: where the first chord's root is aimed
+
+/** The octave of `pc` closest to `ref` inside the chord register. */
+export function nearestPitch(pc: number, ref: number): number {
+  let best = -1;
+  for (let p = CHORD_LOW; p <= CHORD_HIGH; p++) {
+    if (p % 12 === pc && (best < 0 || Math.abs(p - ref) < Math.abs(best - ref))) {
+      best = p;
+    }
+  }
+  return best;
+}
+
+function chordBassPitch(
+  chord: Chord,
+  upcoming: Chord | null,
+  mode: BassMode,
+  nth: number,
+  prev: number,
+  rng: Rng,
+): number {
+  const bass = nearestPitch(chord.bass, prev);
+  if (nth === 0 || mode === "roots") return bass;
+  if (mode === "rootFifth") {
+    if (nth % 2 === 0) return bass;
+    const fifth = chord.intervals.find((iv) => iv >= 6 && iv <= 8) ?? 7;
+    return nearestPitch((chord.root + fifth) % 12, prev);
+  }
+  // walking: lean into a coming chord change from a half step away…
+  if (upcoming && upcoming !== chord && rng() < 0.6) {
+    const target = nearestPitch(upcoming.bass, prev);
+    const below = target - 1 >= CHORD_LOW && (target + 1 > CHORD_HIGH || rng() < 0.5);
+    return below ? target - 1 : target + 1;
+  }
+  // …otherwise wander over the chord tones, root twice as likely.
+  const tones = [chord.intervals[0], ...chord.intervals];
+  const iv = tones[Math.floor(rng() * tones.length)];
+  return nearestPitch((chord.root + iv) % 12, prev);
 }

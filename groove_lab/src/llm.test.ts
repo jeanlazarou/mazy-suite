@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fetchModels, generateVariation, sanitizePattern } from "./llm";
-import { createEmptyPattern } from "./pattern";
+import { createEmptyPattern, resizePattern } from "./pattern";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -138,6 +138,24 @@ describe("generateVariation", () => {
     const p = await generateVariation(createEmptyPattern(), "busier", "m", "http://x");
     expect(p?.drums.kick).toHaveLength(1);
     expect(p?.bass).toHaveLength(1);
+  });
+
+  it("tells the model the chords; the result keeps them (the model can't change them)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        message: { content: JSON.stringify({ drums: {}, bass: [], chords: ["X"] }) },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const base = { ...resizePattern(createEmptyPattern(), 2), chords: ["Am", "F G"] };
+    const p = await generateVariation(base, "bass line", "m", "http://x");
+    const system: string = JSON.parse(fetchMock.mock.calls[0][1].body).messages[0].content;
+    expect(system).toContain("step 0: Am (A C E), step 16: F (F A C), step 24: G (G B D)");
+    expect(p?.chords).toEqual(["Am", "F G"]);
+
+    await generateVariation(createEmptyPattern(), "x", "m", "http://x");
+    const plain: string = JSON.parse(fetchMock.mock.calls[1][1].body).messages[0].content;
+    expect(plain).not.toContain("Chords");
   });
 
   it("null on HTTP error, network failure, or prose output — never throws", async () => {

@@ -31,6 +31,7 @@ import { TransportBar } from "./components/TransportBar";
 import { SectionBar } from "./components/SectionBar";
 import { LlmPanel } from "./components/LlmPanel";
 import { BassGenControls, DrumGenControls } from "./components/Generators";
+import { ChordStrip } from "./components/ChordStrip";
 
 type PlayMode = "section" | "song";
 const KIT_KEY = "grooveLab.kit.v1";
@@ -284,6 +285,11 @@ export default function App() {
           Clear bass
         </button>
       </div>
+      <ChordStrip
+        pattern={current.pattern}
+        currentStep={viewStep}
+        onChange={setPattern}
+      />
       {bassView === "roll" ? (
         <BassRoll
           pattern={current.pattern}

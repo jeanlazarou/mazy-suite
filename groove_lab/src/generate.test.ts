@@ -229,3 +229,72 @@ describe("generateBass", () => {
     }
   });
 });
+
+describe("generateBass with chords", () => {
+  /** `bars` of 16 steps, kick on given steps of every bar, chords per bar. */
+  const chorded = (chords: string[], kickSteps: number[] = [0, 8]) => {
+    const p: Pattern = { ...resizePattern(createEmptyPattern(), chords.length), chords };
+    p.drums.kick = chords.flatMap((_, bar) =>
+      kickSteps.map((s) => ({ step: bar * 16 + s, velocity: 0.9 })),
+    );
+    return p;
+  };
+  const line = (p: Pattern) => p.bass.map((n) => [n.step, n.midiPitch]);
+
+  it("roots: each kick plays the root of the chord sounding there; root param unused", () => {
+    const p = generateBass(chorded(["Am", "F"]), 40, "roots", seeded(1));
+    // A1, then the F nearest to it (F1, not F2)
+    expect(line(p)).toEqual([[0, 33], [8, 33], [16, 29], [24, 29]]);
+  });
+
+  it("a chord change without a kick still gets a note", () => {
+    const p = generateBass(chorded(["C G"], [0]), 33, "roots", seeded(1));
+    expect(p.bass.map((n) => [n.step, n.durationSteps, n.midiPitch % 12])).toEqual([
+      [0, 4, 0],
+      [8, 4, 7],
+    ]);
+  });
+
+  it("voice-leads: a descending progression walks down by half steps, not octave jumps", () => {
+    const p = generateBass(chorded(["C", "B", "Bb", "A"], [0]), 33, "roots", seeded(1));
+    expect(p.bass.map((n) => n.midiPitch)).toEqual([36, 35, 34, 33]);
+  });
+
+  it("rootFifth uses the chord's own fifth (b5 on a diminished chord)", () => {
+    const p = generateBass(chorded(["Bdim"], [0, 4, 8, 12]), 33, "rootFifth", seeded(1));
+    expect(p.bass.map((n) => n.midiPitch % 12)).toEqual([11, 5, 11, 5]);
+  });
+
+  it("a slash chord's bass plays the slash note", () => {
+    const p = generateBass(chorded(["C/E"]), 33, "roots", seeded(1));
+    expect(p.bass.every((n) => n.midiPitch % 12 === 4)).toBe(true);
+  });
+
+  it("walking: each chord starts on its root, then chord tones or a half-step lead-in", () => {
+    const chords = ["Am", "Dm7", "G7", "Cmaj7"];
+    const roots = [9, 2, 7, 0];
+    const tones = [[9, 0, 4], [2, 5, 9, 0], [7, 11, 2, 5], [0, 4, 7, 11]];
+    for (let seed = 1; seed <= 40; seed++) {
+      const p = generateBass(chorded(chords, [0, 4, 8, 12]), 33, "walking", seeded(seed));
+      for (const n of p.bass) {
+        const bar = Math.floor(n.step / 16);
+        const pc = n.midiPitch % 12;
+        if (n.step % 16 === 0) expect(pc).toBe(roots[bar]);
+        const nextRoot = roots[(bar + 1) % 4];
+        const leadIn = n.step % 16 === 12 && [1, 11].includes((pc - nextRoot + 12) % 12);
+        expect(tones[bar].includes(pc) || leadIn).toBe(true);
+        expect(n.midiPitch).toBeGreaterThanOrEqual(28);
+        expect(n.midiPitch).toBeLessThanOrEqual(45);
+      }
+    }
+  });
+
+  it("unreadable chords fall back to the root param", () => {
+    const p = generateBass(chorded(["Hx"]), 40, "roots", seeded(1));
+    expect(p.bass.map((n) => n.midiPitch)).toEqual([40, 40]);
+  });
+
+  it("keeps the chords on the pattern", () => {
+    expect(generateBass(chorded(["Am"]), 33, "roots", seeded(1)).chords).toEqual(["Am"]);
+  });
+});

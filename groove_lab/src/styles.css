@@ -530,6 +530,16 @@ header h1 {
   background: #1d2128;
 }
 
+/* Chord shading: the note to play (root or slash note), then the other chord
+   tones. Before :hover and .playing so both still show over it. */
+.roll-cell.chord-tone {
+  background: #24313a;
+}
+
+.roll-cell.chord-root {
+  background: #335a6c;
+}
+
 .roll-cell.beat {
   box-shadow: inset 2px 0 0 #343b48;
 }
@@ -594,6 +604,65 @@ header h1 {
 .roll-grid.resize-drag,
 .roll-grid.resize-drag .roll-cell {
   cursor: ew-resize;
+}
+
+/* ---- chord strip (one box per bar, above the bass editor) ---- */
+
+.chord-strip {
+  display: grid;
+  grid-template-columns: 96px repeat(var(--steps), minmax(20px, 1fr));
+  column-gap: 3px; /* matches .drum-grid — see geometry note above */
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  margin-bottom: 8px;
+  overflow-x: auto;
+  scrollbar-width: none; /* scrolls with the grids */
+}
+
+.chord-label {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  background: var(--panel);
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.chord-bar {
+  grid-row: 1;
+  min-width: 0;
+  background: #232830;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 5px 8px;
+}
+
+.chord-bar::placeholder {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.chord-bar:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.chord-bar.playing {
+  border-color: var(--playing);
+}
+
+.chord-bar.invalid {
+  border-color: #d0605e;
+  color: #e88f8d;
 }
 
 /* ---- bass tab view ---- */

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-const GRID_SELECTOR = ".drum-grid, .roll-grid, .tab-grid";
+const GRID_SELECTOR = ".drum-grid, .chord-strip, .roll-grid, .tab-grid";
 
 /**
  * Keep the editor grids' horizontal scroll positions in lockstep. They share

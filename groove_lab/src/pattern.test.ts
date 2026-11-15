@@ -93,6 +93,13 @@ describe("resizePattern", () => {
     expect(shrunk.drums.kick.map((s) => s.step)).toEqual([0]);
     expect(shrunk.bass.map((n) => n.step)).toEqual([4]);
   });
+
+  it("trims chords to the bars left; no chords stays no chords", () => {
+    const p = { ...resizePattern(createEmptyPattern(), 4), chords: ["Am", "F", "C", "G"] };
+    expect(resizePattern(p, 2).chords).toEqual(["Am", "F"]);
+    expect(resizePattern(resizePattern(p, 2), 4).chords).toEqual(["Am", "F"]);
+    expect("chords" in resizePattern(createEmptyPattern(), 2)).toBe(false);
+  });
 });
 
 describe("addBassNote (monophonic)", () => {

@@ -16,6 +16,8 @@ import {
   resizeBassNote,
 } from "../pattern";
 import type { PatternChange } from "../editor";
+import type { Chord } from "../chords";
+import { chordAt, chordChanges, isChordTone } from "../chords";
 
 interface BassRollProps {
   pattern: Pattern;
@@ -65,6 +67,9 @@ export function BassRoll({
   const steps = totalSteps(pattern);
   const [placing, setPlacing] = useState<Placing | null>(null);
   const [dragging, setDragging] = useState<Dragging | null>(null);
+  // Chord sounding at each step, for the chord-tone shading.
+  const changes = chordChanges(pattern);
+  const stepChords = Array.from({ length: steps }, (_, s) => chordAt(changes, s));
 
   useEffect(() => {
     if (!placing) return;
@@ -208,6 +213,7 @@ export function BassRoll({
           pitch={pitch}
           steps={steps}
           currentStep={currentStep}
+          stepChords={stepChords}
           onStartPlacing={(step) =>
             setPlacing({ pitch, start: step, end: step })
           }
@@ -265,9 +271,18 @@ interface RollRowProps {
   pitch: number;
   steps: number;
   currentStep: number;
+  stepChords: (Chord | null)[];
   onStartPlacing: (step: number) => void;
   onCellEnter: (step: number) => void;
   onPreview: () => void;
+}
+
+/** "chord-root" for the note the bass should play, "chord-tone" for the rest of the chord. */
+function chordClass(chord: Chord | null, pitch: number): string {
+  if (!chord) return "";
+  const pc = pitch % 12;
+  if (pc === chord.bass) return "chord-root";
+  return isChordTone(chord, pc) ? "chord-tone" : "";
 }
 
 function RollRow({
@@ -275,6 +290,7 @@ function RollRow({
   pitch,
   steps,
   currentStep,
+  stepChords,
   onStartPlacing,
   onCellEnter,
   onPreview,
@@ -296,9 +312,12 @@ function RollRow({
       {Array.from({ length: steps }, (_, step) => (
         <button
           key={step}
-          className={`roll-cell ${sharp ? "sharp" : ""} ${
-            step % 4 === 0 ? "beat" : ""
-          } ${step === currentStep ? "playing" : ""}`}
+          className={`roll-cell ${sharp ? "sharp" : ""} ${chordClass(
+            stepChords[step],
+            pitch,
+          )} ${step % 4 === 0 ? "beat" : ""} ${
+            step === currentStep ? "playing" : ""
+          }`}
           style={{ gridRow: row, gridColumn: 2 + step }}
           title={name}
           onMouseDown={(e) => {

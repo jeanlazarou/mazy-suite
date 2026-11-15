@@ -11,6 +11,7 @@ import {
   humanizeBass,
   humanizeDrums,
 } from "../generate";
+import { chordChanges } from "../chords";
 
 interface GenProps {
   pattern: Pattern;
@@ -103,6 +104,7 @@ const ROOTS = Array.from({ length: 13 }, (_, i) => BASS_PITCH_MIN + i);
 export function BassGenControls({ pattern, onChange }: GenProps) {
   const [root, setRoot] = useState(33); // A1
   const [mode, setMode] = useState<BassMode>("roots");
+  const followsChords = chordChanges(pattern).length > 0;
 
   return (
     <div className="gen-controls">
@@ -110,7 +112,12 @@ export function BassGenControls({ pattern, onChange }: GenProps) {
         className="bass-root"
         value={root}
         onChange={(e) => setRoot(Number(e.target.value))}
-        title="Root note"
+        disabled={followsChords}
+        title={
+          followsChords
+            ? "The bass follows the chords — clear them to pick a single root"
+            : "Root note"
+        }
       >
         {ROOTS.map((pitch) => (
           <option key={pitch} value={pitch}>
@@ -131,7 +138,11 @@ export function BassGenControls({ pattern, onChange }: GenProps) {
       <button
         className="tool-button gen-bass"
         onClick={() => onChange(generateBass(pattern, root, mode))}
-        title="Generate a bass line locked to the kick rhythm"
+        title={
+          followsChords
+            ? "Generate a bass line on the kick rhythm that follows the chords"
+            : "Generate a bass line locked to the kick rhythm"
+        }
       >
         Generate
       </button>

@@ -109,7 +109,12 @@ export function resizePattern(pattern: Pattern, bars: number): Pattern {
     ]),
   ) as Record<DrumLane, Step[]>;
   const bass = pattern.bass.filter((n) => n.step < max);
-  return { ...resized, drums, bass };
+  return {
+    ...resized,
+    drums,
+    bass,
+    ...(pattern.chords && { chords: pattern.chords.slice(0, bars) }),
+  };
 }
 
 export function clearDrums(pattern: Pattern): Pattern {

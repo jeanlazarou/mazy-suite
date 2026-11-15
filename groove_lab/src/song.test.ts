@@ -135,6 +135,21 @@ describe("storage — song library", () => {
     expect(listSongs(storage)).toHaveLength(1);
   });
 
+  it("keeps chords through a save; drops an unreadable chords field, not the song", () => {
+    const storage = fakeStorage();
+    const song = createDefaultSong();
+    song.sections[0].pattern.chords = ["Am", "C G"];
+    saveCurrentSong("a", "with chords", song, storage);
+    expect(loadCurrentSong(storage)?.song.sections[0].pattern.chords).toEqual(["Am", "C G"]);
+
+    const broken = createDefaultSong();
+    (broken.sections[0].pattern as { chords: unknown }).chords = "Am F";
+    saveCurrentSong("b", "broken chords", broken, storage);
+    const loaded = getSongById("b", storage);
+    expect(loaded?.song.sections[0].pattern.bass.length).toBeGreaterThan(0);
+    expect("chords" in loaded!.song.sections[0].pattern).toBe(false);
+  });
+
   it("null/empty for corrupt or missing data — never throws", () => {
     const storage = fakeStorage();
     expect(loadCurrentSong(storage)).toBeNull();

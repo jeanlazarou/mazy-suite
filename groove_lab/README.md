@@ -67,6 +67,43 @@ four string lines (G, D, A, E) with the same step columns as the drum grid:
 Notes remember which string you put them on. The note length selector below
 sets the length of newly placed notes.
 
+## Chords
+
+The **Chords** strip above the bass editor has one box per bar, lined up
+with the grid. Type the bar's chords as you'd write them on a chart:
+
+| You type | You get |
+|----------|---------|
+| `Am` | A minor for the whole bar |
+| `C G` | C for half a bar, then G |
+| `C G Am` | C for 2 beats, G and Am for one each |
+| `C D E F` | one chord per beat |
+| `C % G %` | `%` holds the previous chord for its slot |
+| *(nothing)* | the previous chord continues — shown greyed, e.g. `(Am)` |
+
+Readable: C, Am, Bb, F#m, G7, Cmaj7 (or CM7, CΔ), Dm7, Bm7b5 (or Bø),
+Bdim, Bdim7, Caug, Csus4, Csus2, C5, C6, Am6, C9 and the like, and slash
+chords such as C/E (the bass plays E). Hover a box to see the chord's
+notes; a box turns red when it can't read something, and that bar is
+ignored until it can. A section loops, so bars before its first chord take
+its last one.
+
+With chords in place:
+- The **piano roll shades them**: the brighter rows are the note the bass
+  should play (the root, or the slash note), the fainter ones the rest of
+  the chord. Anything you place there fits the harmony.
+- The **bass generator follows them** (the root selector is switched off):
+  every chord change gets a note, kick or no kick; each chord starts on its
+  root; the line moves to the nearest octave instead of jumping. *roots*
+  repeats the root, *root–fifth* alternates with the chord's own fifth,
+  *walking* wanders over the chord tones and often leads into the next
+  chord from a half step away.
+- The **AI** is told the chords, so "write a bass line" follows them too.
+  It can't change them.
+
+Chords belong to the section, are copied with it, and undo like any other
+edit. They aren't written into the MIDI export.
+
 ## Drum kits
 
 The **Kit** selector in the transport picks the drum sound: **synth**
@@ -139,7 +176,8 @@ what's in the grid — Undo brings the old groove back if you regret it.
 - Pick a root note and a flavour, then **Generate**: the line locks onto the
   kick rhythm (or quarter notes if there's no kick). *roots* plays the root
   every time, *root–fifth* alternates, *walking* wanders a root-heavy
-  pentatonic.
+  pentatonic. When the section has [chords](#chords), the line follows
+  them instead of a single root.
 
 ## AI generation (local Ollama)
 
