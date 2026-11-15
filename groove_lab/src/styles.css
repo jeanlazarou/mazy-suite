@@ -458,7 +458,11 @@ header h1 {
 }
 
 .cell {
+  /* Square while columns are narrow; capped so a 1-bar section (16 columns
+     stretched across the page) doesn't turn every hit into a big block. */
   aspect-ratio: 1;
+  max-height: 32px;
+  justify-self: stretch; /* grid items with an aspect-ratio don't stretch by default */
   min-width: 20px;
   border: none;
   border-radius: 4px;
