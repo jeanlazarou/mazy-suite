@@ -1,6 +1,7 @@
 import { Midi } from "@tonejs/midi";
 import type { Pattern } from "./types";
 import { DRUM_LANES, totalSteps } from "./types";
+import { chordAt, chordChanges } from "./chords";
 
 // GM program 33 (0-based): Electric Bass (finger).
 const BASS_PROGRAM = 33;
@@ -83,6 +84,22 @@ export function songToMidi(patterns: Pattern[]): Uint8Array | null {
           ticks,
           durationTicks: offset + Math.round(endStep * sixteenth) - ticks,
           velocity,
+        });
+      }
+
+      // Chord symbols as markers, so a DAW shows the chart on its timeline.
+      // A section whose first bar continues a chord starts with that chord
+      // (it loops: its last one), so every section opens with a marker.
+      const changes = chordChanges(pattern).filter((c) => isValidStep(c.step, max));
+      const opening = chordAt(changes, 0);
+      if (opening && changes[0].step !== 0) {
+        midi.header.meta.push({ type: "marker", text: opening.symbol, ticks: offset });
+      }
+      for (const change of changes) {
+        midi.header.meta.push({
+          type: "marker",
+          text: change.chord.symbol,
+          ticks: tickOf(change.step),
         });
       }
 

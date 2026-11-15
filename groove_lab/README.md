@@ -102,7 +102,9 @@ With chords in place:
   It can't change them.
 
 Chords belong to the section, are copied with it, and undo like any other
-edit. They aren't written into the MIDI export.
+edit. The MIDI export writes them as **markers**, so a DAW shows the chord
+chart along its timeline; a section whose first bar continues a chord opens
+with a marker for it.
 
 ## Drum kits
 
@@ -148,7 +150,7 @@ manages both:
   in order (looped), highlighting the chip that's sounding. Each section
   plays at its own BPM and swing.
 - **⬇ Section** / **⬇ Song** export one section or the whole arrangement
-  (with tempo changes at section boundaries) as MIDI.
+  (with tempo changes at section boundaries and chord markers) as MIDI.
 
 **Undo** (Ctrl/Cmd-Z, up to 100 steps) reverts any edit — including a
 generator overwriting your groove — and **Redo** (Shift-Ctrl/Cmd-Z)
@@ -211,7 +213,10 @@ delete the section, it's dropped.
 - **Export MIDI** — downloads the pattern as a `.mid` file (named after the
   BPM). Drums land on channel 10 with General MIDI percussion numbers, bass on
   its own track (GM fingered bass), and swing is baked into the note timing —
-  a DAW plays back exactly what you heard.
+  a DAW plays back exactly what you heard. [Chords](#chords) come along as
+  marker events.
+
+The app's version is shown next to its title.
 
 Each section has its own **Clear** button next to its heading.
 

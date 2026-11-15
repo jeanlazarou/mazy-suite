@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Midi } from "@tonejs/midi";
 import { patternToMidi, songToMidi } from "./midi";
-import { addBassNote, createDefaultPattern, createEmptyPattern } from "./pattern";
+import {
+  addBassNote,
+  createDefaultPattern,
+  createEmptyPattern,
+  resizePattern,
+} from "./pattern";
 import { totalSteps } from "./types";
 import type { Pattern } from "./types";
 
@@ -139,5 +144,48 @@ describe("patternToMidi — contract: unrenderable returns null, never throws", 
     p.drums.kick = [{ step: 0, velocity: 3 }];
     const midi = parse(p);
     expect(midi.tracks[0].notes[0].velocity).toBeCloseTo(1);
+  });
+});
+
+describe("chords → MIDI markers", () => {
+  const markers = (midi: Midi) =>
+    midi.header.meta
+      .filter((m) => m.type === "marker")
+      .map((m) => [m.ticks / (midi.header.ppq / 4), m.text]); // in sixteenths
+
+  const withChords = (bars: number, chords: unknown): Pattern =>
+    ({ ...resizePattern(createDefaultPattern(), bars), chords }) as Pattern;
+
+  it("writes each chord change as a marker at its step", () => {
+    expect(markers(parse(withChords(2, ["Am", "F G"])))).toEqual([
+      [0, "Am"],
+      [16, "F"],
+      [24, "G"],
+    ]);
+  });
+
+  it("chains sections; a section opening on a continuing chord gets a marker for it", () => {
+    const a = withChords(1, ["Am"]);
+    const b = withChords(2, ["", "C/E"]); // bar 1 carries its last chord (it loops)
+    const midi = new Midi(songToMidi([a, b, a])!);
+    expect(markers(midi)).toEqual([
+      [0, "Am"],
+      [16, "C/E"],
+      [32, "C/E"],
+      [48, "Am"],
+    ]);
+  });
+
+  it("no chords, no markers", () => {
+    expect(markers(parse(createDefaultPattern()))).toEqual([]);
+  });
+
+  it("broken chord data is skipped, never fails the file", () => {
+    expect(markers(parse(withChords(4, [5, null, "Hx", "Am"])))).toEqual([
+      [0, "Am"],
+      [48, "Am"],
+    ]);
+    expect(markers(parse(withChords(1, "Am F")))).toEqual([]);
+    expect(markers(parse(withChords(1, { 0: "Am" })))).toEqual([]);
   });
 });

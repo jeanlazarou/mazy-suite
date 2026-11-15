@@ -170,7 +170,12 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <h1>Groove Lab</h1>
+        <h1>
+          Groove Lab{" "}
+          <span className="app-version" title="Application version">
+            v{__APP_VERSION__}
+          </span>
+        </h1>
         <p className="hint">
           Drums: click to add a hit, drag to paint, right-click to cycle ghost /
           normal / accent. Bass roll: press and drag right to place a note;

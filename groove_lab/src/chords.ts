@@ -122,9 +122,11 @@ export function parseBar(
 /** Every chord change of the section in order; unreadable bars add none. */
 export function chordChanges(pattern: Pattern): ChordChange[] {
   const out: ChordChange[] = [];
-  const bars = pattern.chords ?? [];
+  const bars: unknown[] = Array.isArray(pattern.chords) ? pattern.chords : [];
   for (let bar = 0; bar < Math.min(bars.length, pattern.bars); bar++) {
-    const { chords, error } = parseBar(bars[bar] ?? "", pattern.stepsPerBar);
+    const text = bars[bar];
+    if (typeof text !== "string") continue;
+    const { chords, error } = parseBar(text, pattern.stepsPerBar);
     if (error) continue;
     for (const { offset, chord } of chords) {
       out.push({ step: bar * pattern.stepsPerBar + offset, chord });
