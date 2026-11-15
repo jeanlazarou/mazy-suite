@@ -277,3 +277,43 @@ func TestFullChainLimiterKeepsLoudnessTarget(t *testing.T) {
 		t.Errorf("test signal should make the limiter work, max GR %.2f dB", maxGR)
 	}
 }
+
+// Album mastering sets loudness with the Gain stage (one shared offset),
+// not the normalizer: the limiter still keeps the loudness it is given,
+// so a track lands where the album balance said it would.
+func TestFullChainLimiterKeepsGivenLoudness(t *testing.T) {
+	const sr = 44100
+	buf := generateSine(220, sr, 2, 10*sr)
+	for ch := range buf.Samples {
+		for i := range buf.Samples[ch] {
+			if i%(sr/4) < sr/100 {
+				buf.Samples[ch][i] *= 1.9
+			} else {
+				buf.Samples[ch][i] *= 0.4
+			}
+		}
+	}
+	eng := NewFullChain(sr, 2)
+	for _, name := range []string{"Parametric EQ", "Compressor", "Stereo Widener", "Loudness Normalizer"} {
+		p, _, _ := eng.GetProcessorByName(name)
+		p.SetEnabled(false)
+	}
+	eng.SetParam("Gain", "gain_db", 4)
+	eng.SetParam("Limiter", "ceiling", -0.3)
+
+	meter := dsp.NewLUFSMeter(sr, 2)
+	given := meter.MeasureIntegrated(buf) + 4
+	if err := eng.Process(buf); err != nil {
+		t.Fatalf("process: %v", err)
+	}
+	if got := meter.MeasureIntegrated(buf); math.Abs(got-given) > 0.15 {
+		t.Errorf("integrated loudness %.2f LUFS, want the %.2f it was given", got, given)
+	}
+	if tp := meter.MeasureTruePeak(buf); tp > -0.3+0.01 {
+		t.Errorf("true peak %.2f dBTP above the -0.3 ceiling", tp)
+	}
+	lim, _, _ := eng.GetProcessorByName("Limiter")
+	if maxGR, _ := lim.(*dsp.Limiter).GainReduction(); maxGR < 1 {
+		t.Errorf("test signal should make the limiter work, max GR %.2f dB", maxGR)
+	}
+}

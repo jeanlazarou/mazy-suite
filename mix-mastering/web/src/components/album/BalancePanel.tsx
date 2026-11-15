@@ -166,8 +166,9 @@ const TrackRow: React.FC<{
   const cal = levels.albumCal[t.id];
   const gain = albumTrackGainDB(levels, t);
   const target = albumTargetLUFS(levels);
-  // Estimated mastered loudness: measured chain output plus its gain (the
-  // limiter can take a little off on loud destinations).
+  // Mastered loudness: measured chain output plus its gain. The limiter
+  // keeps the loudness it is given (pkg/engine limitKeepingLoudness), so
+  // this is what the export measures.
   const lufs = cal && gain !== null ? cal.lufs + gain : null;
   const rel = lufs !== null ? lufs - target : null;
   const nudge = t.settings.nudgeDB;

@@ -44,7 +44,7 @@ cd web && npx vite
 - `--no-fix` — Don't correct problems found by analysing the audio (too dark, squashed…)
 - `-p, --preset` — Use a saved preset from `~/.audiomaster/presets` instead of `--style`/`--for`
 
-The limiter ceiling is a true-peak ceiling: `--for streaming` delivers at most −1 dBTP, inter-sample peaks included.
+The limiter ceiling is a true-peak ceiling: `--for streaming` delivers at most −1 dBTP, inter-sample peaks included. The limiter keeps the loudness it is given (it only guards the peaks), so a track or an album lands on its loudness target.
 
 ### Process flags
 
@@ -58,7 +58,7 @@ The limiter ceiling is a true-peak ceiling: `--for streaming` delivers at most �
 The web interface runs the Go DSP engine via WebAssembly in a Web Worker (so processing never blocks the UI). Features:
 
 - Start by saying what you're mastering: one track, or an album. With a single track, open the next song when you're done (your choices carry over), or grow it into an album
-- Album mastering in three steps, the way albums are mastered: choose the release (destination and the album's usual style), get each track right (its own fixes, an optional different style, fine-tuning), then balance the album — levels in play order against the target with ± nudges, tracks whose tone stands out, reordering, and listening across each transition — before exporting a zip. One shared loudness offset keeps the intended level differences between tracks
+- Album mastering in three steps, the way albums are mastered: choose the release (destination and the album's usual style), get each track right (its own fixes, an optional different style, fine-tuning), then balance the album — levels in play order against the target (the levels the export will measure) with ± nudges, tracks whose tone stands out, reordering, and listening across each transition — before exporting a zip. One shared loudness offset keeps the intended level differences between tracks
 - Chain X-Ray: a full-screen workbench showing the signal at every stage of the chain as waveform or spectrogram lanes, with in-place processor editing (changes ripple through downstream lanes) and instant visual A/B between saved setups
 - Loudness-matched A/B (original vs processed, trimmed to equal LUFS) and per-run gain-reduction stats
 - Every processor has two views: a picture you edit by dragging, and the classic knobs (see below)
