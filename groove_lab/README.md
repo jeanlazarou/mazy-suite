@@ -134,6 +134,20 @@ Everything autosaves as you edit. A save from before the library existed is
 migrated in automatically as "My first groove". Undo history doesn't cross
 songs — switching clears it.
 
+### Moving songs: export and import
+
+Songs are kept by the browser, separately for each site address — a copy
+of Groove Lab on another site (or in another browser) starts with an empty
+library. The Song bar moves them:
+
+- **Export song** downloads the open song as `<name>.groove.json`;
+  **Export all** downloads every song in one file. Both are also your
+  backup: clearing the browser's site data deletes the library.
+- **Import** adds the songs of such a file to the library. Nothing is
+  overwritten (a song with the same name is added next to yours), a song
+  that is already there with the same content is skipped, and a file with
+  a single song is opened straight away.
+
 ## Sections and arrangement
 
 A song is a set of **sections** (A, B, C…), each with its own pattern, plus an

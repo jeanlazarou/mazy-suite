@@ -12,9 +12,12 @@ import {
 import { createEmptyPattern } from "./pattern";
 import {
   deleteSongById,
+  allSongs,
   getSongById,
+  importSongFile,
   listSongs,
   loadCurrentSong,
+  makeSongFile,
   saveCurrentSong,
 } from "./storage";
 import type { Song } from "./types";
@@ -173,5 +176,96 @@ describe("storage — song library", () => {
     const loaded = loadCurrentSong(storage)!.song;
     expect(loaded.sections[0].pattern.drums.ride).toEqual([]);
     expect(loaded.arrangement).toEqual([song.sections[0].id]);
+  });
+});
+
+describe("song files — export / import", () => {
+  const libraryWith = (...names: string[]) => {
+    const storage = fakeStorage();
+    names.forEach((name, i) => {
+      const song = createDefaultSong();
+      song.sections[0].pattern.bpm = 100 + i;
+      saveCurrentSong(`id-${i}`, name, song, storage);
+    });
+    return storage;
+  };
+  /** What a download + upload does: through JSON text. */
+  const roundTrip = (file: unknown) => JSON.parse(JSON.stringify(file));
+
+  it("moves a whole library to an empty one", () => {
+    const from = libraryWith("Blue", "Red");
+    const file = roundTrip(makeSongFile(allSongs(from), "9.9.9"));
+    const to = fakeStorage();
+    const result = importSongFile(file, to);
+    expect(result?.added.map((s) => s.name).sort()).toEqual(["Blue", "Red"]);
+    expect(allSongs(to).map((s) => [s.name, s.song.sections[0].pattern.bpm]).sort()).toEqual([
+      ["Blue", 100],
+      ["Red", 101],
+    ]);
+  });
+
+  it("never overwrites: fresh ids, the open song stays open", () => {
+    const storage = libraryWith("Mine");
+    const other = createDefaultSong();
+    other.sections[0].pattern.bpm = 77;
+    const file = roundTrip(makeSongFile([{ name: "Mine", updatedAt: "", song: other }], "x"));
+    const result = importSongFile(file, storage);
+    expect(result?.added).toHaveLength(1);
+    expect(result?.added[0].id).not.toBe("id-0");
+    expect(listSongs(storage)).toHaveLength(2);
+    expect(loadCurrentSong(storage)?.id).toBe("id-0");
+  });
+
+  it("importing the same file twice adds nothing the second time", () => {
+    const from = libraryWith("Blue", "Red");
+    const file = roundTrip(makeSongFile(allSongs(from), "x"));
+    const to = fakeStorage();
+    importSongFile(roundTrip(file), to);
+    const again = importSongFile(roundTrip(file), to);
+    expect(again).toEqual({ added: [], duplicates: 2, unreadable: 0 });
+    expect(listSongs(to)).toHaveLength(2);
+  });
+
+  it("skips unreadable songs, keeps the good ones; not-a-song-file → null", () => {
+    const good = createDefaultSong();
+    const file = { groove_lab: 1, songs: [{ name: "ok", song: good }, { name: "bad", song: { sections: [] } }, null, 7] };
+    const storage = fakeStorage();
+    expect(importSongFile(roundTrip(file), storage)).toMatchObject({
+      added: [{ name: "ok" }],
+      unreadable: 3,
+    });
+    for (const junk of [null, 5, "x", [], {}, { songs: "no" }]) {
+      expect(importSongFile(junk, storage)).toBeNull();
+    }
+    expect(listSongs(storage)).toHaveLength(1);
+  });
+
+  it("repairs bad numbers from a file instead of trusting them", () => {
+    const song = createDefaultSong();
+    const p = song.sections[0].pattern as unknown as Record<string, unknown>;
+    p.bpm = 9999;
+    p.swing = "lots";
+    p.drums = { kick: [{ step: 0, velocity: 5 }, { step: 400, velocity: 1 }, { step: 2 }, null], snare: "x" };
+    p.bass = [
+      { step: 0, durationSteps: 2, midiPitch: 33, velocity: 0.8 },
+      { step: -1, durationSteps: 2, midiPitch: 33, velocity: 0.8 },
+      { step: 4, durationSteps: 0, midiPitch: 33, velocity: 0.8 },
+      { step: 8, durationSteps: 2, midiPitch: 900, velocity: 0.8 },
+    ];
+    const storage = fakeStorage();
+    const result = importSongFile(roundTrip({ songs: [{ name: "odd", song }] }), storage);
+    const loaded = getSongById(result!.added[0].id, storage)!.song.sections[0].pattern;
+    expect(loaded.bpm).toBe(240);
+    expect(loaded.swing).toBe(0);
+    expect(loaded.drums.kick).toEqual([{ step: 0, velocity: 1 }]);
+    expect(loaded.drums.snare).toEqual([]);
+    expect(loaded.bass.map((n) => n.step)).toEqual([0]);
+
+    const huge = createDefaultSong();
+    huge.sections[0].pattern.bars = 1e9; // would hang the editor
+    expect(importSongFile(roundTrip({ songs: [{ name: "huge", song: huge }] }), storage)).toMatchObject({
+      added: [],
+      unreadable: 1,
+    });
   });
 });

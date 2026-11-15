@@ -1,4 +1,4 @@
-import type { DrumLane, Song } from "./types";
+import type { Pattern, Song } from "./types";
 import { DRUM_LANES } from "./types";
 
 // MIDI_EXPORT_NOTES.md §3: persist the pattern JSON (the inputs), never only
@@ -33,6 +33,55 @@ export function createSongId(): string {
   );
 }
 
+const finite = (v: unknown): v is number =>
+  typeof v === "number" && Number.isFinite(v);
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+/**
+ * Make a stored or imported pattern safe to render: clamp what can be
+ * clamped, drop hits and notes that can't be placed. False when the grid
+ * itself (bars, steps per bar) is unusable.
+ */
+function repairPattern(p: Pattern): boolean {
+  if (!Number.isInteger(p.bars) || p.bars < 1 || p.bars > 16) return false;
+  if (!Number.isInteger(p.stepsPerBar) || p.stepsPerBar < 1 || p.stepsPerBar > 64) {
+    return false;
+  }
+  const total = p.bars * p.stepsPerBar;
+  p.bpm = finite(p.bpm) && p.bpm > 0 ? clamp(p.bpm, 40, 240) : 100;
+  p.swing = finite(p.swing) ? clamp(p.swing, 0, 1) : 0;
+  const inGrid = (step: unknown): step is number =>
+    Number.isInteger(step) && (step as number) >= 0 && (step as number) < total;
+  // Older saves may predate newly added lanes — fill them in.
+  for (const lane of DRUM_LANES) {
+    const hits: unknown = p.drums[lane.id];
+    p.drums[lane.id] = (Array.isArray(hits) ? hits : [])
+      .filter((h) => h && inGrid(h.step) && finite(h.velocity))
+      .map((h) => ({ step: h.step, velocity: clamp(h.velocity, 0, 1) }));
+  }
+  p.bass = p.bass
+    .filter(
+      (n) =>
+        n &&
+        inGrid(n.step) &&
+        Number.isInteger(n.durationSteps) &&
+        n.durationSteps >= 1 &&
+        Number.isInteger(n.midiPitch) &&
+        n.midiPitch >= 0 &&
+        n.midiPitch <= 127 &&
+        finite(n.velocity),
+    )
+    .map((n) => ({ ...n, velocity: clamp(n.velocity, 0, 1) }));
+  const chords: unknown = p.chords;
+  if (
+    chords !== undefined &&
+    !(Array.isArray(chords) && chords.every((c) => typeof c === "string"))
+  ) {
+    delete p.chords; // unreadable chords mustn't sink the song
+  }
+  return true;
+}
+
 /** Structural check + repair of one song; null when unsalvageable. */
 function validateSong(raw: unknown): Song | null {
   const song = raw as Song;
@@ -56,17 +105,7 @@ function validateSong(raw: unknown): Song | null {
     ) {
       return null;
     }
-    // Older saves may predate newly added lanes — fill them in.
-    for (const lane of DRUM_LANES) {
-      section.pattern.drums[lane.id as DrumLane] ??= [];
-    }
-    const chords: unknown = section.pattern.chords;
-    if (
-      chords !== undefined &&
-      !(Array.isArray(chords) && chords.every((c) => typeof c === "string"))
-    ) {
-      delete section.pattern.chords; // unreadable chords mustn't sink the song
-    }
+    if (!repairPattern(section.pattern)) return null;
   }
   const ids = new Set(song.sections.map((s) => s.id));
   song.arrangement = Array.isArray(song.arrangement)
@@ -183,4 +222,92 @@ export function deleteSongById(
   lib.songs = lib.songs.filter((s) => s.id !== id);
   if (lib.currentId === id) lib.currentId = lib.songs[0]?.id ?? null;
   writeLibrary(lib, storage);
+}
+
+// ---- song files: back up songs, or move them to another browser or site ----
+// (localStorage is per site address, so a deployed copy starts empty.)
+
+export const SONG_FILE_FORMAT = 1;
+
+export interface SongFileEntry {
+  name: string;
+  updatedAt: string;
+  song: Song;
+}
+
+export interface SongFile {
+  groove_lab: number; // file format version
+  app: string; // app version that wrote it
+  exported: string; // ISO
+  songs: SongFileEntry[];
+}
+
+export function makeSongFile(songs: SongFileEntry[], app: string): SongFile {
+  return {
+    groove_lab: SONG_FILE_FORMAT,
+    app,
+    exported: new Date().toISOString(),
+    songs,
+  };
+}
+
+/** Every saved song, most recently touched first. */
+export function allSongs(storage: StorageLike = localStorage): SongFileEntry[] {
+  return readLibrary(storage)
+    .songs.map(({ name, updatedAt, song }) => ({ name, updatedAt, song }))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export interface ImportResult {
+  added: { id: string; name: string }[];
+  duplicates: number; // same name and content as a song already here
+  unreadable: number;
+}
+
+/**
+ * Add the songs of a song file to the library, each under a fresh id (an
+ * import never overwrites). The open song doesn't change. Null when `raw`
+ * isn't a song file at all.
+ */
+export function importSongFile(
+  raw: unknown,
+  storage: StorageLike = localStorage,
+): ImportResult | null {
+  const entries = (raw as { songs?: unknown } | null)?.songs;
+  if (typeof raw !== "object" || raw === null || !Array.isArray(entries)) {
+    return null;
+  }
+  const lib = readLibrary(storage);
+  const known = new Set(lib.songs.map((s) => s.name + "\n" + JSON.stringify(s.song)));
+  const result: ImportResult = { added: [], duplicates: 0, unreadable: 0 };
+  for (const entry of entries) {
+    let song: Song | null = null;
+    try {
+      song = validateSong(entry?.song);
+    } catch {
+      song = null;
+    }
+    if (!song) {
+      result.unreadable += 1;
+      continue;
+    }
+    const name =
+      typeof entry.name === "string" && entry.name.trim() ? entry.name : "Imported song";
+    const key = name + "\n" + JSON.stringify(song);
+    if (known.has(key)) {
+      result.duplicates += 1;
+      continue;
+    }
+    known.add(key);
+    const id = createSongId();
+    lib.songs.push({
+      id,
+      name,
+      updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : new Date().toISOString(),
+      song,
+    });
+    result.added.push({ id, name });
+  }
+  if (result.added.length > 0) writeLibrary(lib, storage);
+  return result;
 }

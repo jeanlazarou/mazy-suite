@@ -3,11 +3,14 @@ import type { Pattern, Song } from "./types";
 import { clearBass, clearDrums } from "./pattern";
 import { arrangementPatterns, createDefaultSong, newId } from "./song";
 import {
+  allSongs,
   createSongId,
   deleteSongById,
   getSongById,
+  importSongFile,
   listSongs,
   loadCurrentSong,
+  makeSongFile,
   saveCurrentSong,
 } from "./storage";
 import type { EditorState, PatternUpdate } from "./editor";
@@ -19,7 +22,7 @@ import {
 } from "./editor";
 import { LibraryBar } from "./components/LibraryBar";
 import { patternToMidi, songToMidi } from "./midi";
-import { downloadBytes } from "./download";
+import { downloadBytes, downloadText } from "./download";
 import { usePlayback } from "./audio/usePlayback";
 import { usePlayheadFollow, useSyncedScroll } from "./useSyncedScroll";
 import { DrumGrid } from "./components/DrumGrid";
@@ -117,6 +120,53 @@ export default function App() {
     openSong(
       next ?? { id: createSongId(), name: "Untitled", song: createDefaultSong() },
     );
+  };
+
+  // ---- song files ----
+  // An import changes the stored library without touching editor state.
+  const [, refreshLibrary] = useReducer((n: number) => n + 1, 0);
+  const fileName = (text: string) =>
+    text.trim().replace(/[^\p{L}\p{N}._ -]+/gu, "_") || "song";
+  const exportSong = () => {
+    const file = makeSongFile(
+      [{ name, updatedAt: new Date().toISOString(), song }],
+      __APP_VERSION__,
+    );
+    downloadText(JSON.stringify(file), `${fileName(name)}.groove.json`);
+  };
+  const exportAll = () => {
+    saveCurrentSong(songId, name, song); // include edits not autosaved yet
+    const file = makeSongFile(allSongs(), __APP_VERSION__);
+    downloadText(
+      JSON.stringify(file),
+      `groove-lab-songs-${new Date().toISOString().slice(0, 10)}.groove.json`,
+    );
+  };
+  const importSongs = (text: string): string => {
+    let raw: unknown;
+    try {
+      raw = JSON.parse(text);
+    } catch {
+      return "That file isn't a Groove Lab song file.";
+    }
+    saveCurrentSong(songId, name, song);
+    const result = importSongFile(raw);
+    if (!result) return "That file isn't a Groove Lab song file.";
+    const { added, duplicates, unreadable } = result;
+    refreshLibrary();
+    if (added.length === 1) {
+      const entry = getSongById(added[0].id);
+      if (entry) openSong(entry);
+    }
+    const parts =
+      added.length === 0
+        ? ["Nothing new to import"]
+        : added.length === 1
+          ? [`Imported and opened "${added[0].name}"`]
+          : [`Imported ${added.length} songs — pick them in the song list`];
+    if (duplicates > 0) parts.push(`${duplicates} already in your library`);
+    if (unreadable > 0) parts.push(`${unreadable} unreadable`);
+    return parts.join(" · ");
   };
 
   // Playback reads through refs so edits and mode are live mid-play.
@@ -221,6 +271,9 @@ export default function App() {
         onSwitch={switchSong}
         onNew={newSong}
         onDelete={deleteSong}
+        onExport={exportSong}
+        onExportAll={exportAll}
+        onImport={importSongs}
       />
 
       <SectionBar

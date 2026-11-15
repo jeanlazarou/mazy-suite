@@ -77,6 +77,10 @@ Generate/edit per section; playback chains them; export the whole song or one se
 - Export = pure function `(song | pattern) → midi bytes` → Blob download.
 - Persist pattern JSON (localStorage history like the previous project, ~20 entries),
   never only the rendered MIDI — patterns can always be re-exported after a fix.
+- Song files (`.groove.json`, `makeSongFile` / `importSongFile` in storage.ts) move
+  songs between browsers and sites: localStorage is per origin, so a deployed copy
+  starts empty. Anything loaded — storage or file — goes through `validateSong`,
+  which repairs or drops bad numbers; never trust a file.
 
 ## Generation
 

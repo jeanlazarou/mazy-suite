@@ -233,6 +233,11 @@ header h1 {
   width: 220px;
 }
 
+.library-status {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
 .song-name:focus {
   border-color: var(--accent);
   outline: none;

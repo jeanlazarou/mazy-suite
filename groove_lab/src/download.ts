@@ -8,3 +8,13 @@ export function downloadBytes(bytes: Uint8Array, filename: string): void {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+/** Offer text (JSON) as a file download. */
+export function downloadText(text: string, filename: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
