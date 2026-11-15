@@ -211,7 +211,7 @@ export default function App() {
         : -1;
 
   // Grids share one timeline: linked horizontal scroll + playhead follow.
-  useSyncedScroll([bassView]);
+  useSyncedScroll([bassView, current.id]); // the roll is recreated per section
   usePlayheadFollow(viewStep);
 
   const exportFailed = () =>
@@ -350,6 +350,7 @@ export default function App() {
       />
       {bassView === "roll" ? (
         <BassRoll
+          key={current.id} // each section opens on its own notes
           pattern={current.pattern}
           currentStep={viewStep}
           onChange={setPattern}

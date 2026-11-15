@@ -49,6 +49,12 @@ sharps), columns are the same sixteenth notes as the drum grid.
 | Accent a note | Right-click it — cycles normal → accent → ghost |
 | Hear a pitch | Click its row label |
 
+The roll is a window onto the 28 pitches, sized so the drums and the bass
+fit on one screen: it opens on the rows where the notes are, and scrolls up
+and down on its own (mouse wheel or trackpad over it). It moves by itself
+only when a generator, the AI or an undo leaves no note in view — never
+while you place notes by hand.
+
 The bass line is monophonic (like the synth that plays it): placing, moving or
 stretching a note over an existing one replaces it, and a long note that rings
 into a new one gets cut short at the new note's start. Each move or resize is

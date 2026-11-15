@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { BassNote, Pattern } from "../types";
 import {
   BASS_PITCH_MAX,
@@ -67,6 +67,42 @@ export function BassRoll({
   const steps = totalSteps(pattern);
   const [placing, setPlacing] = useState<Placing | null>(null);
   const [dragging, setDragging] = useState<Dragging | null>(null);
+  // The roll is a fixed-height window onto the pitches: keep the notes in it.
+  // On opening it centres on them; later it moves only when a change from
+  // outside (generator, AI, undo) leaves none of them in view — never while
+  // the user is placing notes by hand.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const openedRef = useRef(false);
+  useLayoutEffect(() => {
+    const el = gridRef.current;
+    if (!el || el.scrollHeight <= el.clientHeight) return;
+    const header = el.querySelector<HTMLElement>(".step-header")?.offsetHeight ?? 0;
+    const rowTop = (pitch: number) =>
+      el.querySelector<HTMLElement>(`[data-pitch="${pitch}"]`)?.offsetTop ?? 0;
+    const rowHeight = rowTop(BASS_PITCH_MAX - 1) - rowTop(BASS_PITCH_MAX);
+    const viewTop = el.scrollTop + header;
+    const viewBottom = el.scrollTop + el.clientHeight;
+    const pitches = pattern.bass.map((n) => n.midiPitch);
+    if (pitches.length === 0) {
+      if (!openedRef.current) el.scrollTop = el.scrollHeight; // low notes first
+    } else {
+      const top = rowTop(Math.max(...pitches));
+      const bottom = rowTop(Math.min(...pitches)) + rowHeight;
+      const anyVisible = pitches.some(
+        (p) => rowTop(p) >= viewTop && rowTop(p) + rowHeight <= viewBottom,
+      );
+      if (!openedRef.current || !anyVisible) {
+        const room = viewBottom - viewTop;
+        // Centre the notes; if they span more than the window, show the lowest.
+        el.scrollTop =
+          bottom - top <= room
+            ? (top + bottom) / 2 - header - room / 2
+            : bottom - el.clientHeight + rowHeight;
+      }
+    }
+    openedRef.current = true;
+  }, [pattern.bass]);
+
   // Chord sounding at each step, for the chord-tone shading.
   const changes = chordChanges(pattern);
   const stepChords = Array.from({ length: steps }, (_, s) => chordAt(changes, s));
@@ -190,6 +226,7 @@ export function BassRoll({
 
   return (
     <div
+      ref={gridRef}
       className={gridClass}
       style={{ ["--steps" as string]: steps }}
       onContextMenu={(e) => e.preventDefault()}
@@ -303,6 +340,7 @@ function RollRow({
     <>
       <button
         className={`roll-label ${sharp ? "sharp" : ""}`}
+        data-pitch={pitch}
         style={{ gridRow: row, gridColumn: 1 }}
         onClick={onPreview}
         title="Click to hear this pitch"
