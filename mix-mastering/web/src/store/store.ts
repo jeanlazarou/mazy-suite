@@ -446,7 +446,7 @@ export const useStore = create<AppState>((set) => ({
   processedAnalysis: null,
   isAnalyzing: false,
   recipeOptions: null,
-  choice: { style: '', destination: 'streaming', fix: true, variant: 'clean' },
+  choice: { style: '', destination: 'streaming', fix: true, variant: 'clean', tone: 'normal' },
   recipe: null,
   recipeKey: null,
   customPreset: null,
@@ -608,7 +608,8 @@ export const useStore = create<AppState>((set) => ({
       ? s.tracks.map((t) => (t.settings.customPreset !== null
         ? { ...t, settings: { ...t.settings, customPreset: null } } : t))
       : s.tracks;
-    if (choice.style !== s.choice.style || choice.destination !== s.choice.destination || choice.fix !== s.choice.fix) {
+    if (choice.style !== s.choice.style || choice.destination !== s.choice.destination || choice.fix !== s.choice.fix
+      || choice.tone !== s.choice.tone) {
       return { choice, customPreset: null, tracks, variantEdits: {} };
     }
     if (s.workspace !== 'track' || choice.variant === s.choice.variant) {

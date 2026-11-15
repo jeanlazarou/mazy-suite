@@ -101,7 +101,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (wasmReady && workspace === 'track' && activeAnalysis && recipeOptions) renderVariants();
     else stopVariants();
-  }, [wasmReady, workspace, activeTrackId, activeAnalysis, recipeOptions, choice.style, choice.destination, choice.fix]);
+  }, [wasmReady, workspace, activeTrackId, activeAnalysis, recipeOptions, choice.style, choice.destination, choice.fix, choice.tone]);
 
   // Auto-preview: whenever the settings (or the track) differ from the
   // last processed result, reprocess after a short pause, so every choice

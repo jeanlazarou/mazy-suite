@@ -29,7 +29,7 @@ cd web && npx vite
 | ---------------------------------------- | ------------------------------------------------------------ |
 | `master process <file> -o <out>`         | Master a single file                                          |
 | `master analyze <file>`                  | Analyze audio and show what mastering would do and fix        |
-| `master options`                         | List the styles (`--style`), destinations (`--for`) and versions (`--variant`) |
+| `master options`                         | List the styles (`--style`), destinations (`--for`), versions (`--variant`) and tone strengths (`--tone`) |
 | `master batch <dir> -o <outdir>`         | Master every file in a directory independently                 |
 | `master album <dir> -o <outdir>`         | Master a directory as one album: the album's style and destination for every track, each corrected for its own problems, loudness normalized by a single offset computed from the album's integrated loudness (preserves relative track levels) — use this instead of `batch` for related tracks |
 | `master preset list\|search\|show`        | Your saved presets in `~/.audiomaster/presets`                 |
@@ -42,6 +42,7 @@ cd web && npx vite
 - `--style` — What the material is, sets the character: `rock`, `pop`, `electronic`, `hiphop`, `jazz`, `acoustic`, `classical`, `voice`
 - `--for` — Where it will be heard, sets loudness and delivery: `streaming` (−14 LUFS, default), `podcast` (−16), `loud` (−9), `vinyl`, `headphones`, `car`, `phone`, `bluetooth`
 - `--no-fix` — Don't correct problems found by analysing the audio (too dark, squashed…)
+- `--tone` — How strongly each song's tone is matched to the reference: `off`, `gentle`, `normal` (default), `strong`
 - `-p, --preset` — Use a saved preset from `~/.audiomaster/presets` instead of `--style`/`--for`
 
 The limiter ceiling is a true-peak ceiling: `--for streaming` delivers at most −1 dBTP, inter-sample peaks included. The limiter keeps the loudness it is given (it only guards the peaks), so a track or an album lands on its loudness target.
@@ -64,7 +65,7 @@ The web interface runs the Go DSP engine via WebAssembly in a Web Worker (so pro
 - Every processor has two views: a picture you edit by dragging, and the classic knobs (see below)
 - EQ and stereo width changes are heard instantly while playing; EQ band solo and a mono check let you hear what a change does
 - Spectrum analyzer, waveform display, stereo field (Lissajous), LUFS meter
-- Master settings in three questions — *What is it?* (style, optional), *Where will it be heard?* (destination), *Fix problems found?* — that combine (a rock song for a podcast keeps rock's tone at podcast loudness), with a plain-language list of what the settings do
+- Master settings in three questions — *What is it?* (style, optional), *Where will it be heard?* (destination), *Fix problems found?* (with how strongly the tone is matched: off, gentle, normal, strong) — that combine (a rock song for a podcast keeps rock's tone at podcast loudness), with a plain-language list of what the settings do
 - Four versions of a track to pick from by ear — Clean, Punch, Smooth, Warm — rendered in parallel in the background, so switching between them while listening is instant; all at the same loudness, with the one that suits the track suggested from the analysis
 - The preview updates by itself after every change, no Process step; fine-tune any stage in the chain, and save the result as your own preset
 

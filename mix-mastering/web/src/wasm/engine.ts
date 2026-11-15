@@ -79,12 +79,14 @@ export interface RecipeOption {
   group?: 'release' | 'device'; // destinations only
   target_lufs?: number; // destinations only
   ceiling_dbtp?: number; // destinations only
+  amount?: number; // tone strengths only: the scale of the fitted curve
 }
 
 export interface RecipeOptions {
   styles: RecipeOption[];
   destinations: RecipeOption[];
   variants: RecipeOption[];
+  tone_strengths: RecipeOption[];
 }
 
 export interface RecipeChoice {
@@ -92,6 +94,7 @@ export interface RecipeChoice {
   destination: string;
   fix: boolean;
   variant: string; // track workspace only; an album is built clean
+  tone: string; // how strongly the tone fix matches the reference (off, gentle, normal, strong)
 }
 
 /** The variant that suits the material best, and why (pkg/recipe.Suggest). */

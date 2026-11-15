@@ -23,12 +23,14 @@ type settingsFlags struct {
 	noFix   bool
 	preset  string
 	variant string // process only (registerVariant)
+	tone    string
 }
 
 func (f *settingsFlags) register(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&f.style, "style", "", "What the material is; sets the character (see 'master options')")
 	cmd.Flags().StringVar(&f.dest, "for", "", "Where it will be heard; sets loudness and delivery (default streaming; see 'master options')")
 	cmd.Flags().BoolVar(&f.noFix, "no-fix", false, "Don't correct problems found by analysis (too dark, squashed, ...)")
+	cmd.Flags().StringVar(&f.tone, "tone", "", "How strongly each song's tone is matched to the reference: off, gentle, normal (default) or strong")
 	cmd.Flags().StringVarP(&f.preset, "preset", "p", "", "Use a saved preset from ~/.audiomaster/presets instead of --style/--for")
 }
 
@@ -57,8 +59,8 @@ type settings struct {
 // whole record), used for the fixes and the compressor threshold.
 func (f *settingsFlags) resolve(analyses ...*analysis.AnalysisResult) (*settings, error) {
 	if f.preset != "" {
-		if f.style != "" || f.dest != "" || f.variant != "" {
-			return nil, fmt.Errorf("use either --preset or --style/--for/--variant, not both")
+		if f.style != "" || f.dest != "" || f.variant != "" || f.tone != "" {
+			return nil, fmt.Errorf("use either --preset or --style/--for/--variant/--tone, not both")
 		}
 		p, err := getPresetManager().Get(f.preset)
 		if err != nil {
@@ -66,7 +68,7 @@ func (f *settingsFlags) resolve(analyses ...*analysis.AnalysisResult) (*settings
 		}
 		return &settings{preset: p}, nil
 	}
-	r, err := recipe.Build(recipe.Choice{Style: f.style, Destination: f.dest, Fix: !f.noFix, Variant: f.variant},
+	r, err := recipe.Build(recipe.Choice{Style: f.style, Destination: f.dest, Fix: !f.noFix, Variant: f.variant, Tone: f.tone},
 		analysis.Aggregate(analyses))
 	if err != nil {
 		return nil, err
@@ -128,12 +130,13 @@ func (s *settings) print(indent string) {
 
 var optionsCmd = &cobra.Command{
 	Use:   "options",
-	Short: "List the styles (--style), destinations (--for) and versions (--variant)",
+	Short: "List the styles (--style), destinations (--for), versions (--variant) and tone strengths (--tone)",
 	Long: `Lists what --style, --for and --variant accept. They combine: the style sets
 the character (tone, how the compressor moves), the destination sets delivery
 (loudness, peak ceiling, device tuning). Problems found by analysing the
 audio are corrected on top unless --no-fix is given. The version (process
-only) is a finish on top that keeps the delivery.
+only) is a finish on top that keeps the delivery. --tone sets how strongly the
+tone fix matches each song to the reference.
 
   master process song.wav -o out.wav --style rock --for podcast --variant punch`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -162,6 +165,17 @@ only) is a finish on top that keeps the delivery.
 				def = " (default)"
 			}
 			fmt.Fprintf(w, "  %s%s\t%s\n", v.ID, def, v.Description)
+		}
+		w.Flush()
+		fmt.Println()
+		w = tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(w, "TONE (--tone)\tTONE MATCHING")
+		for _, t := range opts.Tones {
+			def := ""
+			if t.ID == recipe.DefaultToneStrength {
+				def = " (default)"
+			}
+			fmt.Fprintf(w, "  %s%s\t%s\n", t.ID, def, t.Description)
 		}
 		w.Flush()
 	},

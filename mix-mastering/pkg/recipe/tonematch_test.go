@@ -186,3 +186,52 @@ func TestRecipeMultibandFollowsTheBandLevels(t *testing.T) {
 		t.Errorf("dense mix: mids %.1f dB, empty highs %.1f dB ratio %.1f", dm["band.1.makeup"], dm["band.2.makeup"], dm["band.2.ratio"])
 	}
 }
+
+func TestToneStrengthScalesTheCurve(t *testing.T) {
+	a := spectrumAnalysis(func(f float64) float64 { return -3 * math.Max(0, math.Log2(f/500)) })
+	a.Spectrum.SpectralBalance = "dark"
+	normal, _ := Build(Choice{Destination: "streaming", Fix: true}, a)
+	if normal.Tone != "normal" || normal.Processors["Tone Match"]["amount"] != 1 {
+		t.Fatalf("default strength: tone %q amount %v", normal.Tone, normal.Processors["Tone Match"]["amount"])
+	}
+	for _, c := range []struct {
+		id     string
+		amount float64
+		word   string
+	}{{"gentle", 0.5, "(gentle)"}, {"strong", 1.5, "(strong)"}} {
+		r, err := Build(Choice{Destination: "streaming", Fix: true, Tone: c.id}, a)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tm := r.Processors["Tone Match"]
+		if tm["amount"] != c.amount || tm["enabled"] != 1 || tm["g.24"] != normal.Processors["Tone Match"]["g.24"] {
+			t.Errorf("%s: amount %v enabled %v, curve should stay the fitted one", c.id, tm["amount"], tm["enabled"])
+		}
+		var noted bool
+		for _, n := range r.Notes {
+			noted = noted || strings.Contains(n.Text, c.word)
+		}
+		if !noted {
+			t.Errorf("%s: no note naming it in %v", c.id, r.Notes)
+		}
+	}
+
+	// Off: no tone fix at all, not even the verdict fallback.
+	off, _ := Build(Choice{Destination: "streaming", Fix: true, Tone: "off"}, a)
+	if off.Enabled["Tone Match"] || off.Processors["Parametric EQ"]["band.4.gain"] != 0 {
+		t.Errorf("off: tone match %v, air %+.1f", off.Enabled["Tone Match"], off.Processors["Parametric EQ"]["band.4.gain"])
+	}
+	verdict := &analysis.AnalysisResult{Spectrum: &analysis.SpectrumAnalysis{SpectralBalance: "dark"}}
+	if v, _ := Build(Choice{Destination: "streaming", Fix: true, Tone: "off"}, verdict); v.Processors["Parametric EQ"]["band.4.gain"] != 0 {
+		t.Errorf("off without a spectrum: verdict fix applied anyway")
+	}
+	for _, n := range off.Notes {
+		if strings.Contains(n.Text, "Tone balanced") {
+			t.Errorf("off: %q", n.Text)
+		}
+	}
+
+	if _, err := Build(Choice{Tone: "loud"}, a); err == nil {
+		t.Error("unknown tone strength accepted")
+	}
+}

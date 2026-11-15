@@ -45,7 +45,7 @@ export function renderVariants(): void {
     return;
   }
   const analysis = s.analysis;
-  const base = { style: s.choice.style, destination: s.choice.destination, fix: s.choice.fix };
+  const base = { style: s.choice.style, destination: s.choice.destination, fix: s.choice.fix, tone: s.choice.tone };
   const queue = ids.includes(s.choice.variant)
     ? [s.choice.variant, ...ids.filter((id) => id !== s.choice.variant)]
     : ids;

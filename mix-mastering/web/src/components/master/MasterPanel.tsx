@@ -49,6 +49,7 @@ export const MasterPanel: React.FC = () => {
         action={<Switch size="small" checked={choice.fix} onChange={(_, v) => setChoice({ fix: v })} />}
       >
         <FixList subject="track" expectStyle={choice.style} />
+        {choice.fix && <ToneStrengthChips />}
       </Step>
 
       <VariantStep n={4} />
@@ -113,6 +114,23 @@ export const DestinationStep: React.FC<{ n: number; hint?: string }> = ({ n, hin
         </Caption>
       )}
     </Step>
+  );
+};
+
+/** How strongly the tone fix matches the reference (choice.tone): shared
+ *  by an album's tracks, so it sets how much of each track's own tonal
+ *  character is kept. */
+export const ToneStrengthChips: React.FC = () => {
+  const options = useStore((s) => s.recipeOptions?.tone_strengths ?? []);
+  const tone = useStore((s) => s.choice.tone);
+  const setChoice = useStore((s) => s.setChoice);
+  const current = options.find((o) => o.id === tone);
+  return (
+    <Box sx={{ mt: 0.75 }}>
+      <GroupLabel>Tone matching</GroupLabel>
+      <ChipRow options={options} selected={tone} onSelect={(id) => setChoice({ tone: id })} />
+      {current && <Caption>{current.description}</Caption>}
+    </Box>
   );
 };
 
@@ -206,6 +224,7 @@ function useCurrentRecipe(expectStyle: string) {
     const r = s.recipe;
     if (s.customPreset !== null || !r) return null;
     return r.style === expectStyle && r.destination === s.choice.destination && r.fix === s.choice.fix
+      && r.tone === s.choice.tone
       && r.variant === variantFor(s) ? r : null;
   });
 }

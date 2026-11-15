@@ -11,7 +11,7 @@ import { useStore, type AlbumStep } from '../../store/store';
 import { pickAudioFiles, addAlbumFiles } from '../../audio/loadFiles';
 import { stopPlayback } from '../../hooks/usePlayback';
 import {
-  Step, StyleChips, DestinationStep, FixList, ResultSummary, ResultChips, PresetsSection, Caption,
+  Step, StyleChips, DestinationStep, FixList, ResultSummary, ResultChips, PresetsSection, Caption, ToneStrengthChips,
 } from '../master/MasterPanel';
 import { ProcessorPipeline } from '../processors/ProcessorPipeline';
 import { Spectrum } from '../visualizers/Spectrum';
@@ -115,9 +115,10 @@ const ReleaseStep: React.FC = () => {
       >
         <Caption>
           {choice.fix
-            ? 'Each track is analyzed and corrected on its own: a dark track gets more air, a squashed one gentler compression.'
+            ? 'Each track is analyzed and corrected on its own: its tone is matched to a reference, a squashed one gets gentler compression.'
             : 'Off — the analysis is not used to correct the tracks.'}
         </Caption>
+        {choice.fix && <ToneStrengthChips />}
       </Step>
 
       <Divider />

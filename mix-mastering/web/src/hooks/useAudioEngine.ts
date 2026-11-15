@@ -55,7 +55,7 @@ export function variantFor(s: Pick<AppState, 'workspace' | 'choice'>): string {
 // track's style) and the track, whose own analysis the fixes come from.
 function recipeKeyFor(s: AppState, t: AlbumTrack, st: TrackSettings): string {
   return JSON.stringify({
-    s: styleFor(s, st), d: s.choice.destination, f: s.choice.fix, v: variantFor(s), t: t.id,
+    s: styleFor(s, st), d: s.choice.destination, f: s.choice.fix, v: variantFor(s), a: s.choice.tone, t: t.id,
   });
 }
 
@@ -434,6 +434,7 @@ export function useAudioEngine() {
 
       const r = await engine.buildRecipe({
         style: styleFor(s, st), destination: s.choice.destination, fix: s.choice.fix, variant: variantFor(s),
+        tone: s.choice.tone,
       }, [analysis]);
       if (mySeq !== recipeSeq) return;
       if ('error' in r) {

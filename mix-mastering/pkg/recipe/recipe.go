@@ -170,17 +170,44 @@ var variants = []Variant{
 // DefaultVariant is used when none is given.
 const DefaultVariant = "clean"
 
+// ToneStrength is how strongly the tone fix matches each song to the
+// reference spectrum: it scales the fitted curve (Tone Match "amount").
+// For an album it is shared, so it sets how much the tracks' own tonal
+// characters are kept.
+type ToneStrength struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Amount      float64 `json:"amount"`
+}
+
+var toneStrengths = []ToneStrength{
+	{ID: "off", Name: "Off", Amount: 0,
+		Description: "Each song keeps its own tonal balance; only the dynamics are corrected."},
+	{ID: "gentle", Name: "Gentle", Amount: 0.5,
+		Description: "Half the correction: songs keep more of their own character."},
+	{ID: "normal", Name: "Normal", Amount: 1,
+		Description: "The correction fitted to each song."},
+	{ID: "strong", Name: "Strong", Amount: 1.5,
+		Description: "More correction: closest to the reference, songs sound most alike."},
+}
+
+// DefaultToneStrength is used when none is given.
+const DefaultToneStrength = "normal"
+
 // Options lists the available styles, destinations and variants, in
 // display order.
 type Options struct {
-	Styles       []Style       `json:"styles"`
-	Destinations []Destination `json:"destinations"`
-	Variants     []Variant     `json:"variants"`
+	Styles       []Style        `json:"styles"`
+	Destinations []Destination  `json:"destinations"`
+	Variants     []Variant      `json:"variants"`
+	Tones        []ToneStrength `json:"tone_strengths"`
 }
 
-// ListOptions returns every style, destination and variant.
+// ListOptions returns every style, destination, variant and tone
+// strength.
 func ListOptions() Options {
-	return Options{Styles: styles, Destinations: destinations, Variants: variants}
+	return Options{Styles: styles, Destinations: destinations, Variants: variants, Tones: toneStrengths}
 }
 
 // Choice is what the user picked.
@@ -189,6 +216,7 @@ type Choice struct {
 	Destination string `json:"destination"` // "" = DefaultDestination
 	Fix         bool   `json:"fix"`
 	Variant     string `json:"variant"` // "" = DefaultVariant
+	Tone        string `json:"tone"`    // "" = DefaultToneStrength
 }
 
 // Suggestion is the variant that suits the material best, and why.
@@ -247,6 +275,20 @@ func findDestination(id string) (Destination, error) {
 		ids[i] = d.ID
 	}
 	return Destination{}, fmt.Errorf("unknown destination %q (available: %s)", id, strings.Join(ids, ", "))
+}
+
+func findTone(id string) (ToneStrength, error) {
+	if id == "" {
+		id = DefaultToneStrength
+	}
+	ids := make([]string, len(toneStrengths))
+	for i, t := range toneStrengths {
+		if strings.EqualFold(t.ID, id) {
+			return t, nil
+		}
+		ids[i] = t.ID
+	}
+	return ToneStrength{}, fmt.Errorf("unknown tone strength %q (available: %s)", id, strings.Join(ids, ", "))
 }
 
 func findVariant(id string) (Variant, error) {
@@ -316,7 +358,11 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.Style, c.Destination, c.Variant = style.ID, dest.ID, variant.ID
+	strength, err := findTone(c.Tone)
+	if err != nil {
+		return nil, err
+	}
+	c.Style, c.Destination, c.Variant, c.Tone = style.ID, dest.ID, variant.ID, strength.ID
 
 	r := &Recipe{
 		Choice:      c,
@@ -363,10 +409,27 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 	if c.Fix && a != nil {
 		// The tone is corrected with a curve fitted to the song's spectrum;
 		// without a spectrum (an album's aggregate), from its verdict.
-		if curve, ok := toneMatch(a, style); ok {
+		curve, fitted := toneMatch(a, style)
+		_, measured := bandLevels(a.Spectrum)
+		switch {
+		case strength.Amount == 0:
+			// Tone matching off: no tone fix of any kind.
+		case fitted:
 			match = curve
-			note("fix", "Tone balanced to the song: %s", describeMatch(curve))
-		} else if _, measured := bandLevels(a.Spectrum); !measured && a.Spectrum != nil {
+			scaled := make([]float64, len(curve))
+			for i, g := range curve {
+				scaled[i] = round1(g * strength.Amount)
+			}
+			desc := describeMatch(scaled)
+			if desc == "" {
+				desc = "small corrections only"
+			}
+			label := "Tone balanced to the song"
+			if strength.ID != DefaultToneStrength {
+				label += " (" + strings.ToLower(strength.Name) + ")"
+			}
+			note("fix", "%s: %s", label, desc)
+		case !measured && a.Spectrum != nil:
 			switch a.Spectrum.SpectralBalance {
 			case "dark":
 				fixTone.Air = 2
@@ -512,7 +575,7 @@ func Build(c Choice, a *analysis.AnalysisResult) (*Recipe, error) {
 	tm["amount"], tm["enabled"] = 1, 0
 	r.Enabled["Tone Match"] = match != nil
 	if match != nil {
-		tm["enabled"] = 1
+		tm["amount"], tm["enabled"] = strength.Amount, 1
 		for i, g := range match {
 			tm[fmt.Sprintf("g.%d", i)] = g
 		}
