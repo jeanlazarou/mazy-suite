@@ -15,7 +15,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 APPS=${APPS:-player}
-ALL_WEB_APPS="player player_editor live_prompter gig_anim track_mixer groove_lab massembler sequence-builder lyrics-cards mix-mastering lyrics_book twin_diff"
+ALL_WEB_APPS="player player_editor live_prompter gig_anim track_mixer groove_lab massembler sequence-builder lyrics-cards mix-mastering lyrics_book twin_diff vox_noise_gate"
 REPO_URL="https://github.com/jeanlazarou/mazy-suite"
 SITE=_site
 

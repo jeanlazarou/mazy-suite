@@ -7,8 +7,9 @@ a clean WAV. It does in one pass what used to take a session of selecting
 silences by hand, and it is a noise gate that can look ahead, because the whole
 take is there.
 
-Part of the [Mazy Suite](../README.md). Everything runs in the browser; no audio
-is uploaded anywhere.
+**▶ [Try it live](https://jeanlazarou.github.io/mazy-suite/vox_noise_gate/)** —
+part of the [Mazy Suite](https://jeanlazarou.github.io/mazy-suite/). Everything
+runs in the browser; no audio is uploaded anywhere.
 
 ![Gating "Empty Room": red regions silenced by the gate and blue keep zones given back by hand across the vocal waveform, the green region at 01:38.263 – 01:38.970 (708 ms) being edited, the settings with the threshold at -43.5 dB above a -57 dB noise floor, 31 regions silencing 56% of the take, and the level meter with its green gate LED under the timer, next to the jog dial](docs/screenshots/main-view.png)
 
