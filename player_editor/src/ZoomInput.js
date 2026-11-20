@@ -6,8 +6,11 @@ import "./ZoomInput.css";
 
 export const zoomLevel = atom(0);
 
+// the range input gives a string, and the icons can step past its ends
+const clamp = (v) => Math.max(0, Math.min(100, Number(v) || 0));
+
 export function stepRelativeToZoom(zoomLevel) {
-  return (1 * (100 - zoomLevel)) / 100;
+  return Math.max(0.01, (100 - clamp(zoomLevel)) / 100);
 }
 
 export function ZoomInput() {
@@ -17,18 +20,18 @@ export function ZoomInput() {
     <div className="zoom-input">
       <ZoomOutIcon
         sx={{ cursor: "pointer" }}
-        onClick={() => setValue((v) => v - 1)}
+        onClick={() => setValue((v) => clamp(v - 1))}
       />
       <input
         type="range"
-        min="1"
+        min="0"
         max="100"
         value={value}
-        onChange={(ev) => setValue(ev.target.value)}
+        onChange={(ev) => setValue(clamp(ev.target.value))}
       />
       <ZoomInIcon
         sx={{ cursor: "pointer" }}
-        onClick={() => setValue((v) => v + 1)}
+        onClick={() => setValue((v) => clamp(v + 1))}
       />
     </div>
   );
