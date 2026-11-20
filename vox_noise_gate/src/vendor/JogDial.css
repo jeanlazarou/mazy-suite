@@ -1,0 +1,23 @@
+#dial {
+  width: 260px;
+  height: 260px;
+  background: url("./base_one_bg.png");
+  background-repeat: none;
+}
+
+#dial_knob {
+  scale: 0.8;
+  height: 70px !important;
+  width: 70px !important;
+  margin: -35px 0px 0px -35px !important;
+  opacity: 1 !important;
+}
+
+#dial_wheel {
+  opacity: 0 !important;
+}
+
+#dial #dial_knob {
+  background: url("./base_one_knob.png");
+  background-repeat: no-repeat;
+}

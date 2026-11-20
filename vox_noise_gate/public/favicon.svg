@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- A vocal waveform whose quiet stretches are cut flat, with the gate LED -->
+  <rect width="64" height="64" rx="14" fill="#0B1A10"/>
+  <g stroke="#4DFF8A" stroke-width="3" stroke-linecap="round">
+    <line x1="10" y1="22" x2="10" y2="42"/>
+    <line x1="16" y1="16" x2="16" y2="48"/>
+    <line x1="22" y1="24" x2="22" y2="40"/>
+    <line x1="42" y1="18" x2="42" y2="46"/>
+    <line x1="48" y1="12" x2="48" y2="52"/>
+    <line x1="54" y1="24" x2="54" y2="40"/>
+  </g>
+  <line x1="27" y1="32" x2="37" y2="32" stroke="#DB2828" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="32" cy="12" r="4" fill="#DB2828"/>
+</svg>

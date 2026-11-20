@@ -1,0 +1,7 @@
+kbd {
+  font-family: monospace;
+  padding: 1px 5px;
+  border: 1px solid #bbb;
+  border-radius: 3px;
+  background: #f5f5f5;
+}

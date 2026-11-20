@@ -30,6 +30,7 @@ player, loaded with the demo album.
 | [lyrics_book](lyrics_book/) | Reads a master lyrics file — every lyric of every album, as written rather than as sung — and pages it like a book: search across words, titles and authors, and a trail of which lines were reused where (TypeScript) |
 | [mix-mastering](mix-mastering/) | Audio mastering studio in Go: DSP chain (EQ, compression, limiting, stereo), CLI **and** a React/WebAssembly web UI |
 | [twin_diff](twin_diff/) | Two recordings of one song side by side, the way a text diff shows two versions of a file: vertical waveforms, time downward, with what stayed, changed, was added or dropped marked and lined up |
+| [vox_noise_gate](vox_noise_gate/) | Noise gate for vocal takes: finds the silences between the phrases, lets you check and adjust them on the waveform, and exports a clean WAV, bit-exact everywhere else |
 
 ### Desktop & command line
 

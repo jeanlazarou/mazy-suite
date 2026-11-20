@@ -1,0 +1,285 @@
+body {
+  text-align: center;
+  display: grid;
+}
+
+#root {
+  display: grid;
+}
+
+#waveform {
+  flex-grow: 1;
+  margin-bottom: 10px;
+  position: relative;
+}
+
+#region-card {
+  position: absolute;
+  right: 10px;
+  bottom: 0px;
+  z-index: 100;
+}
+
+.unchanged-regions {
+  background: rgba(5, 82, 113) !important;
+  color: white !important;
+}
+
+.changed-regions {
+  background: rgba(246, 13, 242) !important;
+  color: white !important;
+}
+
+.playback-timer {
+  font-size: 14px;
+  padding: 14px 22px;
+
+  background: #500918;
+  background: radial-gradient(ellipse at center, #41090d 0%, #000000 70%);
+
+  border-radius: 6px;
+
+  overflow: clip;
+
+  width: 17em;
+  height: 50px;
+
+  margin: 5px;
+  margin-top: 13px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.playback-timer > span {
+  font-family: "Share Tech Mono", monospace;
+  font-size: 2.6em;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: #f80303;
+  text-shadow: 0 0 7px #f80303, 0 0 10px #f80303, 0 0 21px #f80303,
+    0 0 42px #e60a0a, 0 0 82px #e60a0a, 0 0 92px #e60a0a, 0 0 102px #e60a0a,
+    0 0 151px #e60a0a;
+}
+
+.song-title {
+  font-weight: bold;
+  position: fixed;
+  right: 10px;
+  z-index: 3;
+}
+
+.editor-content {
+  display: grid;
+  grid-template-columns: auto 340px 180px;
+  height: 470px;
+  width: 98%;
+  margin-left: 10px;
+}
+
+.transport {
+  display: grid;
+  justify-items: center;
+  grid-template-rows: 20px 70px 34px auto 30px;
+  width: 300px;
+  height: 470px;
+  margin-left: 20px;
+  padding: 20px;
+  border: #b5989e solid thin;
+  border-radius: 5px;
+  box-shadow: 0px 10px 13px -7px #000000, 5px 5px 15px 5px rgba(0, 0, 0, 0);
+}
+
+.commands {
+  margin: 13px;
+  display: grid;
+  align-items: center;
+  align-content: start;
+  gap: 10px;
+}
+
+/* gate settings, in place of the lyrics panel */
+
+.gate-settings {
+  text-align: left;
+  padding: 0.8em 1.2em;
+  border: 1px solid rgba(34, 36, 38, 0.15);
+  border-radius: 0.28571429rem;
+  height: 470px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.setting {
+  display: grid;
+  grid-template-columns: 140px auto 80px;
+  align-items: center;
+  gap: 14px;
+  min-height: 42px;
+}
+
+.setting-label {
+  cursor: help;
+  white-space: nowrap;
+}
+
+.setting-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.setting-value {
+  font-family: monospace;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.noise-floor {
+  margin: -6px 0 6px 154px;
+  font-size: 0.8em;
+  color: #767676;
+}
+
+.gate-stats {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid rgba(34, 36, 38, 0.1);
+  color: #555;
+  font-size: 0.9em;
+}
+
+/* level meter and gate LED, in the transport */
+
+.level-meter {
+  display: grid;
+  grid-template-columns: 18px 1fr 56px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.gate-led {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid #333;
+}
+
+.gate-led.open {
+  background: #21ba45;
+  box-shadow: 0 0 6px #21ba45;
+}
+
+.gate-led.closed {
+  background: #db2828;
+  box-shadow: 0 0 6px #db2828;
+}
+
+.meter-bar {
+  position: relative;
+  height: 12px;
+  background: #1b1c1d;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.meter-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+}
+
+.meter-fill.above {
+  background: #21ba45;
+}
+
+.meter-fill.below {
+  background: #767676;
+}
+
+.meter-threshold {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #f2711c;
+}
+
+.meter-value {
+  font-family: monospace;
+  font-size: 0.85em;
+  text-align: right;
+}
+
+/* threshold over the level view */
+
+.threshold-lines {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.threshold-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed #f2711c;
+}
+
+.threshold-line > span {
+  position: absolute;
+  left: 6px;
+  top: -18px;
+  font-size: 0.75em;
+  font-family: monospace;
+  color: #f2711c;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 0 3px;
+}
+
+/* empty page, loading, drag and drop */
+
+.welcome {
+  max-width: 560px;
+  margin: 18vh auto 0;
+  padding: 40px;
+  border: 2px dashed #b5c4d0;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1300;
+  background: rgba(255, 255, 255, 0.9);
+  padding-bottom: 6px;
+}
+
+.drop-overlay {
+  position: fixed;
+  inset: 12px;
+  z-index: 1400;
+  border: 3px dashed #2185d0;
+  border-radius: 12px;
+  background: rgba(33, 133, 208, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6em;
+  color: #2185d0;
+  pointer-events: none;
+}
