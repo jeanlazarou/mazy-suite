@@ -41,6 +41,7 @@ import { SaveReportBox } from "./SaveReportBox";
 import { ZoomInput } from "./ZoomInput";
 import { TimingsCheck } from "./TimingsCheck";
 import { PositionMemory } from "./PositionMemory";
+import { LevelMeter } from "./LevelMeter";
 
 import "./Editor.css";
 
@@ -200,6 +201,7 @@ export function Editor({ track: selectedTrack, onSidebarToggle, sideVisible }) {
             <div className="transport">
               <ZoomInput />
               <Timer />
+              <LevelMeter />
               <JogDial
                 key="dial"
                 onChange={(_, rotation) => setRotation(rotation)}

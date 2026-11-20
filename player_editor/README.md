@@ -11,7 +11,7 @@ runs in the browser; no audio is uploaded anywhere.
 The timings produced here are what [player](../player), [gig_anim](../gig_anim)
 and [lyrics-cards](../lyrics-cards) read to display lyrics in sync with a track.
 
-![Editing "Against Myself": gray regions mark the saved verse timings across the waveform, the green region at 00:00:47,212 – 00:00:49,924 is the one being edited, and the lyrics panel highlights the verse under the playhead next to the zoom, timer and jog dial](docs/screenshots/main-view.png)
+![Editing "Against Myself": gray regions mark the saved verse timings across the waveform, the green region at 00:00:47,212 – 00:00:49,924 is the one being edited, and the lyrics panel highlights the verse under the playhead next to the zoom, the timer, the level meter reading -15 dB and the jog dial](docs/screenshots/main-view.png)
 
 ## Quick start
 
@@ -55,10 +55,11 @@ playback head or resize the active region; <kbd>Enter</kbd> commits the change
 (the region turns violet), <kbd>Esc</kbd> reverts it to where it was.
 
 The nudge step follows the zoom level — `(100 - zoom) / 100` seconds, so it is
-roughly a second when fully zoomed out and down to milliseconds as you zoom in.
-Zoom, timecode
-readout, jog dial and position memory sit in the transport strip under the
-lyrics panel.
+roughly a second when fully zoomed out and down to 10 ms as you zoom in.
+Zoom, timecode readout, level meter, jog dial and position memory sit in the
+transport strip under the lyrics panel. The level meter shows how loud the
+track is at the playback position (RMS over 10 ms, on a -90 to 0 dB scale),
+while it plays, and while you move through it with the jog dial or the arrows.
 
 Ways to create a region:
 

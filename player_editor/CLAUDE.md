@@ -32,6 +32,7 @@ The app uses Jotai atoms for global state (provider-less default store; actions 
 - `audioEngine` - WaveSurfer instance wrapper
 - `audioState` - Playback status (playing/paused/stopped)
 - `audioPosition` - Current playback position
+- `levelAnalysis` - The track's level every millisecond (`src/levels.js`, RMS over 10 ms), set by the engine after decoding; read by `LevelMeter` at `audioPosition`
 - `currentSong` - Lyrics data with timings
 - `visibleMarkers` - Toggle for timeline markers
 

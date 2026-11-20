@@ -9,6 +9,7 @@ import { AnomaliesIcon } from "./AnomaliesIcon";
 import { RegionCard } from "./RegionCard";
 import { zoomLevel } from "./ZoomInput";
 
+import { analyzeLevels } from "./levels";
 import { toMarkers } from "./utils";
 import { newRegionRange } from "./actions/change_region_range";
 import { showRegionAtTime } from "./actions/show_region_at_time";
@@ -34,9 +35,30 @@ class AudioEngine {
   constructor() {
     this.currentBlobUrl = null;
     this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    this.opened = 0;
+    this.levelsListener = () => {};
   }
 
   canUse = () => waveSurfer !== undefined;
+
+  onLevels = (listener) => {
+    this.levelsListener = listener;
+  };
+
+  _startOpening = () => {
+    this.levelsListener(null);
+    return ++this.opened;
+  };
+
+  // levels for the meter, unless another track was opened meanwhile
+  _measure = (audioBuffer, id) => {
+    const channels = Array.from({ length: audioBuffer.numberOfChannels }, (_, i) =>
+      audioBuffer.getChannelData(i)
+    );
+    const levels = analyzeLevels(channels, audioBuffer.sampleRate);
+
+    if (id === this.opened) this.levelsListener(levels);
+  };
 
   // Convert AudioBuffer to WAV Blob URL for in-memory playback
   _audioBufferToBlob = (audioBuffer) => {
@@ -90,9 +112,11 @@ class AudioEngine {
   open = async (track) => {
     if (!waveSurfer) return null;
     if (track.file) {
+      const id = this._startOpening();
       try {
         const arrayBuffer = await track.file.arrayBuffer();
         const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+        this._measure(audioBuffer, id);
         const blobUrl = this._audioBufferToBlob(audioBuffer);
         if (this.currentBlobUrl) {
           URL.revokeObjectURL(this.currentBlobUrl);
@@ -110,6 +134,7 @@ class AudioEngine {
   load = async (track) => {
     if (!waveSurfer) return null;
     if (track.url) {
+      const id = this._startOpening();
       // Fetch, decode to AudioBuffer, and convert to WAV Blob for in-memory playback
       try {
         const response = await fetch(track.url);
@@ -117,6 +142,7 @@ class AudioEngine {
 
         // Decode to AudioBuffer
         const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+        this._measure(audioBuffer, id);
 
         // Convert to WAV Blob URL
         const blobUrl = this._audioBufferToBlob(audioBuffer);
@@ -394,6 +420,8 @@ export const audioState = atom("stopped");
 
 export const audioPosition = atom(0);
 
+export const levelAnalysis = atom(null); // { levels, hopSeconds } of the track
+
 // Due to delay between region click event and current playback position (time) to be updated we must defer split operation
 let pendingRegionToSplit = null;
 
@@ -405,6 +433,7 @@ export function Waveform({ track }) {
   const [playingState, changePlayingState] = useAtom(audioState);
   const [position, changePlaybackPosition] = useAtom(audioPosition);
   const labelsVisible = useAtomValue(visibleMarkers);
+  const setLevels = useSetAtom(levelAnalysis);
 
   const displayMarkers = useAtomCallback(
     useCallback(
@@ -535,6 +564,10 @@ export function Waveform({ track }) {
       waveSurfer.setOptions({ minPxPerSec: zoom });
     }
   }, [zoom]);
+
+  useEffect(() => {
+    engine.onLevels(setLevels);
+  }, [engine, setLevels]);
 
   useEffect(() => {
     if (track) {
