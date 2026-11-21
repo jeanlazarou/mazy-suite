@@ -2,6 +2,7 @@ import { cpSync, createReadStream, statSync } from 'node:fs'
 import { extname, join, normalize, resolve } from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import pkg from './package.json'
 
 const AUDIO_TYPES = {
   '.mp3': 'audio/mpeg',
@@ -64,6 +65,10 @@ const publicWithoutMusic = () => {
 // https://vitejs.dev/config/
 export default defineConfig({
   base: './',
+  // the version as a literal, without bundling package.json
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [react(), publicWithoutMusic()],
   server: {
     port: 3000,

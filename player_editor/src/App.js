@@ -9,7 +9,6 @@ import { loadAlbums } from "./api";
 
 import { AlbumsList } from "./AlbumsList";
 import { currentTrack, Editor } from "./Editor";
-import packageJson from "../package.json";
 
 const SIDEBAR_WIDTH = 350;
 
@@ -19,7 +18,7 @@ function App() {
   const [track, setTrack] = useAtom(currentTrack);
 
   useEffect(() => {
-    console.info(`Player Editor v${packageJson.version}`);
+    console.info(`Lyrics Editor v${__APP_VERSION__}`);
 
     loadAlbums().then((lists) => {
       setAlbums(
@@ -62,6 +61,12 @@ function App() {
           albums={albums}
           onSelectTrack={(track) => setTrack(track)}
         />
+        <Box
+          title="Application version"
+          sx={{ mt: "auto", px: 2, py: 1.5, fontSize: 12, color: "#888" }}
+        >
+          Lyrics Editor v{__APP_VERSION__}
+        </Box>
       </Drawer>
 
       <Box
