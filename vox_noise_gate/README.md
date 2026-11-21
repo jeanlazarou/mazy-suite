@@ -11,7 +11,7 @@ take is there.
 part of the [Mazy Suite](https://jeanlazarou.github.io/mazy-suite/). Everything
 runs in the browser; no audio is uploaded anywhere.
 
-![Gating "Empty Room": red regions silenced by the gate and blue keep zones given back by hand across the vocal waveform, the green region at 01:38.263 – 01:38.970 (708 ms) being edited, the settings with the threshold at -43.5 dB above a -57 dB noise floor, 31 regions silencing 56% of the take, and the level meter with its green gate LED under the timer, next to the jog dial](docs/screenshots/main-view.png)
+![Gating "Empty Room": red regions silenced by the gate and blue keep zones given back by hand across the vocal waveform, the green region at 01:38.263 – 01:38.940 (677 ms) being edited. Under it, the settings drawn on that silence: the take's level histogram and the threshold at -43.5 dB across the levels where the voice stops at 01:38.113 and comes back at 01:39.191, the 150 ms kept after and 40 ms kept before the voice in blue, the fades and the silence floor on the gain curve, and the 300 ms min silence bracket; 26 regions silence 55% of the take. On the right, the level meter with its red gate LED under the timer, next to the jog dial](docs/screenshots/main-view.png)
 
 ## Quick start
 
@@ -35,7 +35,7 @@ enough becomes a **region**, a stretch that ends up silent:
 | Keep before voice | Audio kept before the voice comes back, for breaths and soft consonants | 40 ms |
 | Keep after voice | Audio kept after the voice stops, for word endings and room tails | 150 ms |
 | Fades | Fade at each end of a region | 20 ms |
-| Reduce to | Silence, or the noise only turned down (-40 … -12 dB) to keep some room tone | Silence |
+| Reduce to | Silence, or the noise only turned down (-60 … -6 dB) to keep some room tone | Silence |
 | Ignore lows below | The gate does not listen to rumble below this; the audio is not filtered | 80 Hz |
 
 The fades happen **inside** the regions: everything outside them is the
@@ -43,10 +43,30 @@ recording sample for sample, and a region touching the start or the end of the
 take is silent right to the edge. A region drawn by hand around a click
 should therefore leave a little room before and after it.
 
+### The settings, drawn on a silence
+
+The settings are not sliders: they are drawn on one silence of the take, the
+one being reviewed (<kbd>N</kbd> / <kbd>P</kbd>), else the one nearest the
+playback position, and each is a handle to drag:
+
+- **Threshold**, the orange line across the take's levels. On its left, the
+  histogram of the whole take: room noise is the low hump, the voice the high
+  one, and the threshold belongs in the gap between them.
+- **Keep after voice** and **Keep before voice**, the blue zones on either side
+  of the region, where the voice stops and where it comes back. The middle of
+  a long silence is cut out (`//`), so both edges are seen at the same scale.
+- **Fades** and **Reduce to**, on the gain under the levels: the ramps at each
+  end of the region, and the floor it drops to.
+- **Min silence**, the bracket under the silence. Longer than the silence, it
+  turns red: that silence is left as it is.
+
+A double-click puts a setting back to its default; on the threshold, it sets it
+from the take. <kbd>Tab</kbd> reaches the handles, then the arrows move them.
+
 When a take is opened, the threshold is set between its noise floor and its
-voice level (shown under the sliders); the magic wand sets it again. The other
-settings are remembered from one session to the next: the same microphone in
-the same room keeps the same settings.
+voice level (shown at the bottom of the panel); the magic wand sets it again.
+The other settings are remembered from one session to the next: the same
+microphone in the same room keeps the same settings.
 
 **Level view** (<kbd>V</kbd>) replaces the waveform with the level the gate
 listens to, on a dB scale, with the threshold drawn across it. Room noise that
@@ -174,6 +194,7 @@ taking `(get, set)`, MUI, and WaveSurfer.js v7 with its Regions plugin.
 | `src/Waveform.js` | `AudioEngine`: WaveSurfer, the regions drawn on it, the preview rendering |
 | `src/GatePlayer.js` | WaveSurfer's Web Audio player, playing the buffer the gate renders |
 | `src/GateSettings.js` | Settings panel and the gate atoms (params, analysis, edits, regions) |
+| `src/GateDiagram.js` | The settings drawn on a silence of the take, each one a handle (`src/diagramLayout.js`: its time axis) |
 | `src/LevelMeter.js` | Level at the playhead and the gate LED |
 | `src/actions/` | One file per user action |
 | `src/HotkeysMapping.js` | Keyboard shortcuts |

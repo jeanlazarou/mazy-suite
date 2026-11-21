@@ -5,10 +5,14 @@ import {
   LEVEL_FLOOR,
   analyzeLevels,
   detectSilences,
+  gainAt,
+  levelHistogram,
   levelStats,
   regionIndexAt,
+  regionOfSilence,
   renderChannel,
   renderGate,
+  silenceAround,
 } from "./gate";
 
 const SR = 8000;
@@ -145,6 +149,73 @@ describe("detectSilences", () => {
     const { levels, hopSeconds } = levelsOf([[1, "noise"]]);
 
     expect(detectSilences(levels, hopSeconds, 1, params({ threshold: -90 }))).toEqual([]);
+  });
+});
+
+describe("silenceAround", () => {
+  const analysis = analyzeLevels([take([[1, "noise"], [1, "voice"], [0.2, "noise"], [1, "voice"], [1, "noise"]])], SR);
+
+  it("finds the silence holding a time, long enough or not", () => {
+    const first = silenceAround(analysis, 4.2, -40, 0.5);
+    const gap = silenceAround(analysis, 4.2, -40, 2.1);
+
+    expect(first.silenceStart).toBe(0);
+    expect(first.silenceEnd).toBeCloseTo(1, 2);
+    expect(first.atStart).toBe(true);
+    expect(first.atEnd).toBe(false);
+
+    expect(gap.silenceStart).toBeCloseTo(2, 2);
+    expect(gap.silenceEnd).toBeCloseTo(2.2, 2);
+    expect(gap.atStart || gap.atEnd).toBe(false);
+
+    expect(silenceAround(analysis, 4.2, -40, 3.9).atEnd).toBe(true);
+  });
+
+  it("is null in the voice", () => {
+    expect(silenceAround(analysis, 4.2, -40, 1.5)).toBeNull();
+  });
+
+  it("gives the regions detectSilences finds", () => {
+    const p = params({ threshold: -40 });
+    const regions = detectSilences(analysis.levels, analysis.hopSeconds, 4.2, p);
+    const around = [0.5, 2.1, 3.7].map((t) => regionOfSilence(silenceAround(analysis, 4.2, -40, t), 4.2, p));
+
+    // the 200 ms gap is shorter than the 300 ms min silence
+    expect(around[1]).toBeNull();
+    expect([around[0], around[2]]).toEqual(regions);
+  });
+});
+
+describe("levelHistogram", () => {
+  it("counts the hops per dB step, quieter and louder ones at the ends", () => {
+    const bins = levelHistogram(Float32Array.from([-100, -89.5, -45.2, -45.9, -0.4, 3, LEVEL_FLOOR]));
+
+    expect(bins).toHaveLength(90);
+    expect(bins[0]).toBe(2); // -100 and -89.5
+    expect(bins[44]).toBe(2); // -45.x
+    expect(bins[89]).toBe(2); // -0.4 and +3
+    expect(bins.reduce((a, b) => a + b, 0)).toBe(6); // digital silence left out
+  });
+});
+
+describe("gainAt", () => {
+  it("follows the curve renderChannel applies", () => {
+    const input = new Float32Array(SR * 2).fill(1);
+    const region = { start: 0.5, end: 1.5 };
+    const p = params({ fade: 20, floorDb: -20 });
+    const output = renderChannel(input, new Float32Array(input.length), SR, [region], p);
+
+    for (const t of [0.4, 0.5, 0.505, 0.51, 0.519, 0.6, 1.0, 1.481, 1.49, 1.499, 1.6]) {
+      expect(gainAt(region, t, p, 2)).toBeCloseTo(output[Math.round(t * SR)], 1);
+    }
+  });
+
+  it("does not fade at the ends of the recording, and is 1 with no region", () => {
+    const p = params({ fade: 20 });
+
+    expect(gainAt({ start: 0, end: 1 }, 0, p, 2)).toBe(0);
+    expect(gainAt({ start: 1, end: 2 }, 1.999, p, 2)).toBe(0);
+    expect(gainAt(null, 1, p, 2)).toBe(1);
   });
 });
 

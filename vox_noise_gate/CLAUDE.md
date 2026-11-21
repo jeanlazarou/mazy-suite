@@ -28,9 +28,11 @@ API. A plugin port (VST3/AU) would follow these files.
   non-WAV files (it resamples to the AudioContext rate).
 - `gate.js` - `analyzeLevels` (1 ms hops, centred 10 ms RMS, loudest channel,
   optional RBJ high-pass on the detector only), `levelStats` (10th/95th
-  percentiles, digital silence excluded), `detectSilences`, `renderChannel`.
-  **Fades are inside regions** and skipped at the file edges; everything
-  outside regions is untouched.
+  percentiles, digital silence excluded), `detectSilences` (each silence
+  through `regionOfSilence`), `renderChannel`. **Fades are inside regions** and
+  skipped at the file edges; everything outside regions is untouched. For the
+  settings diagram: `silenceAround` (the silence holding a time, long enough
+  or not), `gainAt` (renderChannel's curve at a time), `levelHistogram`.
 - `regions.js` - the edit model. `combineRegions(detected, edits)`: detected
   regions minus manual ranges and keep zones, plus the manual ranges. Edits are
   `{ manual, keeps, next }`; accepting a resized region adds the range it gave
@@ -54,6 +56,20 @@ API. A plugin port (VST3/AU) would follow these files.
 Detected region ids (`auto-N`) are positional and change with any setting:
 actions find a clicked region again **by time** after committing, and changing
 a detection setting releases the active region.
+
+### The settings diagram
+
+`GateDiagram.js` draws the settings on one silence as SVG, every setting a
+handle (`role="slider"`: Tab + arrows, double-click resets; the hotkeys leave
+a focused slider its navigation keys, and a clicked one is blurred like the
+other controls). The silence shown is found by time: the active region, else
+the detected region nearest the playhead (with voice on both sides if any).
+During a drag the anchor time and the time axis are frozen, so the picture
+holds still; after a change it stays on that silence until the playhead moves
+(a detection change releases the active region). `diagramLayout.js` is the
+time axis: both edges of the silence at one scale, the middle of a long one
+squeezed into a `BREAK_PX` break. Grab areas are drawn last, thin ones over
+wide ones (the threshold band is the lowest).
 
 Leaving the active region (selecting another, N/P, mode change, settings change)
 **keeps** its change; only Esc cancels it.

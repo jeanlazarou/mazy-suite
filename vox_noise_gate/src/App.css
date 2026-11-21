@@ -103,22 +103,15 @@ body {
 
 .gate-settings {
   text-align: left;
-  padding: 0.8em 1.2em;
+  padding: 0.8em 1em 0.4em;
   border: 1px solid rgba(34, 36, 38, 0.15);
   border-radius: 0.28571429rem;
   height: 470px;
-  overflow: auto;
+  box-sizing: border-box;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.setting {
-  display: grid;
-  grid-template-columns: 140px auto 80px;
-  align-items: center;
-  gap: 14px;
-  min-height: 42px;
+  min-width: 0;
 }
 
 .setting-label {
@@ -126,30 +119,83 @@ body {
   white-space: nowrap;
 }
 
-.setting-control {
+/* the settings drawn on a silence of the take */
+
+.gate-diagram {
+  width: 100%;
+  user-select: none;
+  touch-action: none;
+}
+
+.gate-diagram svg {
+  display: block;
+  overflow: visible;
+}
+
+.diagram-frame {
+  fill: #fbfbfc;
+  stroke: rgba(34, 36, 38, 0.1);
+}
+
+.diagram-text {
+  font-size: 11px;
+  fill: #555;
+}
+
+.diagram-tick {
+  font-size: 10px;
+  font-family: monospace;
+  fill: #999;
+}
+
+.diagram-value {
+  font-size: 11px;
+  font-family: monospace;
+  fill: #555;
+}
+
+.diagram-message {
+  font-size: 12px;
+  fill: #767676;
+  font-style: italic;
+}
+
+.diagram-break path {
+  stroke: #999;
+  stroke-width: 1.5;
+}
+
+.diagram-handle {
+  outline: none;
+}
+
+.diagram-handle:focus-visible {
+  stroke: #2185d0;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+}
+
+.gate-footer {
+  margin-top: auto;
+  padding-top: 6px;
+  border-top: 1px solid rgba(34, 36, 38, 0.1);
   display: flex;
   align-items: center;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  color: #555;
+  font-size: 0.9em;
 }
 
-.setting-value {
-  font-family: monospace;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.noise-floor {
-  margin: -6px 0 6px 154px;
-  font-size: 0.8em;
-  color: #767676;
+.gate-take,
+.gate-low-cut {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .gate-stats {
-  margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px solid rgba(34, 36, 38, 0.1);
-  color: #555;
-  font-size: 0.9em;
+  margin-left: auto;
 }
 
 /* level meter and gate LED, in the transport */
@@ -257,6 +303,11 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 16px;
+}
+
+.app-version {
+  font-size: 0.55em;
+  color: #999;
 }
 
 .loading {

@@ -104,6 +104,9 @@ export function HotkeysHelp() {
             <HotkeysTable list={groups[2].items} />
           </div>
         </div>
+        <Typography variant="caption" color="text.secondary" sx={{ textAlign: "center", py: 1, backgroundColor: "#e7e7e7" }}>
+          Vox Noise Gate v{__APP_VERSION__}
+        </Typography>
       </Dialog>
     </>
   );

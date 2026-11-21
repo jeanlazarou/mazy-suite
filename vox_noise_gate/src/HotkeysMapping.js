@@ -42,6 +42,9 @@ const isForAControl = (e) => {
   }
 
   const role = target.getAttribute?.("role");
+
+  if (role === "slider") return NAVIGATION.includes(e.key);
+
   const button = target.tagName === "BUTTON" || role === "button" || role === "combobox";
 
   return button && (e.key === " " || e.key === "Enter");

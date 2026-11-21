@@ -88,7 +88,7 @@ function releaseClickedControl() {
 
     const role = element.getAttribute("role");
 
-    if (element.tagName === "BUTTON" || role === "button" || element.type === "range") {
+    if (element.tagName === "BUTTON" || role === "button" || role === "slider" || element.type === "range") {
       element.blur();
     }
   });
@@ -162,7 +162,12 @@ function Welcome() {
   return (
     <div className="welcome">
       <MicIcon sx={{ fontSize: 64, color: "#2185d0" }} />
-      <Typography variant="h5">Vox Noise Gate</Typography>
+      <Typography variant="h5">
+        Vox Noise Gate{" "}
+        <span className="app-version" title="Application version">
+          v{__APP_VERSION__}
+        </span>
+      </Typography>
       <Typography color="text.secondary">
         Drop a vocal recording here, or press <kbd>A</kbd>. The silences between the phrases
         are found and muted; check them, adjust them, and export a clean WAV.
@@ -188,6 +193,11 @@ export function Editor() {
 
   const duration = recording ? recording.duration * 1000 : 0;
   const position = usePosition(current * 1000, rotation, duration);
+
+  // the tab tells which take is open
+  useEffect(() => {
+    document.title = recording ? `${recording.name} · Vox Noise Gate` : "Vox Noise Gate - Mazy Suite";
+  }, [recording]);
 
   useEffect(() => {
     setPlaybackPosition(position / 1000);

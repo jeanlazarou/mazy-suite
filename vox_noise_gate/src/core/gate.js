@@ -137,35 +137,49 @@ export function levelStats(levels) {
   };
 }
 
+// The hops [i, j) quieter than the threshold, as a silence
+const silenceOf = (i, j, n, hopSeconds, duration) => ({
+  silenceStart: i * hopSeconds,
+  silenceEnd: Math.min(duration, j * hopSeconds),
+  atStart: i === 0,
+  atEnd: j >= n,
+});
+
+// The region a silence becomes, or null when the gate leaves it alone: too
+// short, or nothing left once the audio around the voice is kept
+export function regionOfSilence(silence, duration, params) {
+  const { silenceStart, silenceEnd, atStart, atEnd } = silence;
+
+  if ((silenceEnd - silenceStart) * 1000 < params.minSilence) return null;
+
+  // no voice before the first silence, nor after the last one
+  const start = atStart ? 0 : silenceStart + params.keepAfter / 1000;
+  const end = atEnd ? duration : silenceEnd - params.keepBefore / 1000;
+
+  return end - start >= MIN_REGION ? { start, end } : null;
+}
+
 // Stretches quieter than the threshold for at least minSilence, minus the
 // audio kept around the voice. -> [{ start, end }] sorted, disjoint
 export function detectSilences(levels, hopSeconds, duration, params) {
-  const { threshold, minSilence, keepBefore, keepAfter } = params;
   const n = levels.length;
   const regions = [];
 
   let i = 0;
 
   while (i < n) {
-    if (levels[i] >= threshold) {
+    if (levels[i] >= params.threshold) {
       i++;
       continue;
     }
 
     let j = i;
 
-    while (j < n && levels[j] < threshold) j++;
+    while (j < n && levels[j] < params.threshold) j++;
 
-    const silenceStart = i * hopSeconds;
-    const silenceEnd = Math.min(duration, j * hopSeconds);
+    const region = regionOfSilence(silenceOf(i, j, n, hopSeconds, duration), duration, params);
 
-    if ((silenceEnd - silenceStart) * 1000 >= minSilence) {
-      // no voice before the first silence, nor after the last one
-      const start = i === 0 ? 0 : silenceStart + keepAfter / 1000;
-      const end = j >= n ? duration : silenceEnd - keepBefore / 1000;
-
-      if (end - start >= MIN_REGION) regions.push({ start, end });
-    }
+    if (region) regions.push(region);
 
     i = j;
   }
@@ -173,8 +187,63 @@ export function detectSilences(levels, hopSeconds, duration, params) {
   return regions;
 }
 
+// The silence holding time, whether long enough or not: { silenceStart,
+// silenceEnd, atStart, atEnd }, or null where the level reaches the threshold
+export function silenceAround(analysis, duration, threshold, time) {
+  const { levels, hopSeconds } = analysis;
+  const n = levels.length;
+  const h = Math.floor(time / hopSeconds);
+
+  if (h < 0 || h >= n || levels[h] >= threshold) return null;
+
+  let i = h;
+  let j = h + 1;
+
+  while (i > 0 && levels[i - 1] < threshold) i--;
+  while (j < n && levels[j] < threshold) j++;
+
+  return silenceOf(i, j, n, hopSeconds, duration);
+}
+
+// How many hops fall in each dB step from `from` to `to`, quieter ones in the
+// first; digital silence is left out
+export function levelHistogram(levels, { from = -90, to = 0, step = 1 } = {}) {
+  const bins = new Uint32Array(Math.ceil((to - from) / step));
+
+  for (const level of levels) {
+    if (level <= LEVEL_FLOOR + 1) continue;
+
+    const bin = Math.floor((level - from) / step);
+
+    bins[Math.max(0, Math.min(bins.length - 1, bin))]++;
+  }
+
+  return bins;
+}
+
 export const floorGain = (floorDb) =>
   floorDb === null || floorDb === undefined ? 0 : Math.pow(10, floorDb / 20);
+
+// The gain at time, by the same curve renderChannel applies sample by sample
+export function gainAt(region, time, params, duration) {
+  if (!region || time < region.start || time >= region.end) return 1;
+
+  const floor = floorGain(params.floorDb);
+  const range = 1 - floor;
+  const fade = Math.min(params.fade / 1000, (region.end - region.start) / 2);
+  const fadeOut = region.start <= 0 ? 0 : fade;
+  const fadeIn = region.end >= duration ? 0 : fade;
+
+  if (time < region.start + fadeOut) {
+    return floor + range * 0.5 * (1 + Math.cos((Math.PI * (time - region.start)) / fadeOut));
+  }
+
+  if (time >= region.end - fadeIn) {
+    return floor + range * 0.5 * (1 - Math.cos((Math.PI * (time - region.end + fadeIn)) / fadeIn));
+  }
+
+  return floor;
+}
 
 // Gain of each sample of a region: fade out, floor, fade in (raised cosine).
 // No fade where the region meets the start or the end of the recording.

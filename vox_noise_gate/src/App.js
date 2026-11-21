@@ -4,11 +4,10 @@ import Box from "@mui/material/Box";
 import "./App.css";
 
 import { Editor } from "./Editor";
-import packageJson from "../package.json";
 
 function App() {
   useEffect(() => {
-    console.info(`Vox Noise Gate v${packageJson.version}`);
+    console.info(`Vox Noise Gate v${__APP_VERSION__}`);
   }, []);
 
   return (
