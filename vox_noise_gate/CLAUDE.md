@@ -30,26 +30,39 @@ API. A plugin port (VST3/AU) would follow these files.
   optional RBJ high-pass on the detector only), `levelStats` (10th/95th
   percentiles, digital silence excluded), `detectSilences` (each silence
   through `regionOfSilence`), `renderChannel`. **Fades are inside regions** and
-  skipped at the file edges; everything outside regions is untouched. For the
-  settings diagram: `silenceAround` (the silence holding a time, long enough
-  or not), `gainAt` (renderChannel's curve at a time), `levelHistogram`.
+  skipped at the file edges; everything outside regions is untouched. Two
+  settings, `fadeOut` (region start) and `fadeIn` (region end); a region may
+  carry its own (`region.fadeOut ?? params.fadeOut`), and when both do not fit
+  in a region they share it in proportion. For the settings diagram:
+  `silenceAround` (the silence holding a time, long enough or not),
+  `regionFades` and `gainAt` (renderChannel's fades and curve at a time),
+  `levelHistogram`.
 - `regions.js` - the edit model. `combineRegions(detected, edits)`: detected
   regions minus manual ranges and keep zones, plus the manual ranges. Edits are
   `{ manual, keeps, next }`; accepting a resized region adds the range it gave
   back as a keep zone, deleting a region adds a keep zone. Manual ranges merge
   only when they overlap (split halves touch and stay apart);
-  `mergeForRender` joins touching ones so no fade happens at a split.
+  `mergeForRender` joins touching ones so no fade happens at a split. A manual
+  range's own fades belong to its edges: a split gives the left half the fade
+  out and the right half the fade in, a cut keeps each on the piece that keeps
+  the edge, a merge takes the first range's fade out and the fade in of the one
+  ending last.
 
 ### State (atoms)
 
 - `Editor.js`: `currentRecording` ({ name, sampleRate, channels, duration,
   bitDepth, float, wav, peaks }), `loadingState`
 - `GateSettings.js`: `gateParams` (persisted to localStorage, merged over
-  `DEFAULT_PARAMS`), `levelAnalysis`, `gateEdits`, derived `detectedRegions`
+  `DEFAULT_PARAMS`; a v1.0 `fade` becomes both fades), `levelAnalysis`,
+  `gateEdits`, derived `detectedRegions`
   (via a `selectAtom` on the detection params only) and `gateRegions`
-- `actions/regions.js`: `activeRegion` ({ id, origin, start, end, original,
-  changed }), derived `effectiveRegions` / `renderedRegions` (the pending
-  bounds of the active region included: preview and export hear them)
+- `actions/regions.js`: `activeRegion` ({ id, origin, start, end, fadeOut?,
+  fadeIn?, original, changed }), derived `effectiveRegions` /
+  `renderedRegions` (the pending bounds and fades of the active region
+  included: preview and export hear them). `setActiveFades` sets its own fades
+  (undefined: back to the settings'); a fade change is a change like a bound
+  change, kept by Enter or by leaving, cancelled by Esc, and accepting it makes
+  the region manual.
 - `Waveform.js`: `audioEngine`, `audioState`, `audioPosition`, `editorMode`,
   `monitorMode` (gated/original/removed), `waveView` (wave/level)
 
@@ -64,6 +77,9 @@ handle (`role="slider"`: Tab + arrows, double-click resets; the hotkeys leave
 a focused slider its navigation keys, and a clicked one is blurred like the
 other controls). The silence shown is found by time: the active region, else
 the detected region nearest the playhead (with voice on both sides if any).
+With an active region, the diagram draws that region (its real bounds, even
+in the voice, then without keep zones or min silence) and its fade handles are
+its own (green, `setActiveFades`); every other handle stays a setting.
 During a drag the anchor time and the time axis are frozen, so the picture
 holds still; after a change it stays on that silence until the playhead moves
 (a detection change releases the active region). `diagramLayout.js` is the
@@ -99,9 +115,10 @@ Leaving the active region (selecting another, N/P, mode change, settings change)
 The offline detection is a look-ahead gate. In a streaming plugin, with times
 in ms: closing needs to know the silence will last `minSilence`, decided
 `keepAfter` after it started, so it needs `minSilence - keepAfter` ms of
-lookahead. Opening starts the fade `keepBefore + fade` before the voice, so it
-needs `keepBefore + fade` ms (a bit more when short regions shorten their
-fades). The plugin reports roughly
-`max(minSilence - keepAfter, keepBefore + fade) + WINDOW_MS / 2` as latency,
-and the DAW compensates it on playback. Hand edits (manual regions, keep zones)
-have no plugin equivalent; in a DAW they are automation or clip edits.
+lookahead. Opening starts the fade in `keepBefore + fadeIn` before the voice,
+so it needs `keepBefore + fadeIn` ms (a bit more when short regions shorten
+their fades). The plugin reports roughly
+`max(minSilence - keepAfter, keepBefore + fadeIn) + WINDOW_MS / 2` as latency,
+and the DAW compensates it on playback. `fadeIn` and `fadeOut` are a gate's
+attack and release. Hand edits (manual regions, keep zones, a region's own
+fades) have no plugin equivalent; in a DAW they are automation or clip edits.

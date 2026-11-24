@@ -195,3 +195,46 @@ describe("stepping through regions", () => {
     expect(previousRegion(list, 1)).toBeUndefined();
   });
 });
+
+describe("fades of a region's own", () => {
+  const own = { fadeOut: 80, fadeIn: 5 };
+
+  it("are kept when the region is accepted", () => {
+    const { edits } = acceptRegion(NO_EDITS, { origin: "new", start: 1, end: 2, ...own, original: null });
+    const [region] = combineRegions([], edits);
+
+    expect(region).toMatchObject({ start: 1, end: 2, ...own, origin: "manual" });
+  });
+
+  it("go with their edge when a region is split", () => {
+    const edits = splitRegion(NO_EDITS, { start: 1, end: 3, ...own }, 2);
+
+    expect(edits.manual[0]).toEqual({ id: "manual-1", start: 1, end: 2, fadeOut: 80 });
+    expect(edits.manual[1]).toEqual({ id: "manual-2", start: 2, end: 3, fadeIn: 5 });
+  });
+
+  it("go with their edge when a region is cut", () => {
+    const edits = { manual: [{ id: "manual-1", start: 1, end: 3, ...own }], keeps: [], next: 2 };
+    const { manual } = deleteRegion(edits, { start: 1.5, end: 2 });
+
+    expect(manual).toEqual([
+      { id: "manual-1", start: 1, end: 1.5, fadeOut: 80 },
+      { id: "manual-1b", start: 2, end: 3, fadeIn: 5 },
+    ]);
+  });
+
+  it("come from the first range and the one ending last when ranges merge", () => {
+    expect(mergeForRender([{ start: 2, end: 3, fadeIn: 5 }, { start: 1, end: 2, fadeOut: 80, fadeIn: 30 }])).toEqual([
+      { start: 1, end: 3, fadeOut: 80, fadeIn: 5 },
+    ]);
+
+    expect(mergeOverlapping([{ id: "a", start: 1, end: 2, ...own }, { id: "b", start: 1.5, end: 3 }])).toEqual([
+      { id: "a", start: 1, end: 3, fadeOut: 80 },
+    ]);
+
+    // a range ending earlier inside the merge leaves the fade in alone
+    expect(mergeForRender([{ start: 1, end: 3, ...own }, { start: 1.5, end: 2, fadeIn: 50 }])).toEqual([
+      { start: 1, end: 3, ...own },
+    ]);
+  });
+});

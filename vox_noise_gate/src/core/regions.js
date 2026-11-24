@@ -1,11 +1,13 @@
 // What ends up silent: the regions the gate detects, overridden by the
 // edits made by hand. Edits survive any change of the gate settings:
 //
-//   manual  ranges muted by hand (drawn, resized, moved, split)
+//   manual  ranges muted by hand (drawn, resized, moved, split), with their
+//           own fades when set (fadeOut at the start, fadeIn at the end, ms)
 //   keeps   ranges the gate must leave alone (a region deleted, or the part
 //           of a region given back by shrinking or moving it)
 //
 // Detected regions are cut around both; what remains joins the manual ones.
+// A fade belongs to its edge: it goes wherever that edge goes.
 
 import { MIN_REGION } from "./gate";
 
@@ -15,22 +17,37 @@ const byStart = (a, b) => a.start - b.start;
 
 const overlaps = (a, b) => a.start < b.end && b.start < a.end;
 
+const fadeOutOf = (r) => (r.fadeOut === undefined ? {} : { fadeOut: r.fadeOut });
+const fadeInOf = (r) => (r.fadeIn === undefined ? {} : { fadeIn: r.fadeIn });
+
+// A range's own fades, when it has some
+export const fadesOf = (r) => ({ ...fadeOutOf(r), ...fadeInOf(r) });
+
 // Parts of range outside every blocker
 export function subtract(range, blockers) {
-  let pieces = [{ start: range.start, end: range.end }];
+  let pieces = [{ start: range.start, end: range.end, ...fadesOf(range) }];
 
   for (const b of blockers) {
     pieces = pieces.flatMap((p) => {
       if (!overlaps(p, b)) return [p];
 
-      const left = { start: p.start, end: Math.min(p.end, b.start) };
-      const right = { start: Math.max(p.start, b.end), end: p.end };
+      const left = { start: p.start, end: Math.min(p.end, b.start), ...fadeOutOf(p) };
+      const right = { start: Math.max(p.start, b.end), end: p.end, ...fadeInOf(p) };
 
       return [left, right].filter((r) => r.end - r.start > 1e-9);
     });
   }
 
   return pieces;
+}
+
+// The range ending last brings its fade in to the merge
+function extend(last, r) {
+  if (r.end <= last.end) return;
+
+  last.end = r.end;
+  delete last.fadeIn;
+  Object.assign(last, fadeInOf(r));
 }
 
 // Merges ranges that overlap; touching ranges stay apart (a split keeps both
@@ -43,7 +60,7 @@ export function mergeOverlapping(ranges) {
     const last = merged[merged.length - 1];
 
     if (last && r.start < last.end) {
-      last.end = Math.max(last.end, r.end);
+      extend(last, r);
     } else {
       merged.push({ ...r });
     }
@@ -62,9 +79,9 @@ export function mergeForRender(regions) {
     const last = merged[merged.length - 1];
 
     if (last && r.start <= last.end + 1e-6) {
-      last.end = Math.max(last.end, r.end);
+      extend(last, r);
     } else {
-      merged.push({ start: r.start, end: r.end });
+      merged.push({ start: r.start, end: r.end, ...fadesOf(r) });
     }
   }
 
@@ -95,12 +112,13 @@ function addKeeps(keeps, ranges, edits) {
   return { keeps: mergeOverlapping([...keeps, ...added]), next };
 }
 
-// The active region accepted with its new bounds. region: { id, origin,
-// start, end, original } where original is the range it had when selected
-// (none for a new region). -> { edits, id } id of the accepted region
+// The active region accepted with its new bounds and fades. region: { id,
+// origin, start, end, fadeOut?, fadeIn?, original } where original is the
+// range it had when selected (none for a new region). -> { edits, id } id of
+// the accepted region
 export function acceptRegion(edits, region) {
   const id = newId(edits, "manual");
-  const range = { id, start: region.start, end: region.end };
+  const range = { id, start: region.start, end: region.end, ...fadesOf(region) };
 
   const others = edits.manual.filter((m) => m.id !== region.id);
   const manual = mergeOverlapping([...others, range]);
@@ -153,8 +171,8 @@ export function splitRegion(edits, region, time) {
     subtract(k, [region]).map((p, i) => ({ id: i ? `${k.id}b` : k.id, ...p }))
   );
 
-  const first = { id: `manual-${edits.next}`, start: region.start, end: time };
-  const second = { id: `manual-${edits.next + 1}`, start: time, end: region.end };
+  const first = { id: `manual-${edits.next}`, start: region.start, end: time, ...fadeOutOf(region) };
+  const second = { id: `manual-${edits.next + 1}`, start: time, end: region.end, ...fadeInOf(region) };
 
   return {
     manual: [...manual, first, second].sort(byStart),

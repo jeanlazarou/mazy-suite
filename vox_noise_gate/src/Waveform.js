@@ -244,7 +244,7 @@ export function Waveform() {
   const edits = useAtomValue(gateEdits);
   const active = useAtomValue(activeRegion);
   const rendered = useAtomValue(renderedRegions);
-  const { fade, floorDb } = useAtomValue(gateParams);
+  const { fadeOut, fadeIn, floorDb } = useAtomValue(gateParams);
   const position = useAtomValue(audioPosition);
   const setPlayingState = useSetAtom(audioState);
 
@@ -329,13 +329,13 @@ export function Waveform() {
   }, [engine, regions, edits.keeps, active]);
 
   useEffect(() => {
-    // a slider dragged re-detects at every step: render once it rests
+    // a handle dragged re-detects at every step: render once it rests
     const timeoutId = setTimeout(() => {
-      engine.render(rendered, { fade, floorDb }, monitor);
+      engine.render(rendered, { fadeOut, fadeIn, floorDb }, monitor);
     }, 40);
 
     return () => clearTimeout(timeoutId);
-  }, [engine, recording, rendered, fade, floorDb, monitor]);
+  }, [engine, recording, rendered, fadeOut, fadeIn, floorDb, monitor]);
 
   useEffect(() => {
     // the jog dial moves the position while paused

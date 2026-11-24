@@ -10,7 +10,8 @@ export const DEFAULT_PARAMS = {
   minSilence: 300, // shorter silences (gaps between words) stay as they are
   keepBefore: 40, // audio kept before the voice comes back (consonants)
   keepAfter: 150, // audio kept after the voice stops (tails, reverb)
-  fade: 20, // fade out at the start of a region, fade in at its end
+  fadeOut: 20, // at the start of a region, where the voice has stopped
+  fadeIn: 20, // at its end, before the voice comes back
   floorDb: null, // level inside a region: null for silence, else dB
   lowCut: 80, // the detector ignores rumble below this (Hz, 0 = off)
 };
@@ -224,15 +225,40 @@ export function levelHistogram(levels, { from = -90, to = 0, step = 1 } = {}) {
 export const floorGain = (floorDb) =>
   floorDb === null || floorDb === undefined ? 0 : Math.pow(10, floorDb / 20);
 
+// A region's fades, in the unit of its length: its own (region.fadeOut,
+// region.fadeIn, in ms) or else the settings'. None where the region meets an
+// end of the recording; when both do not fit in it, they share it.
+function fadeLengths(region, params, length, unit, atStart, atEnd) {
+  let fadeOut = atStart ? 0 : Math.round(((region.fadeOut ?? params.fadeOut) / 1000) * unit);
+  let fadeIn = atEnd ? 0 : Math.round(((region.fadeIn ?? params.fadeIn) / 1000) * unit);
+
+  if (fadeOut + fadeIn > length) {
+    const share = length / (fadeOut + fadeIn);
+
+    fadeOut = Math.floor(fadeOut * share);
+    fadeIn = Math.floor(fadeIn * share);
+  }
+
+  return { fadeOut, fadeIn };
+}
+
+const MICROS = 1e6; // gainAt works in microseconds, renderChannel in samples
+
+// The fades a region gets, in seconds: { fadeOut, fadeIn }
+export function regionFades(region, params, duration) {
+  const length = Math.round((region.end - region.start) * MICROS);
+  const micros = fadeLengths(region, params, length, MICROS, region.start <= 0, region.end >= duration);
+
+  return { fadeOut: micros.fadeOut / MICROS, fadeIn: micros.fadeIn / MICROS };
+}
+
 // The gain at time, by the same curve renderChannel applies sample by sample
 export function gainAt(region, time, params, duration) {
   if (!region || time < region.start || time >= region.end) return 1;
 
   const floor = floorGain(params.floorDb);
   const range = 1 - floor;
-  const fade = Math.min(params.fade / 1000, (region.end - region.start) / 2);
-  const fadeOut = region.start <= 0 ? 0 : fade;
-  const fadeIn = region.end >= duration ? 0 : fade;
+  const { fadeOut, fadeIn } = regionFades(region, params, duration);
 
   if (time < region.start + fadeOut) {
     return floor + range * 0.5 * (1 + Math.cos((Math.PI * (time - region.start)) / fadeOut));
@@ -247,15 +273,13 @@ export function gainAt(region, time, params, duration) {
 
 // Gain of each sample of a region: fade out, floor, fade in (raised cosine).
 // No fade where the region meets the start or the end of the recording.
-function forEachRegionGain(region, sampleRate, length, fadeMs, floor, callback) {
+function forEachRegionGain(region, sampleRate, length, params, floor, callback) {
   const a = Math.max(0, Math.round(region.start * sampleRate));
   const b = Math.min(length, Math.round(region.end * sampleRate));
 
   if (b <= a) return;
 
-  const fade = Math.min(Math.round((fadeMs / 1000) * sampleRate), Math.floor((b - a) / 2));
-  const fadeOut = a === 0 ? 0 : fade;
-  const fadeIn = b === length ? 0 : fade;
+  const { fadeOut, fadeIn } = fadeLengths(region, params, b - a, sampleRate, a === 0, b === length);
   const range = 1 - floor;
   const fadeInStart = b - fadeIn;
 
@@ -289,11 +313,11 @@ export function renderChannel(input, output, sampleRate, regions, params, mode =
 
   for (const region of regions) {
     if (mode === "removed") {
-      forEachRegionGain(region, sampleRate, length, params.fade, floor, (i, g) => {
+      forEachRegionGain(region, sampleRate, length, params, floor, (i, g) => {
         output[i] = input[i] * (1 - g);
       });
     } else {
-      forEachRegionGain(region, sampleRate, length, params.fade, floor, (i, g) => {
+      forEachRegionGain(region, sampleRate, length, params, floor, (i, g) => {
         output[i] = input[i] * g;
       });
     }

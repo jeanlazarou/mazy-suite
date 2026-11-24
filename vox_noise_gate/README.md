@@ -34,14 +34,23 @@ enough becomes a **region**, a stretch that ends up silent:
 | Min silence | Shorter silences, like the gaps between words, are left as they are | 300 ms |
 | Keep before voice | Audio kept before the voice comes back, for breaths and soft consonants | 40 ms |
 | Keep after voice | Audio kept after the voice stops, for word endings and room tails | 150 ms |
-| Fades | Fade at each end of a region | 20 ms |
+| Fade out | Fade at the start of a region, where the voice has stopped | 20 ms |
+| Fade in | Fade at the end of a region, before the voice comes back | 20 ms |
 | Reduce to | Silence, or the noise only turned down (-60 … -6 dB) to keep some room tone | Silence |
 | Ignore lows below | The gate does not listen to rumble below this; the audio is not filtered | 80 Hz |
+
+The two ends of a region are not the same moment. Where the voice has just
+stopped, a word ending or the room dies away, and a longer fade out sounds like
+a natural decay. Before the voice comes back, a breath or a consonant starts:
+a short fade in keeps its attack, where a long one would let the noise swell up
+first. A gate on a mixing desk says *release* and *attack*.
 
 The fades happen **inside** the regions: everything outside them is the
 recording sample for sample, and a region touching the start or the end of the
 take is silent right to the edge. A region drawn by hand around a click
-should therefore leave a little room before and after it.
+should therefore leave a little room before and after it, or get short fades
+of its own (see below). A region too short for both fades shares its length
+between them.
 
 ### The settings, drawn on a silence
 
@@ -55,8 +64,8 @@ playback position, and each is a handle to drag:
 - **Keep after voice** and **Keep before voice**, the blue zones on either side
   of the region, where the voice stops and where it comes back. The middle of
   a long silence is cut out (`//`), so both edges are seen at the same scale.
-- **Fades** and **Reduce to**, on the gain under the levels: the ramps at each
-  end of the region, and the floor it drops to.
+- **Fade out**, **Fade in** and **Reduce to**, on the gain under the levels:
+  the ramp at each end of the region, and the floor it drops to.
 - **Min silence**, the bracket under the silence. Longer than the silence, it
   turns red: that silence is left as it is.
 
@@ -91,6 +100,11 @@ the voice stop, the silence, and the voice come back. Then:
   <kbd>↓</kbd> its end, <kbd>S</kbd> / <kbd>E</kbd> put them at the playback
   position. The step follows the zoom: a quarter of a second zoomed out, down to
   5 ms zoomed in.
+- Its fades are its own to set: the settings panel draws the selected region,
+  and its two fade handles turn green. What they set is for this region only,
+  the card under the waveform shows it (`fades 120/5 ms`), and a double-click
+  on a green handle gives the region the setting back. A region drawn in the
+  middle of the voice, over a click, is drawn there too: give it short fades.
 - <kbd>Enter</kbd> keeps the change, <kbd>Esc</kbd> cancels it. Moving on to
   another region keeps it too.
 - <kbd>Delete</kbd> gives the audio back: the region becomes a *keep* zone.

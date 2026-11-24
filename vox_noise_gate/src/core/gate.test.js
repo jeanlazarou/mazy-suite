@@ -202,7 +202,7 @@ describe("gainAt", () => {
   it("follows the curve renderChannel applies", () => {
     const input = new Float32Array(SR * 2).fill(1);
     const region = { start: 0.5, end: 1.5 };
-    const p = params({ fade: 20, floorDb: -20 });
+    const p = params({ fadeOut: 20, fadeIn: 20, floorDb: -20 });
     const output = renderChannel(input, new Float32Array(input.length), SR, [region], p);
 
     for (const t of [0.4, 0.5, 0.505, 0.51, 0.519, 0.6, 1.0, 1.481, 1.49, 1.499, 1.6]) {
@@ -210,8 +210,19 @@ describe("gainAt", () => {
     }
   });
 
+  it("follows a region's own fades too", () => {
+    const input = new Float32Array(SR * 2).fill(1);
+    const region = { start: 0.5, end: 1.5, fadeOut: 60, fadeIn: 5 };
+    const p = params({ fadeOut: 20, fadeIn: 20, floorDb: -30 });
+    const output = renderChannel(input, new Float32Array(input.length), SR, [region], p);
+
+    for (const t of [0.5, 0.52, 0.55, 0.559, 0.6, 1.0, 1.4951, 1.497, 1.499]) {
+      expect(gainAt(region, t, p, 2)).toBeCloseTo(output[Math.round(t * SR)], 1);
+    }
+  });
+
   it("does not fade at the ends of the recording, and is 1 with no region", () => {
-    const p = params({ fade: 20 });
+    const p = params({ fadeOut: 20, fadeIn: 20 });
 
     expect(gainAt({ start: 0, end: 1 }, 0, p, 2)).toBe(0);
     expect(gainAt({ start: 1, end: 2 }, 1.999, p, 2)).toBe(0);
@@ -224,14 +235,14 @@ describe("renderChannel", () => {
 
   it("leaves everything outside the regions untouched", () => {
     const input = Float32Array.from({ length: 800 }, (_, i) => Math.sin(i));
-    const output = renderChannel(input, new Float32Array(800), SR, [{ start: 0.025, end: 0.05 }], params({ fade: 2 }), "gated");
+    const output = renderChannel(input, new Float32Array(800), SR, [{ start: 0.025, end: 0.05 }], params({ fadeOut: 2, fadeIn: 2 }), "gated");
 
     for (let i = 0; i < 200; i++) expect(output[i]).toBe(input[i]);
     for (let i = 400; i < 800; i++) expect(output[i]).toBe(input[i]);
   });
 
   it("fades out, silences, fades back in", () => {
-    const output = renderChannel(ones(800), new Float32Array(800), SR, [{ start: 0.025, end: 0.075 }], params({ fade: 5 }), "gated");
+    const output = renderChannel(ones(800), new Float32Array(800), SR, [{ start: 0.025, end: 0.075 }], params({ fadeOut: 5, fadeIn: 5 }), "gated");
 
     // region is samples 200..600, fades are 40 samples
     expect(output[200]).toBe(1);
@@ -248,7 +259,7 @@ describe("renderChannel", () => {
   });
 
   it("shortens the fades of a short region", () => {
-    const output = renderChannel(ones(800), new Float32Array(800), SR, [{ start: 0.025, end: 0.03 }], params({ fade: 50 }), "gated");
+    const output = renderChannel(ones(800), new Float32Array(800), SR, [{ start: 0.025, end: 0.03 }], params({ fadeOut: 50, fadeIn: 50 }), "gated");
 
     // 40 samples: 20 down, 20 up
     expect(output[219]).toBeCloseTo(0, 1);
@@ -257,7 +268,7 @@ describe("renderChannel", () => {
   });
 
   it("does not fade where a region meets the start or the end", () => {
-    const output = renderChannel(ones(800), new Float32Array(800), SR, [{ start: 0, end: 0.025 }, { start: 0.075, end: 0.1 }], params({ fade: 5 }), "gated");
+    const output = renderChannel(ones(800), new Float32Array(800), SR, [{ start: 0, end: 0.025 }, { start: 0.075, end: 0.1 }], params({ fadeOut: 5, fadeIn: 5 }), "gated");
 
     expect(output[0]).toBe(0);
     expect(output[199]).toBeCloseTo(1, 6); // fades back in before the voice
@@ -266,8 +277,39 @@ describe("renderChannel", () => {
     expect(output[799]).toBe(0);
   });
 
+  it("fades out and back in at their own lengths", () => {
+    const output = renderChannel(ones(800), new Float32Array(800), SR, [{ start: 0.025, end: 0.075 }], params({ fadeOut: 10, fadeIn: 2 }), "gated");
+
+    // fade out on 80 samples from 200, fade in on 16 samples up to 600
+    expect(output[279]).toBeGreaterThan(0);
+    expect(output[280]).toBe(0);
+    expect(output[583]).toBe(0);
+    expect(output[584]).toBeGreaterThan(0);
+    expect(output[599]).toBeCloseTo(1, 6);
+  });
+
+  it("takes a region's own fades over the settings", () => {
+    const region = { start: 0.025, end: 0.075, fadeOut: 2, fadeIn: 10 };
+    const output = renderChannel(ones(800), new Float32Array(800), SR, [region], params({ fadeOut: 10, fadeIn: 2 }), "gated");
+
+    expect(output[215]).toBeGreaterThan(0);
+    expect(output[216]).toBe(0);
+    expect(output[519]).toBe(0);
+    expect(output[520]).toBeGreaterThan(0);
+  });
+
+  it("shares a region too short for both fades between them", () => {
+    // 40 samples for 80 + 20: 32 down, 8 up
+    const output = renderChannel(ones(800), new Float32Array(800), SR, [{ start: 0.025, end: 0.03 }], params({ fadeOut: 10, fadeIn: 2.5 }), "gated");
+
+    expect(output[231]).toBeLessThan(0.01);
+    expect(output[232]).toBeLessThan(0.05);
+    expect(output[239]).toBeCloseTo(1, 6);
+    for (let i = 200; i < 240; i++) expect(Number.isFinite(output[i])).toBe(true);
+  });
+
   it("reduces to the floor instead of silence", () => {
-    const output = renderChannel(ones(800), new Float32Array(800), SR, [{ start: 0.025, end: 0.075 }], params({ fade: 0, floorDb: -20 }), "gated");
+    const output = renderChannel(ones(800), new Float32Array(800), SR, [{ start: 0.025, end: 0.075 }], params({ fadeOut: 0, fadeIn: 0, floorDb: -20 }), "gated");
 
     expect(output[400]).toBeCloseTo(0.1, 6);
   });
@@ -275,7 +317,7 @@ describe("renderChannel", () => {
   it("makes gated + removed the original", () => {
     const input = Float32Array.from({ length: 800 }, (_, i) => Math.sin(i / 3));
     const regions = [{ start: 0.01, end: 0.04 }, { start: 0.06, end: 0.09 }];
-    const p = params({ fade: 3, floorDb: -12 });
+    const p = params({ fadeOut: 3, fadeIn: 3, floorDb: -12 });
 
     const gated = renderChannel(input, new Float32Array(800), SR, regions, p, "gated");
     const removed = renderChannel(input, new Float32Array(800), SR, regions, p, "removed");
@@ -287,7 +329,7 @@ describe("renderChannel", () => {
   it("can render in place", () => {
     const data = ones(800);
 
-    renderChannel(data, data, SR, [{ start: 0.025, end: 0.075 }], params({ fade: 0 }), "gated");
+    renderChannel(data, data, SR, [{ start: 0.025, end: 0.075 }], params({ fadeOut: 0, fadeIn: 0 }), "gated");
 
     expect(data[100]).toBe(1);
     expect(data[400]).toBe(0);
@@ -299,7 +341,7 @@ describe("renderGate", () => {
     const left = new Float32Array(800).fill(0.5);
     const right = new Float32Array(800).fill(-0.5);
 
-    const [l, r] = renderGate([left, right], SR, [{ start: 0.05, end: 0.1 }], params({ fade: 0 }));
+    const [l, r] = renderGate([left, right], SR, [{ start: 0.05, end: 0.1 }], params({ fadeOut: 0, fadeIn: 0 }));
 
     expect(l[500]).toBeCloseTo(0, 10);
     expect(r[500]).toBeCloseTo(0, 10);

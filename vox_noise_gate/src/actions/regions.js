@@ -5,12 +5,13 @@ import { gateEdits, gateRegions } from "../GateSettings";
 import { audioEngine, audioPosition } from "../Waveform";
 
 import { MIN_REGION } from "../core/gate";
-import { acceptRegion, mergeForRender } from "../core/regions";
+import { acceptRegion, fadesOf, mergeForRender } from "../core/regions";
 
 export const LOOP_CONTEXT = 1; // seconds heard either side of the region being edited
 
 // The region being edited: { id, origin: "auto" | "manual" | "new", start,
-// end, original: { start, end } | null, changed }
+// end, fadeOut?, fadeIn?, original: { start, end, fadeOut?, fadeIn? } | null,
+// changed }. Its own fades, when set, are used instead of the settings'.
 export const activeRegion = atom(undefined);
 
 // What the gate mutes, the region being edited taken with its new bounds
@@ -22,7 +23,7 @@ export const effectiveRegions = atom((get) => {
 
   return [
     ...regions.filter((r) => r.id !== active.id),
-    { id: "active", start: active.start, end: active.end, origin: "active" },
+    { id: "active", start: active.start, end: active.end, ...fadesOf(active), origin: "active" },
   ];
 });
 
@@ -36,9 +37,17 @@ const asActive = (region) => ({
   origin: region.origin,
   start: region.start,
   end: region.end,
-  original: { start: region.start, end: region.end },
+  ...fadesOf(region),
+  original: { start: region.start, end: region.end, ...fadesOf(region) },
   changed: false,
 });
+
+const changedFrom = (region, original) =>
+  !original ||
+  original.start !== region.start ||
+  original.end !== region.end ||
+  original.fadeOut !== region.fadeOut ||
+  original.fadeIn !== region.fadeIn;
 
 // Keeps the change made to the region being edited, which stays selected
 export function commitActive(get, set) {
@@ -89,10 +98,25 @@ export function setActiveRange(get, set, start, end) {
 
   if (e - s < MIN_REGION) return;
 
-  const original = active.original;
-  const changed = !original || original.start !== s || original.end !== e;
+  const moved = { ...active, start: s, end: e };
 
-  set(activeRegion, { ...active, start: s, end: e, changed });
+  set(activeRegion, { ...moved, changed: changedFrom(moved, active.original) });
+}
+
+// The fades of the region being edited: { fadeOut, fadeIn } in ms, either
+// one undefined to use the settings' again
+export function setActiveFades(get, set, fades) {
+  const active = get(activeRegion);
+
+  if (!active) return;
+
+  const faded = { ...active, ...fades };
+
+  for (const key of ["fadeOut", "fadeIn"]) {
+    if (faded[key] === undefined) delete faded[key];
+  }
+
+  set(activeRegion, { ...faded, changed: changedFrom(faded, active.original) });
 }
 
 export function nudgeActive(get, set, deltaStart, deltaEnd) {

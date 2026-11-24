@@ -12,10 +12,9 @@ const MARGIN = 0.12;
 // and cutTo are null when the whole silence fits
 export function timeAxis(silence, params, duration, width) {
   const { silenceStart, silenceEnd } = silence;
-  const fade = params.fade / 1000;
 
-  const left = Math.max(MIN_SIDE, params.keepAfter / 1000 + fade + MARGIN, params.minSilence / 1000 + 0.1);
-  const right = Math.max(MIN_SIDE, params.keepBefore / 1000 + fade + MARGIN);
+  const left = Math.max(MIN_SIDE, (params.keepAfter + params.fadeOut) / 1000 + MARGIN, params.minSilence / 1000 + 0.1);
+  const right = Math.max(MIN_SIDE, (params.keepBefore + params.fadeIn) / 1000 + MARGIN);
 
   const from = Math.max(0, silenceStart - CONTEXT);
   const to = Math.min(duration, silenceEnd + CONTEXT);

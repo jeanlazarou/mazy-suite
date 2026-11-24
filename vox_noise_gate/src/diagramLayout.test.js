@@ -31,7 +31,7 @@ describe("timeAxis", () => {
   });
 
   it("keeps the edges wide enough for the kept audio, the fades and the min silence", () => {
-    const params = { ...DEFAULT_PARAMS, keepAfter: 600, fade: 100, minSilence: 1000 };
+    const params = { ...DEFAULT_PARAMS, keepAfter: 600, fadeOut: 100, fadeIn: 100, minSilence: 1000 };
     const axis = timeAxis(silence(10, 20), params, 60, 800);
 
     expect(axis.cutFrom).toBeGreaterThan(10 + 0.6 + 0.1);

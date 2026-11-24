@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { currentRecording } from "./Editor";
 import { detectedRegions, gateParams, levelAnalysis } from "./GateSettings";
 import { audioPosition } from "./Waveform";
-import { activeRegion } from "./actions/regions";
+import { activeRegion, setActiveFades } from "./actions/regions";
 import { autoThreshold } from "./actions/auto_threshold";
 import { changeParams } from "./actions/change_params";
 
@@ -15,16 +15,19 @@ import {
   floorGain,
   gainAt,
   levelHistogram,
+  regionFades,
   regionOfSilence,
   silenceAround,
 } from "./core/gate";
+import { fadesOf } from "./core/regions";
 import { LEVEL_VIEW_FLOOR, levelToHeight } from "./core/peaks";
 import { BREAK_PX, timeAxis, toTime, toX } from "./diagramLayout";
 import { toTimecode } from "./utils";
 
 // The gate settings drawn on one silence of the take: the threshold across
 // its levels, the audio kept around the voice, the fades and the floor of the
-// region, the min silence under it. Every setting is a handle.
+// region, the min silence under it. Every setting is a handle. With a region
+// selected, the drawing is that region, and its fade handles set its own.
 
 const AXIS_W = 34; // dB scale
 const HIST_W = 70; // the take's levels
@@ -54,6 +57,7 @@ const COLORS = {
   ignored: "rgba(0, 0, 0, 0.04)",
   keepLine: "#2185d0",
   fadeLine: "#b03030",
+  own: "#16a34a", // the fades of the selected region
   ink: "#555",
   short: "#db2828",
 };
@@ -80,9 +84,16 @@ const SETTINGS = {
     max: 500,
     step: 5,
   },
-  fade: {
-    label: "Fades",
-    help: "Length of the fade at each end of a silenced region. The fades happen inside the region.",
+  fadeOut: {
+    label: "Fade out",
+    help: "Fade at the start of a silenced region, where the voice has stopped: a longer one sounds like the room dying away. It happens inside the region.",
+    min: 0,
+    max: 500,
+    step: 1,
+  },
+  fadeIn: {
+    label: "Fade in",
+    help: "Fade at the end of a silenced region, before the voice comes back: keep it short, or the noise swells up before the voice. It happens inside the region.",
     min: 0,
     max: 200,
     step: 1,
@@ -137,19 +148,11 @@ const textWidth = (text) => text.length * 6.2;
 // a label centred on x, kept inside the plot
 const centred = (x, text, width) => Math.max(textWidth(text) / 2, Math.min(width - textWidth(text) / 2, x));
 
-// Which silence to draw: the region being edited, else the region nearest the
+const FADES = ["fadeOut", "fadeIn"];
+
+// Which silence to draw, without a region selected: the region nearest the
 // playback position, preferring those with voice on both sides
-function focusTime(analysis, regions, active, position, duration, threshold) {
-  let from = position;
-
-  if (active) {
-    const middle = (active.start + active.end) / 2;
-
-    if (silenceAround(analysis, duration, threshold, middle)) return middle;
-
-    from = middle;
-  }
-
+function focusTime(regions, from, duration) {
   const inner = regions.filter((r) => r.start > 0 && r.end < duration);
   const pool = inner.length ? inner : regions;
 
@@ -230,6 +233,7 @@ export function GateDiagram() {
   const position = useAtomValue(audioPosition);
 
   const change = useAtomCallback(useCallback((get, set, update) => changeParams(get, set, update), []));
+  const setFades = useAtomCallback(useCallback((get, set, fades) => setActiveFades(get, set, fades), []));
   const auto = useAtomCallback(useCallback((get, set) => autoThreshold(get, set), []));
 
   const wrapper = useRef(null);
@@ -245,25 +249,49 @@ export function GateDiagram() {
     return () => observer.disconnect();
   }, []);
 
-  const { threshold, keepAfter, keepBefore, fade, minSilence } = params;
+  const { threshold, keepAfter, keepBefore, minSilence } = params;
   const duration = recording?.duration ?? 0;
   const plotW = Math.max(0, width - PLOT_X - RIGHT);
 
-  // a change of setting lets the region being edited go: the view stays on
-  // its silence until the playback moves
+  // the selected region is drawn; else a change of setting lets the region go
+  // (detection changed): the view stays on its silence until the playback moves
+  const activeMiddle = active ? (active.start + active.end) / 2 : null;
   const anchor = drag
     ? drag.anchor
     : !analysis
       ? null
-      : !active && held && held.position === position && silenceAround(analysis, duration, threshold, held.anchor)
-        ? held.anchor
-        : focusTime(analysis, regions, active, position, duration, threshold);
+      : active
+        ? activeMiddle
+        : held && held.position === position && silenceAround(analysis, duration, threshold, held.anchor)
+          ? held.anchor
+          : focusTime(regions, position, duration);
 
-  const silence = useMemo(
-    () => (analysis && anchor !== null ? silenceAround(analysis, duration, threshold, anchor) : null),
-    [analysis, duration, threshold, anchor]
-  );
-  const region = silence ? regionOfSilence(silence, duration, params) : null;
+  // the drawing is the selected region: its fade handles are its own
+  const own = Boolean(active) && anchor === activeMiddle;
+  const ownStart = own ? active.start : null;
+  const ownEnd = own ? active.end : null;
+
+  // a selected region with no silence under it (a click drawn in the voice)
+  // is drawn on its own
+  const silence = useMemo(() => {
+    if (!analysis || anchor === null) return null;
+
+    const found = silenceAround(analysis, duration, threshold, anchor);
+
+    if (found || ownStart === null) return found;
+
+    return { silenceStart: ownStart, silenceEnd: ownEnd, atStart: ownStart <= 0, atEnd: ownEnd >= duration, drawn: true };
+  }, [analysis, duration, threshold, anchor, ownStart, ownEnd]);
+
+  const region = own
+    ? { start: active.start, end: active.end, ...fadesOf(active) }
+    : silence && !silence.drawn
+      ? regionOfSilence(silence, duration, params)
+      : null;
+
+  // the fades in ms: the selected region's own, else the settings'
+  const fadeOutMs = own ? (active.fadeOut ?? params.fadeOut) : params.fadeOut;
+  const fadeInMs = own ? (active.fadeIn ?? params.fadeIn) : params.fadeIn;
 
   const S = silence?.silenceStart;
   const E = silence?.silenceEnd;
@@ -272,8 +300,10 @@ export function GateDiagram() {
     if (drag) return drag.axis;
     if (!silence || plotW <= 0) return null;
 
-    return timeAxis(silence, { keepAfter, keepBefore, fade, minSilence }, duration, plotW);
-  }, [drag, silence, keepAfter, keepBefore, fade, minSilence, duration, plotW]);
+    const sides = { keepAfter, keepBefore, fadeOut: fadeOutMs, fadeIn: fadeInMs, minSilence };
+
+    return timeAxis(silence, sides, duration, plotW);
+  }, [drag, silence, keepAfter, keepBefore, fadeOutMs, fadeInMs, minSilence, duration, plotW]);
 
   const histogram = useMemo(() => (analysis ? levelHistogram(analysis.levels) : null), [analysis]);
 
@@ -284,10 +314,25 @@ export function GateDiagram() {
 
   // dragging and the keyboard
 
+  const isOwn = (param) => own && FADES.includes(param);
+
+  const valueOf = (param) => {
+    if (param === "fadeOut") return fadeOutMs;
+    if (param === "fadeIn") return fadeInMs;
+    if (param === "floorDb") return floorNumber(params.floorDb);
+    return params[param];
+  };
+
+  const shown = (param) => formatValue(param, param === "floorDb" ? params.floorDb : valueOf(param));
+
   const set = (param, raw) => {
     const value = param === "floorDb" ? toFloor(clampStep(raw ?? SETTINGS.floorDb.min, SETTINGS.floorDb)) : clampStep(raw, SETTINGS[param]);
+    const current = param === "floorDb" ? params.floorDb : valueOf(param);
 
-    if (value !== params[param]) change({ [param]: value });
+    if (value === current) return;
+
+    if (isOwn(param)) setFades({ [param]: value });
+    else change({ [param]: value });
   };
 
   const dragTo = (key, e) => {
@@ -303,13 +348,13 @@ export function GateDiagram() {
     if (key === "keepBefore") return set("keepBefore", (E - t) * 1000);
     if (key === "minSilence") return set("minSilence", (t - S) * 1000);
     if (!region) return;
-    if (key === "fadeOut") return set("fade", (t - region.start) * 1000);
-    if (key === "fadeIn") return set("fade", (region.end - t) * 1000);
+    if (key === "fadeOut") return set("fadeOut", (t - region.start) * 1000);
+    if (key === "fadeIn") return set("fadeIn", (region.end - t) * 1000);
   };
 
   const press = (e, param, direction) => {
     const { min, max, step } = SETTINGS[param];
-    const value = param === "floorDb" ? floorNumber(params.floorDb) : params[param];
+    const value = valueOf(param);
     const moves = {
       ArrowUp: step,
       ArrowDown: -step,
@@ -336,26 +381,26 @@ export function GateDiagram() {
     setDrag(null);
   };
 
+  // a region's own fade goes back to the settings'
   const reset = (param) => {
     if (param === "threshold") auto();
+    else if (isOwn(param)) setFades({ [param]: undefined });
     else change({ [param]: DEFAULT_PARAMS[param] });
   };
 
   // key: what is dragged; param: the setting it changes; direction: whether
   // the setting grows to the right
   const handle = (key, param, { cursor = "ew-resize", direction = 1 } = {}) => {
-    const value = param === "floorDb" ? floorNumber(params.floorDb) : params[param];
-
     return {
       className: "diagram-handle",
       fill: "transparent",
       role: "slider",
       tabIndex: 0,
-      "aria-label": SETTINGS[param].label,
+      "aria-label": isOwn(param) ? `${SETTINGS[param].label}, this region` : SETTINGS[param].label,
       "aria-valuemin": SETTINGS[param].min,
       "aria-valuemax": SETTINGS[param].max,
-      "aria-valuenow": value,
-      "aria-valuetext": formatValue(param, params[param]),
+      "aria-valuenow": valueOf(param),
+      "aria-valuetext": shown(param),
       style: { cursor },
       onPointerDown: (e) => {
         if (e.button !== 0) return;
@@ -373,7 +418,13 @@ export function GateDiagram() {
     };
   };
 
-  const tip = (param) => <title>{`${SETTINGS[param].label}: ${formatValue(param, params[param])}. ${SETTINGS[param].help}`}</title>;
+  const tip = (param) => (
+    <title>
+      {isOwn(param)
+        ? `${SETTINGS[param].label} of the selected region: ${shown(param)}. Double-click: back to the setting for all regions (${params[param]} ms).`
+        : `${SETTINGS[param].label}: ${shown(param)}. ${SETTINGS[param].help}`}
+    </title>
+  );
 
   // what to draw
 
@@ -382,10 +433,8 @@ export function GateDiagram() {
   const maxBin = histogram ? Math.max(1, ...histogram) : 1;
   const binH = LEVEL_H / -LEVEL_VIEW_FLOOR;
 
-  const fadeSeconds = region ? Math.min(fade / 1000, (region.end - region.start) / 2) : 0;
-  const fadeOut = region && region.start > 0 ? fadeSeconds : 0;
-  const fadeIn = region && region.end < duration ? fadeSeconds : 0;
-  const tooShort = silence && (E - S) * 1000 < minSilence;
+  const { fadeOut, fadeIn } = region ? regionFades(region, params, duration) : { fadeOut: 0, fadeIn: 0 };
+  const tooShort = silence && !silence.drawn && (E - S) * 1000 < minSilence;
 
   const inView = axis && position >= axis.from && position <= axis.to;
   const breakX = axis && axis.cutFrom !== null ? x(axis.cutFrom) : null;
@@ -394,12 +443,15 @@ export function GateDiagram() {
 
   if (!analysis) message = "Measuring the levels…";
   else if (!silence) message = drag ? "The voice is above the threshold here" : "No silence quieter than the threshold";
+  else if (own) message = null;
   else if (tooShort) message = "Shorter than the min silence: left as it is";
   else if (!region) message = "Nothing left once the audio around the voice is kept";
 
   const captions = [];
 
-  if (axis && silence) {
+  if (axis && silence?.drawn) {
+    captions.push([plotW / 2, `the selected region ${toTimecode(S)} – ${toTimecode(E)}, in the voice`]);
+  } else if (axis && silence) {
     const stops = silence.atStart ? "the take starts quiet" : `voice stops ${toTimecode(S)}`;
     const back = silence.atEnd ? "the take ends quiet" : `comes back ${toTimecode(E)}`;
 
@@ -414,12 +466,35 @@ export function GateDiagram() {
   const minLabel = `min silence ${minSilence} ms${tooShort ? ", longer than this one" : ""}`;
   const minLabelRight = minEnd + 10 + textWidth(minLabel) < plotW;
 
-  const showKeepAfter = axis && silence && !silence.atStart;
-  const showKeepBefore = axis && silence && !silence.atEnd;
+  const showKeepAfter = axis && silence && !silence.atStart && !silence.drawn;
+  const showKeepBefore = axis && silence && !silence.atEnd && !silence.drawn;
   const showFadeOut = axis && region && region.start > 0;
   const showFadeIn = axis && region && region.end < duration;
   const showFloor = axis && region;
-  const showMin = axis && silence;
+  const showMin = axis && silence && !silence.drawn;
+
+  const fadeColor = own ? COLORS.own : COLORS.fadeLine;
+  const ownNote = (...params) => (own && params.some((p) => active[p] !== undefined) ? ", this region" : "");
+
+  // the fade labels, made one under a region too short for both
+  const fadeTexts = (() => {
+    if (!axis || !region) return [];
+
+    const out = showFadeOut
+      ? { x: x(region.start), text: `fade out ${fadeOutMs} ms${ownNote("fadeOut")}`, anchor: "start" }
+      : null;
+    const into = showFadeIn
+      ? { x: x(region.end), text: `fade in ${fadeInMs} ms${ownNote("fadeIn")}`, anchor: "end" }
+      : null;
+
+    if (out && into && out.x + textWidth(out.text) + 12 > into.x - textWidth(into.text)) {
+      const text = `fades ${fadeOutMs} / ${fadeInMs} ms${ownNote("fadeOut", "fadeIn")}`;
+
+      return [{ x: centred((out.x + into.x) / 2, text, plotW), text, anchor: "middle" }];
+    }
+
+    return [out, into].filter(Boolean);
+  })();
 
   const keepAfterX = showKeepAfter ? x(S + keepAfter / 1000) : 0;
   const keepBeforeX = showKeepBefore ? x(E - keepBefore / 1000) : 0;
@@ -481,9 +556,9 @@ export function GateDiagram() {
             {axis && silence ? (
               region ? (
                 <>
-                  <rect x={x(S)} y={LEVEL_Y} width={x(region.start) - x(S)} height={GAIN_Y + GAIN_H - LEVEL_Y} fill={COLORS.keep} />
+                  <rect x={x(S)} y={LEVEL_Y} width={Math.max(0, x(region.start) - x(S))} height={GAIN_Y + GAIN_H - LEVEL_Y} fill={COLORS.keep} />
                   <rect x={x(region.start)} y={LEVEL_Y} width={x(region.end) - x(region.start)} height={GAIN_Y + GAIN_H - LEVEL_Y} fill={COLORS.region} />
-                  <rect x={x(region.end)} y={LEVEL_Y} width={x(E) - x(region.end)} height={GAIN_Y + GAIN_H - LEVEL_Y} fill={COLORS.keep} />
+                  <rect x={x(region.end)} y={LEVEL_Y} width={Math.max(0, x(E) - x(region.end))} height={GAIN_Y + GAIN_H - LEVEL_Y} fill={COLORS.keep} />
                 </>
               ) : (
                 <rect x={x(S)} y={LEVEL_Y} width={x(E) - x(S)} height={GAIN_Y + GAIN_H - LEVEL_Y} fill={COLORS.ignored} />
@@ -550,21 +625,21 @@ export function GateDiagram() {
 
             {showFadeOut ? (
               <g>
-                <line x1={fadeOutX} x2={fadeOutX} y1={GAIN_Y} y2={GAIN_Y + GAIN_H} stroke={COLORS.fadeLine} />
-                <text className="diagram-text" x={x(region.start)} y={RULER_Y + LINE + 12}>
-                  {`fade ${fade} ms`}
-                </text>
+                <line x1={fadeOutX} x2={fadeOutX} y1={GAIN_Y} y2={GAIN_Y + GAIN_H} stroke={fadeColor} strokeWidth={own ? 2 : 1} />
               </g>
             ) : null}
 
             {showFadeIn ? (
               <g>
-                <line x1={fadeInX} x2={fadeInX} y1={GAIN_Y} y2={GAIN_Y + GAIN_H} stroke={COLORS.fadeLine} />
-                <text className="diagram-text" x={x(region.end)} y={RULER_Y + LINE + 12} textAnchor="end">
-                  {`fade ${fade} ms`}
-                </text>
+                <line x1={fadeInX} x2={fadeInX} y1={GAIN_Y} y2={GAIN_Y + GAIN_H} stroke={fadeColor} strokeWidth={own ? 2 : 1} />
               </g>
             ) : null}
+
+            {fadeTexts.map(({ x: tx, text, anchor }) => (
+              <text key={text} className="diagram-text" x={tx} y={RULER_Y + LINE + 12} textAnchor={anchor} style={own ? { fill: COLORS.own } : undefined}>
+                {text}
+              </text>
+            ))}
 
             {showFloor ? (
               <g>
@@ -592,7 +667,7 @@ export function GateDiagram() {
                   x={minLabelRight ? minEnd + 10 : minEnd - 10}
                   y={BRACKET_Y + 1}
                   textAnchor={minLabelRight ? "start" : "end"}
-                  fill={tooShort ? COLORS.short : undefined}
+                  style={tooShort ? { fill: COLORS.short } : undefined}
                 >
                   {minLabel}
                 </text>
@@ -603,7 +678,7 @@ export function GateDiagram() {
           {/* the threshold, across the take's levels and the silence */}
 
           <line x1={AXIS_W} x2={PLOT_X + plotW} y1={thresholdY} y2={thresholdY} stroke={COLORS.threshold} strokeWidth={2} />
-          <text className="diagram-value" x={PLOT_X + plotW - 4} y={thresholdY - 5} textAnchor="end" fill={COLORS.threshold}>
+          <text className="diagram-value" x={PLOT_X + plotW - 4} y={thresholdY - 5} textAnchor="end" style={{ fill: COLORS.threshold }}>
             {formatValue("threshold", threshold)}
           </text>
 
@@ -635,13 +710,13 @@ export function GateDiagram() {
               </rect>
             ) : null}
             {showFadeOut ? (
-              <rect x={fadeOutX - 6} y={GAIN_Y} width={12} height={GAIN_H + 2 * LINE} {...handle("fadeOut", "fade")}>
-                {tip("fade")}
+              <rect x={fadeOutX - 6} y={GAIN_Y} width={12} height={GAIN_H + 2 * LINE} {...handle("fadeOut", "fadeOut")}>
+                {tip("fadeOut")}
               </rect>
             ) : null}
             {showFadeIn ? (
-              <rect x={fadeInX - 6} y={GAIN_Y} width={12} height={GAIN_H + 2 * LINE} {...handle("fadeIn", "fade", { direction: -1 })}>
-                {tip("fade")}
+              <rect x={fadeInX - 6} y={GAIN_Y} width={12} height={GAIN_H + 2 * LINE} {...handle("fadeIn", "fadeIn", { direction: -1 })}>
+                {tip("fadeIn")}
               </rect>
             ) : null}
           </g>

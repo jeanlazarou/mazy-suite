@@ -24,9 +24,12 @@ const STORAGE_KEY = "vox_noise_gate.params";
 // the same microphone in the same room keeps the same settings
 function loadParams() {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    const { fade, ...saved } = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
 
-    return { ...DEFAULT_PARAMS, ...saved };
+    // before v1.1, one fade for both ends
+    const fades = fade === undefined ? {} : { fadeOut: fade, fadeIn: fade };
+
+    return { ...DEFAULT_PARAMS, ...fades, ...saved };
   } catch {
     return { ...DEFAULT_PARAMS };
   }
