@@ -191,6 +191,9 @@ class AudioEngine {
 
     this.clearMarkers();
 
+    // Without a duration the plugin queues regions out of clearMarkers' reach; "ready" draws them
+    if (!waveSurfer?.getDuration()) return;
+
     // markers are now full regions with start/end times and proper colors
     markers.forEach((marker, index) => {
       if (timingRegion &&
@@ -590,7 +593,7 @@ export function Waveform({ track }) {
     }, 100);
     
     return () => clearTimeout(timeoutId);
-  }, [labelsVisible, displayMarkers]);
+  }, [labelsVisible, song.timings, song.savedTimings, displayMarkers]);
 
   useEffect(() => {
     if (playingState !== "playing" && mediaElement) mediaElement.currentTime = position;

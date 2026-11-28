@@ -119,6 +119,9 @@ export function TimingsCheck({ open, onClose }) {
 
     setSong(newSong);
 
+    setToRemove(new Set());
+    setQuickFix(false);
+
     onClose();
   };
 
